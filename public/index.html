@@ -142,16 +142,17 @@
   <div id="receiptBox" class="section" style="display:none">
     <h2>Podaci su uspješno poslani</h2>
     <p id="receiptText" class="lead"></p>
-    <div id="receiptReport" class="report"></div>
-    <div class="actions">
+    <div class="actions" style="margin-bottom:18px">
       <button type="button" class="btn primary" id="copyReceiptBtn">Kopiraj link</button>
       <button type="button" class="btn dark" id="printReceiptBtn">Sačuvaj / štampaj kao PDF</button>
       <button type="button" class="btn soft" id="openReceiptBtn">Otvori trajni pregled</button>
       <button type="button" class="btn soft" id="newEntryBtn">Novi unos</button>
     </div>
-    <div id="receiptActionStatus" class="subtle" style="margin-top:10px"></div>
+    <div id="receiptActionStatus" class="subtle" style="margin:0 0 16px 0"></div>
+    <div class="subtle" style="margin-bottom:8px"><b>Pregled poslanih podataka</b></div>
+    <div id="receiptReport" class="report"></div>
   </div>
-  <p class="footer-note">Porodični unos v1.2 – javna forma za prikupljanje podataka za Gramps.</p>
+  <p class="footer-note">Porodični unos v1.3.1 – javna forma za prikupljanje podataka za Gramps.</p>
 </div>
 <script>
 let childCounter = 0;
