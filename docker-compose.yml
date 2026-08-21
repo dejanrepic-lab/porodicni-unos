@@ -1,0 +1,15 @@
+services:
+  porodicni-unos:
+    build: .
+    container_name: porodicni-unos
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      PORT: "8787"
+      DATA_DIR: "/app/data"
+      ADMIN_USER: "admin"
+      ADMIN_PASSWORD: "PROMIJENI-OVU-LOZINKU"
+      MAX_UPLOAD_MB: "15"
+    volumes:
+      - ./data:/app/data
