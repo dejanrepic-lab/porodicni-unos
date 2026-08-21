@@ -166,6 +166,7 @@ app.get('/admin', basicAuth, (req, res) => {
     COUNT(*) AS total_count
     FROM submissions`).get();
   const trs = rows.map(r => `<tr>
+    <td><input class="row-select" type="checkbox" name="ids" value="${r.id}" aria-label="Označi odgovor #${r.id}"></td>
     <td><a href="/admin/submissions/${r.id}">#${r.id}</a></td>
     <td><a href="/admin/submissions/${r.id}">${esc(r.title)}</a></td><td>${esc(r.type === 'porodica' ? 'Porodica' : 'Pojedinac')}</td>
     <td>${esc(r.submitted_by || '—')}</td><td>${esc(new Date(r.created_at).toLocaleString('sr-Latn'))}</td>
@@ -178,8 +179,52 @@ app.get('/admin', basicAuth, (req, res) => {
       <a class="tab ${view==='archived'?'active':''}" href="/admin?view=archived">Arhiva (${counts.archived_count || 0})</a>
       <a class="tab ${view==='all'?'active':''}" href="/admin?view=all">Svi (${counts.total_count || 0})</a>
     </div>
-    <p class="muted">Klikni na odgovor da ga otvoriš. Obrađene odgovore možeš arhivirati, a pogrešne trajno obrisati.</p>
-    <div class="tablewrap"><table><thead><tr><th>ID</th><th>Naslov</th><th>Tip</th><th>Poslao</th><th>Vrijeme</th><th>Fajlovi</th><th>Status</th></tr></thead><tbody>${trs || '<tr><td colspan="7">Nema odgovora u ovom prikazu.</td></tr>'}</tbody></table></div>
+    <p class="muted">Klikni na odgovor da ga otvoriš. Za masovno brisanje označi više odgovora ili koristi „Označi sve“.</p>
+
+    <form method="post" action="/admin/submissions/bulk-delete" id="bulkForm"
+      onsubmit="return confirmBulkDelete();">
+      <input type="hidden" name="view" value="${esc(view)}">
+      <div class="admin-actions" style="margin:12px 0 14px 0;align-items:center">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer">
+          <input type="checkbox" id="selectAll"> Označi sve
+        </label>
+        <span class="muted" id="selectedCount">0 označeno</span>
+        <button class="btn danger" type="submit" id="bulkDeleteBtn" disabled>Obriši označene</button>
+      </div>
+      <div class="tablewrap"><table><thead><tr><th style="width:42px">✓</th><th>ID</th><th>Naslov</th><th>Tip</th><th>Poslao</th><th>Vrijeme</th><th>Fajlovi</th><th>Status</th></tr></thead><tbody>${trs || '<tr><td colspan="8">Nema odgovora u ovom prikazu.</td></tr>'}</tbody></table></div>
+    </form>
+
+    <script>
+      const selectAll = document.getElementById('selectAll');
+      const rowSelects = [...document.querySelectorAll('.row-select')];
+      const selectedCount = document.getElementById('selectedCount');
+      const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+
+      function updateBulkState(){
+        const n = rowSelects.filter(x => x.checked).length;
+        selectedCount.textContent = n + (n === 1 ? ' označen' : ' označeno');
+        bulkDeleteBtn.disabled = n === 0;
+        if(rowSelects.length){
+          selectAll.checked = n === rowSelects.length;
+          selectAll.indeterminate = n > 0 && n < rowSelects.length;
+        }
+      }
+      if(selectAll){
+        selectAll.addEventListener('change', () => {
+          rowSelects.forEach(x => x.checked = selectAll.checked);
+          updateBulkState();
+        });
+      }
+      rowSelects.forEach(x => x.addEventListener('change', updateBulkState));
+      updateBulkState();
+
+      function confirmBulkDelete(){
+        const n = rowSelects.filter(x => x.checked).length;
+        if(!n) return false;
+        return confirm('Trajno obrisati ' + n + ' označen' + (n === 1 ? ' odgovor' : 'a odgovora') +
+          ' i sve njihove priložene fajlove? Ova radnja se ne može poništiti.');
+      }
+    </script>
   `));
 });
 
@@ -218,6 +263,34 @@ app.post('/admin/submissions/:id/archive', basicAuth, express.urlencoded({extend
   const status = row.status === 'arhivirano' ? 'novo' : 'arhivirano';
   db.prepare(`UPDATE submissions SET status=? WHERE id=?`).run(status, req.params.id);
   res.redirect(status === 'arhivirano' ? '/admin?view=archived' : `/admin/submissions/${req.params.id}`);
+});
+
+app.post('/admin/submissions/bulk-delete', basicAuth, express.urlencoded({extended:false}), (req, res) => {
+  const rawIds = Array.isArray(req.body.ids) ? req.body.ids : (req.body.ids ? [req.body.ids] : []);
+  const ids = [...new Set(rawIds.map(v => Number(v)).filter(v => Number.isInteger(v) && v > 0))].slice(0, 500);
+  const view = ['active','archived','all'].includes(req.body.view) ? req.body.view : 'active';
+
+  if (!ids.length) return res.redirect(`/admin?view=${view}`);
+
+  const placeholders = ids.map(() => '?').join(',');
+  const files = db.prepare(`SELECT stored_name FROM attachments WHERE submission_id IN (${placeholders})`).all(...ids);
+
+  const tx = db.transaction(() => {
+    db.prepare(`DELETE FROM attachments WHERE submission_id IN (${placeholders})`).run(...ids);
+    db.prepare(`DELETE FROM submissions WHERE id IN (${placeholders})`).run(...ids);
+  });
+  tx();
+
+  for (const f of files) {
+    const full = path.join(UPLOAD_DIR, f.stored_name);
+    try {
+      if (fs.existsSync(full)) fs.unlinkSync(full);
+    } catch (e) {
+      console.error('Ne mogu obrisati fajl', full, e);
+    }
+  }
+
+  res.redirect(`/admin?view=${view}`);
 });
 
 app.post('/admin/submissions/:id/delete', basicAuth, express.urlencoded({extended:false}), (req, res) => {
