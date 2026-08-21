@@ -19,7 +19,17 @@
   #result{background:#fff;border:1px solid var(--line);padding:16px;border-radius:14px;overflow:auto;max-height:700px}.report h3{margin:18px 0 8px;font-size:18px}.report h4{margin:14px 0 6px;font-size:16px}.report .report-card{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#fbfcfe}.report .row{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:10px;padding:5px 0;border-bottom:1px solid #eef1f5}.report .row:last-child{border-bottom:0}.report .label{font-weight:700;color:#344054}.report .empty{color:#98a2b3;font-style:italic}@media(max-width:720px){.report .row{grid-template-columns:1fr;gap:2px}}
   @media(max-width:720px){.choice,.grid{grid-template-columns:1fr}.grandchild{grid-template-columns:1fr}.wrap{padding:10px}.section,.hero{padding:14px;border-radius:14px}.child-card{padding:12px}}
 
+
 .children-summary{margin:8px 0 20px 24px;padding:0}.children-summary li{padding:5px 0;font-weight:600}
+.file-input-hidden{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.file-picker{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.file-list{display:grid;gap:8px;margin-top:12px}
+.file-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fbfcfe}
+.file-meta{min-width:0}.file-name{font-weight:700;overflow-wrap:anywhere}.file-size{color:var(--muted);font-size:12px;margin-top:2px}
+.file-remove{border:0;background:#fff1f0;color:var(--danger);padding:7px 10px;border-radius:9px;font-weight:700;cursor:pointer;flex:0 0 auto}
+.file-status{font-size:13px;color:var(--muted);margin-top:8px}.file-status.warn{color:#b54708;font-weight:700}
+.report-files{margin:8px 0 0 20px;padding:0}.report-files li{padding:4px 0}
+
 </style>
 </head>
 <body>
@@ -96,8 +106,13 @@
       <h2>Dokumenti i fotografije <span class="subtle">(opcionalno)</span></h2>
       <div class="field full">
         <label>Dodaj PDF ili fotografije</label>
-        <input id="familyFiles" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif">
-        <div class="subtle">Možete dodati do 10 fajlova. Ako nemate ništa za priložiti, preskočite.</div>
+        <input id="familyFiles" class="file-input-hidden" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif">
+        <div class="file-picker">
+          <button type="button" class="btn soft" data-file-pick="family">＋ Dodaj fajlove</button>
+          <span class="subtle" id="familyFileCount">0 / 10 fajlova</span>
+        </div>
+        <div id="familyFileList" class="file-list"></div>
+        <div id="familyFileStatus" class="file-status">Fajlove možete dodavati u više navrata. Svaki prilog možete ukloniti prije slanja.</div>
       </div>
     </div>
 
@@ -105,6 +120,12 @@
   </form>
 
   <form id="personForm" style="display:none">
+    <div class="section">
+      <h2>Ko šalje podatke?</h2>
+      <div class="grid">
+        <div class="field full"><label>Vaše ime i prezime</label><input name="submittedBy" placeholder="npr. Pero Perić"></div>
+      </div>
+    </div>
     <div class="section">
       <h2>Unos / dopuna pojedinca</h2>
       <div class="grid">
@@ -115,15 +136,19 @@
         <div class="field"><label>Otac</label><input name="father"></div><div class="field"><label>Majka</label><input name="mother"></div>
         <div class="field full"><label>Šta želite dodati ili ispraviti?</label><textarea name="correction"></textarea></div>
         <div class="field full"><label>Odakle znate podatak?</label><textarea name="source"></textarea></div>
-        <div class="field full"><label>Ko šalje podatke?</label><input name="submittedBy"></div>
       </div>
     </div>
     <div class="section">
       <h2>Dokumenti i fotografije <span class="subtle">(opcionalno)</span></h2>
       <div class="field full">
         <label>Dodaj PDF ili fotografije</label>
-        <input id="personFiles" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif">
-        <div class="subtle">Možete dodati do 10 fajlova. Ako nemate ništa za priložiti, preskočite.</div>
+        <input id="personFiles" class="file-input-hidden" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif">
+        <div class="file-picker">
+          <button type="button" class="btn soft" data-file-pick="person">＋ Dodaj fajlove</button>
+          <span class="subtle" id="personFileCount">0 / 10 fajlova</span>
+        </div>
+        <div id="personFileList" class="file-list"></div>
+        <div id="personFileStatus" class="file-status">Fajlove možete dodavati u više navrata. Svaki prilog možete ukloniti prije slanja.</div>
       </div>
     </div>
     <div class="actions"><button type="submit" class="btn dark">Pregled unosa</button></div>
@@ -152,11 +177,81 @@
     <div class="subtle" style="margin-bottom:8px"><b>Pregled poslanih podataka</b></div>
     <div id="receiptReport" class="report"></div>
   </div>
-  <p class="footer-note">Porodični unos v1.3.1 – javna forma za prikupljanje podataka za Gramps.</p>
+  <p class="footer-note">Porodični unos v1.4 – javna forma za prikupljanje podataka za Gramps.</p>
 </div>
 <script>
 let childCounter = 0;
 const children = document.getElementById('children');
+
+const selectedFiles = { family: [], person: [] };
+const MAX_FILES = 10;
+
+function formatFileSize(bytes){
+  if(bytes < 1024) return `${bytes} B`;
+  if(bytes < 1024*1024) return `${Math.ceil(bytes/1024)} KB`;
+  return `${(bytes/(1024*1024)).toFixed(1)} MB`;
+}
+function fileKey(f){ return `${f.name}|${f.size}|${f.lastModified}`; }
+
+function renderSelectedFiles(mode){
+  const list = document.getElementById(mode+'FileList');
+  const count = document.getElementById(mode+'FileCount');
+  const status = document.getElementById(mode+'FileStatus');
+  const files = selectedFiles[mode];
+
+  count.textContent = `${files.length} / ${MAX_FILES} fajlova`;
+  list.innerHTML = files.map((f,i)=>`
+    <div class="file-item">
+      <div class="file-meta">
+        <div class="file-name">${esc(f.name)}</div>
+        <div class="file-size">${formatFileSize(f.size)}</div>
+      </div>
+      <button type="button" class="file-remove" data-mode="${mode}" data-file-index="${i}">Ukloni</button>
+    </div>`).join('');
+
+  list.querySelectorAll('.file-remove').forEach(btn=>{
+    btn.onclick=()=>{
+      selectedFiles[btn.dataset.mode].splice(Number(btn.dataset.fileIndex),1);
+      renderSelectedFiles(btn.dataset.mode);
+    };
+  });
+
+  status.classList.remove('warn');
+  status.textContent = files.length
+    ? 'Možete dodati još fajlova ili ukloniti pojedinačne priloge prije slanja.'
+    : 'Fajlove možete dodavati u više navrata. Svaki prilog možete ukloniti prije slanja.';
+}
+
+function addFiles(mode, fileList){
+  const status = document.getElementById(mode+'FileStatus');
+  const existing = new Set(selectedFiles[mode].map(fileKey));
+  let added = 0, skipped = 0;
+
+  for(const f of [...fileList]){
+    if(selectedFiles[mode].length >= MAX_FILES){ skipped++; continue; }
+    if(existing.has(fileKey(f))){ skipped++; continue; }
+    selectedFiles[mode].push(f);
+    existing.add(fileKey(f));
+    added++;
+  }
+  renderSelectedFiles(mode);
+  if(skipped){
+    status.classList.add('warn');
+    status.textContent = `Dodano: ${added}. Preskočeno: ${skipped} (duplikat ili je dostignut limit od ${MAX_FILES} fajlova).`;
+  }
+}
+
+document.querySelectorAll('[data-file-pick]').forEach(btn=>{
+  btn.onclick=()=>document.getElementById(btn.dataset.filePick+'Files').click();
+});
+document.getElementById('familyFiles').addEventListener('change',e=>{
+  addFiles('family',e.target.files);
+  e.target.value='';
+});
+document.getElementById('personFiles').addEventListener('change',e=>{
+  addFiles('person',e.target.files);
+  e.target.value='';
+});
 
 function val(name){ const e=document.querySelector(`[name="${name}"]`); return e?e.value.trim():''; }
 function updateTitle(){
@@ -251,11 +346,21 @@ function familyReport(d){
     h+=row('Napomena za ovu porodicu',c.notes)+'</div>';
   });
   h+=`<h3>Izvor i napomene</h3>`+row('Odakle su poznati podaci',d.source)+row('Napomena',d.notes);
+  h+=filesReport('family');
   return h;
+}
+function filesReport(mode){
+  const files=selectedFiles[mode]||[];
+  let h=`<h3>Priloženi dokumenti i fotografije (${files.length})</h3>`;
+  if(!files.length) return h+'<p class="empty">Nema priloženih fajlova.</p>';
+  h+='<ul class="report-files">';
+  files.forEach(f=>h+=`<li><b>${esc(f.name)}</b> <span class="subtle">(${formatFileSize(f.size)})</span></li>`);
+  return h+'</ul>';
 }
 function personReport(d){
   let h='<h3>Unos / dopuna pojedinca</h3>';
-  h+=row('Ime',d.firstName)+row('Prezime',d.lastName)+row('Djevojačko prezime',d.maidenName)+row('Nadimak',d.nickname)+row('Datum rođenja',d.birthDate)+row('Mjesto rođenja',d.birthPlace)+row('Datum smrti',d.deathDate)+row('Mjesto smrti',d.deathPlace)+row('Otac',d.father)+row('Majka',d.mother)+row('Šta se dodaje ili ispravlja',d.correction)+row('Odakle je poznat podatak',d.source)+row('Podatke šalje',d.submittedBy);
+  h+=row('Podatke šalje',d.submittedBy)+row('Ime',d.firstName)+row('Prezime',d.lastName)+row('Djevojačko prezime',d.maidenName)+row('Nadimak',d.nickname)+row('Datum rođenja',d.birthDate)+row('Mjesto rođenja',d.birthPlace)+row('Datum smrti',d.deathDate)+row('Mjesto smrti',d.deathPlace)+row('Otac',d.father)+row('Majka',d.mother)+row('Šta se dodaje ili ispravlja',d.correction)+row('Odakle je poznat podatak',d.source);
+  h+=filesReport('person');
   return h;
 }
 let currentPreview = null;
@@ -292,8 +397,8 @@ document.getElementById('sendBtn').onclick=async()=>{
   const btn=document.getElementById('sendBtn'); const status=document.getElementById('sendStatus');
   btn.disabled=true; status.textContent='Šaljem podatke...';
   const fd=new FormData(); fd.append('payload',JSON.stringify(currentPreview));
-  const input=currentPreview.type==='porodica'?document.getElementById('familyFiles'):document.getElementById('personFiles');
-  for(const f of (input?.files||[])) fd.append('files',f);
+  const uploadMode=currentPreview.type==='porodica'?'family':'person';
+  for(const f of selectedFiles[uploadMode]) fd.append('files',f);
   try{
     const r=await fetch('/api/submissions',{method:'POST',body:fd});
     const j=await r.json().catch(()=>({}));
