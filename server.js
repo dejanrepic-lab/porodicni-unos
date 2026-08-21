@@ -17,6 +17,7 @@ const MAX_UPLOAD_MB = Math.max(1, Number(process.env.MAX_UPLOAD_MB || 15));
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 db.exec(`
 CREATE TABLE IF NOT EXISTS submissions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -151,22 +152,34 @@ app.get('/api/receipt/:publicId', (req, res) => {
   res.json({ ...row, payload: JSON.parse(row.payload_json), payload_json: undefined, files });
 });
 
-app.get('/admin', basicAuth, (_req, res) => {
+app.get('/admin', basicAuth, (req, res) => {
+  const view = ['active','archived','all'].includes(req.query.view) ? req.query.view : 'active';
+  const where = view === 'archived' ? "WHERE s.status='arhivirano'" : view === 'all' ? '' : "WHERE s.status<>'arhivirano'";
   const rows = db.prepare(`
     SELECT s.id,s.type,s.title,s.submitted_by,s.status,s.created_at,
            (SELECT COUNT(*) FROM attachments a WHERE a.submission_id=s.id) AS file_count
-    FROM submissions s ORDER BY s.id DESC LIMIT 500
+    FROM submissions s ${where} ORDER BY s.id DESC LIMIT 500
   `).all();
+  const counts = db.prepare(`SELECT
+    SUM(CASE WHEN status<>'arhivirano' THEN 1 ELSE 0 END) AS active_count,
+    SUM(CASE WHEN status='arhivirano' THEN 1 ELSE 0 END) AS archived_count,
+    COUNT(*) AS total_count
+    FROM submissions`).get();
   const trs = rows.map(r => `<tr>
     <td><a href="/admin/submissions/${r.id}">#${r.id}</a></td>
-    <td>${esc(r.title)}</td><td>${esc(r.type === 'porodica' ? 'Porodica' : 'Pojedinac')}</td>
+    <td><a href="/admin/submissions/${r.id}">${esc(r.title)}</a></td><td>${esc(r.type === 'porodica' ? 'Porodica' : 'Pojedinac')}</td>
     <td>${esc(r.submitted_by || '—')}</td><td>${esc(new Date(r.created_at).toLocaleString('sr-Latn'))}</td>
     <td>${r.file_count}</td><td><span class="status ${esc(r.status)}">${esc(r.status)}</span></td>
   </tr>`).join('');
   res.send(adminShell('Primljeni odgovori', `
     <div class="toolbar"><h1>Primljeni odgovori</h1><a class="btn" href="/admin/export.csv">Izvezi CSV pregled</a></div>
-    <p class="muted">Klikni na broj odgovora da otvoriš kompletan izvještaj za unos u Gramps.</p>
-    <div class="tablewrap"><table><thead><tr><th>ID</th><th>Naslov</th><th>Tip</th><th>Poslao</th><th>Vrijeme</th><th>Fajlovi</th><th>Status</th></tr></thead><tbody>${trs || '<tr><td colspan="7">Još nema odgovora.</td></tr>'}</tbody></table></div>
+    <div class="admin-tabs">
+      <a class="tab ${view==='active'?'active':''}" href="/admin?view=active">Aktivni (${counts.active_count || 0})</a>
+      <a class="tab ${view==='archived'?'active':''}" href="/admin?view=archived">Arhiva (${counts.archived_count || 0})</a>
+      <a class="tab ${view==='all'?'active':''}" href="/admin?view=all">Svi (${counts.total_count || 0})</a>
+    </div>
+    <p class="muted">Klikni na odgovor da ga otvoriš. Obrađene odgovore možeš arhivirati, a pogrešne trajno obrisati.</p>
+    <div class="tablewrap"><table><thead><tr><th>ID</th><th>Naslov</th><th>Tip</th><th>Poslao</th><th>Vrijeme</th><th>Fajlovi</th><th>Status</th></tr></thead><tbody>${trs || '<tr><td colspan="7">Nema odgovora u ovom prikazu.</td></tr>'}</tbody></table></div>
   `));
 });
 
@@ -175,9 +188,14 @@ app.get('/admin/submissions/:id', basicAuth, (req, res) => {
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
   const payload = JSON.parse(row.payload_json);
   const files = db.prepare(`SELECT * FROM attachments WHERE submission_id=? ORDER BY id`).all(row.id);
+  const archived = row.status === 'arhivirano';
   res.send(adminShell(`#${row.id} – ${esc(row.title)}`, `
-    <div class="toolbar"><div><a href="/admin">← Svi odgovori</a><h1>${esc(row.title)}</h1></div>
-      <form method="post" action="/admin/submissions/${row.id}/status"><button class="btn" name="status" value="${row.status === 'obradjeno' ? 'novo' : 'obradjeno'}">${row.status === 'obradjeno' ? 'Vrati na novo' : 'Označi kao obrađeno'}</button></form>
+    <div class="toolbar"><div><a href="/admin${archived?'?view=archived':''}">← ${archived?'Arhiva':'Aktivni odgovori'}</a><h1>${esc(row.title)}</h1></div>
+      <div class="admin-actions">
+        ${!archived ? `<form method="post" action="/admin/submissions/${row.id}/status"><button class="btn" name="status" value="${row.status === 'obradjeno' ? 'novo' : 'obradjeno'}">${row.status === 'obradjeno' ? 'Vrati na novo' : 'Označi kao obrađeno'}</button></form>` : ''}
+        <form method="post" action="/admin/submissions/${row.id}/archive"><button class="btn secondary" type="submit">${archived ? 'Vrati iz arhive' : 'Arhiviraj'}</button></form>
+        <form method="post" action="/admin/submissions/${row.id}/delete" onsubmit="return confirm('Trajno obrisati ovaj odgovor i sve njegove priložene fajlove? Ova radnja se ne može poništiti.');"><button class="btn danger" type="submit">Obriši trajno</button></form>
+      </div>
     </div>
     <p class="muted">ID #${row.id} · ${esc(new Date(row.created_at).toLocaleString('sr-Latn'))} · status: <b>${esc(row.status)}</b></p>
     ${renderPayload(payload)}
@@ -186,9 +204,36 @@ app.get('/admin/submissions/:id', basicAuth, (req, res) => {
 });
 
 app.post('/admin/submissions/:id/status', basicAuth, express.urlencoded({extended:false}), (req, res) => {
+  const current = db.prepare(`SELECT status FROM submissions WHERE id=?`).get(req.params.id);
+  if (!current) return res.status(404).send('Odgovor nije pronađen.');
+  if (current.status === 'arhivirano') return res.redirect(`/admin/submissions/${req.params.id}`);
   const status = req.body.status === 'obradjeno' ? 'obradjeno' : 'novo';
   db.prepare(`UPDATE submissions SET status=? WHERE id=?`).run(status, req.params.id);
   res.redirect(`/admin/submissions/${req.params.id}`);
+});
+
+app.post('/admin/submissions/:id/archive', basicAuth, express.urlencoded({extended:false}), (req, res) => {
+  const row = db.prepare(`SELECT status FROM submissions WHERE id=?`).get(req.params.id);
+  if (!row) return res.status(404).send('Odgovor nije pronađen.');
+  const status = row.status === 'arhivirano' ? 'novo' : 'arhivirano';
+  db.prepare(`UPDATE submissions SET status=? WHERE id=?`).run(status, req.params.id);
+  res.redirect(status === 'arhivirano' ? '/admin?view=archived' : `/admin/submissions/${req.params.id}`);
+});
+
+app.post('/admin/submissions/:id/delete', basicAuth, express.urlencoded({extended:false}), (req, res) => {
+  const row = db.prepare(`SELECT id FROM submissions WHERE id=?`).get(req.params.id);
+  if (!row) return res.status(404).send('Odgovor nije pronađen.');
+  const files = db.prepare(`SELECT stored_name FROM attachments WHERE submission_id=?`).all(row.id);
+  const tx = db.transaction(() => {
+    db.prepare(`DELETE FROM attachments WHERE submission_id=?`).run(row.id);
+    db.prepare(`DELETE FROM submissions WHERE id=?`).run(row.id);
+  });
+  tx();
+  for (const f of files) {
+    const full = path.join(UPLOAD_DIR, f.stored_name);
+    try { if (fs.existsSync(full)) fs.unlinkSync(full); } catch (e) { console.error('Ne mogu obrisati fajl', full, e); }
+  }
+  res.redirect('/admin');
 });
 
 app.get('/admin/files/:id', basicAuth, (req, res) => {
@@ -230,13 +275,14 @@ function person(title,p={}, maiden=false) {
 function renderPayload(d={}) {
   if (d.type === 'pojedinac') return `<div class="report"><h2>Unos / dopuna pojedinca</h2>${row('Ime',d.firstName)}${row('Prezime',d.lastName)}${row('Djevojačko prezime',d.maidenName)}${row('Nadimak',d.nickname)}${row('Datum rođenja',d.birthDate)}${row('Mjesto rođenja',d.birthPlace)}${row('Datum smrti',d.deathDate)}${row('Mjesto smrti',d.deathPlace)}${row('Otac',d.father)}${row('Majka',d.mother)}${row('Šta se dodaje ili ispravlja',d.correction)}${row('Odakle je poznat podatak',d.source)}${row('Podatke šalje',d.submittedBy)}</div>`;
   const kids = Array.isArray(d.children) ? d.children : [];
-  let h=`<div class="report"><h2>Porodica: ${esc(d.title || 'Bez naslova')}</h2>${row('Podatke šalje',d.submittedBy)}${row('Vrsta veze osnovne porodice',d.primaryRelationship)}${person('Otac',d.father)}${person('Majka',d.mother,true)}`;
+  const primaryLabel = d.primaryRelationship ? ` · ${esc(d.primaryRelationship)}` : '';
+  let h=`<div class="report"><h2>Porodica: ${esc(d.title || 'Bez naslova')}</h2>${row('Podatke šalje',d.submittedBy)}<h2>Osnovna porodica${primaryLabel}</h2>${person('Otac',d.father)}${person('Majka',d.mother,true)}`;
   h += `<h2>Spisak djece osnovne porodice (${kids.length})</h2><ol>${kids.map((c,i)=>`<li>${esc([c.firstName,c.lastName].filter(Boolean).join(' ') || `Dijete ${i+1}`)}</li>`).join('')}</ol>`;
   if (kids.length) h += '<h2>Porodice djece osnovne porodice</h2>';
   kids.forEach((c,i)=>{
     const name=[c.firstName,c.lastName].filter(Boolean).join(' ') || `Dijete ${i+1}`;
     const s=c.spouse||{}; const gc=Array.isArray(c.children)?c.children:[];
-    h += `<section><h3>${i+1}. ${esc(name)}</h3>${row('Nadimak',c.nickname)}${row('Datum rođenja',c.birthDate)}${row('Mjesto rođenja',c.birthPlace)}${row('Datum smrti',c.deathDate)}${row('Mjesto smrti',c.deathPlace)}<h4>Supružnik / partner</h4>${row('Ime',s.firstName)}${row('Prezime',s.lastName)}${row('Djevojačko prezime',s.maidenName)}${row('Nadimak',s.nickname)}${row('Datum rođenja',s.birthDate)}${row('Mjesto rođenja',s.birthPlace)}${row('Datum smrti',s.deathDate)}${row('Mjesto smrti',s.deathPlace)}${row('Vrsta veze',s.relationship)}<h4>Djeca ovog para (${gc.length})</h4><ol>${gc.map((g,j)=>`<li>${esc(g.name || `Dijete ${j+1}`)}${g.birthDate?` — ${esc(g.birthDate)}`:''}${g.birthPlace?` (${esc(g.birthPlace)})`:''}</li>`).join('')}</ol>${row('Napomena za ovu porodicu',c.notes)}</section>`;
+    h += `<section><h3>${i+1}. ${esc(name)}</h3><h4>Podaci o osobi</h4>${row('Ime',c.firstName)}${row('Prezime',c.lastName)}${row('Nadimak',c.nickname)}${row('Datum rođenja',c.birthDate)}${row('Mjesto rođenja',c.birthPlace)}${row('Datum smrti',c.deathDate)}${row('Mjesto smrti',c.deathPlace)}<h4>Supružnik / partner</h4>${row('Ime',s.firstName)}${row('Prezime',s.lastName)}${row('Djevojačko prezime',s.maidenName)}${row('Nadimak',s.nickname)}${row('Datum rođenja',s.birthDate)}${row('Mjesto rođenja',s.birthPlace)}${row('Datum smrti',s.deathDate)}${row('Mjesto smrti',s.deathPlace)}${row('Vrsta veze',s.relationship)}<h4>Djeca ovog para (${gc.length})</h4><ol>${gc.map((g,j)=>`<li>${esc(g.name || `Dijete ${j+1}`)}${g.birthDate?` — ${esc(g.birthDate)}`:''}${g.birthPlace?` (${esc(g.birthPlace)})`:''}</li>`).join('')}</ol>${row('Napomena za ovu porodicu',c.notes)}</section>`;
   });
   h += `<h2>Izvor i napomene</h2>${row('Odakle su poznati podaci',d.source)}${row('Napomena',d.notes)}</div>`;
   return h;
@@ -248,6 +294,6 @@ function publicShell(title, body) {
 }
 function adminShell(title, body) {
   return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
-  body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#1f2937;margin:0}.wrap{max-width:1100px;margin:auto;padding:20px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}a{color:#245ec7}.btn{display:inline-block;border:0;background:#245ec7;color:#fff;text-decoration:none;padding:10px 13px;border-radius:9px;font-weight:700;cursor:pointer}.muted{color:#667085}.tablewrap{overflow:auto;background:#fff;border:1px solid #dfe5ee;border-radius:14px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #eef1f5}th{background:#f8fafc}.status{padding:4px 8px;border-radius:999px;background:#eef2f6}.status.obradjeno{background:#dcfae6;color:#067647}.report section{background:#fff;border:1px solid #dfe5ee;border-radius:13px;padding:14px;margin:12px 0}.report h2{margin-top:24px}.report h3{margin-top:0}.r{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #eef1f5}.r:last-child{border-bottom:0}.r i{color:#98a2b3}@media(max-width:700px){.r{grid-template-columns:1fr;gap:2px}.wrap{padding:12px}}
+  body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#1f2937;margin:0}.wrap{max-width:1100px;margin:auto;padding:20px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}a{color:#245ec7}.btn{display:inline-block;border:0;background:#245ec7;color:#fff;text-decoration:none;padding:10px 13px;border-radius:9px;font-weight:700;cursor:pointer}.btn.secondary{background:#eef2f6;color:#1f2937}.btn.danger{background:#b42318}.admin-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-actions form{margin:0}.admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}.tab{display:inline-block;padding:8px 11px;border-radius:999px;background:#eef2f6;text-decoration:none;color:#344054;font-weight:700}.tab.active{background:#245ec7;color:#fff}.muted{color:#667085}.tablewrap{overflow:auto;background:#fff;border:1px solid #dfe5ee;border-radius:14px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #eef1f5}th{background:#f8fafc}.status{padding:4px 8px;border-radius:999px;background:#eef2f6}.status.obradjeno{background:#dcfae6;color:#067647}.status.arhivirano{background:#f2f4f7;color:#475467}.report section{background:#fff;border:1px solid #dfe5ee;border-radius:13px;padding:14px;margin:12px 0}.report h2{margin-top:24px}.report h3{margin-top:0}.r{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #eef1f5}.r:last-child{border-bottom:0}.r i{color:#98a2b3}@media(max-width:700px){.r{grid-template-columns:1fr;gap:2px}.wrap{padding:12px}}
   </style></head><body><div class="wrap">${body}</div></body></html>`;
 }
