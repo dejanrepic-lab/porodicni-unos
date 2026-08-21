@@ -481,6 +481,32 @@ app.get('/admin', adminAuth, (req, res) => {
   `));
 });
 
+
+app.get('/admin/submissions/:id/download.txt', adminAuth, (req, res) => {
+  const row = db.prepare(`SELECT * FROM submissions WHERE id=?`).get(req.params.id);
+  if (!row) return res.status(404).send('Odgovor nije pronađen.');
+
+  let payload = {};
+  try {
+    payload = JSON.parse(row.payload_json || '{}');
+  } catch {
+    return res.status(500).send('Sačuvani podaci se ne mogu pročitati.');
+  }
+
+  const files = db.prepare(`SELECT * FROM attachments WHERE submission_id=? ORDER BY id`).all(row.id);
+  const body = renderPayloadTxt(payload, files);
+  const safeTitle = String(row.title || `unos-${row.id}`)
+    .normalize('NFKD')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 60) || `unos-${row.id}`;
+
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}-${row.id}.txt"`);
+  res.send('\uFEFF' + body);
+});
+
 app.get('/admin/submissions/:id', adminAuth, (req, res) => {
   const row = db.prepare(`SELECT * FROM submissions WHERE id=?`).get(req.params.id);
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
@@ -491,6 +517,7 @@ app.get('/admin/submissions/:id', adminAuth, (req, res) => {
     <div class="toolbar"><div><a href="/admin${archived?'?view=archived':''}">← ${archived?'Arhiva':'Aktivni odgovori'}</a><h1>${esc(row.title)}</h1></div>
       <div class="admin-actions">
         ${!archived ? `<form method="post" action="/admin/submissions/${row.id}/status"><button class="btn" name="status" value="${row.status === 'obradjeno' ? 'novo' : 'obradjeno'}">${row.status === 'obradjeno' ? 'Vrati na novo' : 'Označi kao obrađeno'}</button></form>` : ''}
+        <a class="btn" href="/admin/submissions/${row.id}/download.txt">Preuzmi TXT</a>
         <form method="post" action="/admin/submissions/${row.id}/archive"><button class="btn secondary" type="submit">${archived ? 'Vrati iz arhive' : 'Arhiviraj'}</button></form>
         <form method="post" action="/admin/submissions/${row.id}/delete" onsubmit="return confirm('Trajno obrisati ovaj odgovor i sve njegove priložene fajlove? Ova radnja se ne može poništiti.');"><button class="btn danger" type="submit">Obriši trajno</button></form>
       </div>
@@ -598,6 +625,149 @@ function person(title,p={}, maiden=false) {
   h += row('Nadimak',p.nickname)+row('Datum rođenja',p.birthDate)+row('Mjesto rođenja',p.birthPlace)+row('Datum smrti',p.deathDate)+row('Mjesto smrti',p.deathPlace)+'</section>';
   return h;
 }
+
+function txtValue(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+function txtLine(lines, label, value) {
+  const v = txtValue(value);
+  if (v) lines.push(`${label}: ${v}`);
+}
+function txtPerson(lines, title, p={}, maiden=false) {
+  lines.push(title);
+  lines.push('-'.repeat(title.length));
+  txtLine(lines, 'Ime', p.firstName);
+  txtLine(lines, 'Prezime', p.lastName);
+  if (maiden || p.maidenName) txtLine(lines, 'Djevojačko prezime', p.maidenName);
+  txtLine(lines, 'Nadimak', p.nickname);
+  txtLine(lines, 'Datum rođenja', p.birthDate);
+  txtLine(lines, 'Mjesto rođenja', p.birthPlace);
+  txtLine(lines, 'Datum smrti', p.deathDate);
+  txtLine(lines, 'Mjesto smrti', p.deathPlace);
+  lines.push('');
+}
+function renderPayloadTxt(d={}, files=[]) {
+  const lines = [];
+
+  if (d.type === 'pojedinac') {
+    lines.push('UNOS / DOPUNA POJEDINCA');
+    lines.push('=======================');
+    txtLine(lines, 'Podatke šalje', d.submittedBy);
+    lines.push('');
+    txtLine(lines, 'Ime', d.firstName);
+    txtLine(lines, 'Prezime', d.lastName);
+    txtLine(lines, 'Djevojačko prezime', d.maidenName);
+    txtLine(lines, 'Nadimak', d.nickname);
+    txtLine(lines, 'Datum rođenja', d.birthDate);
+    txtLine(lines, 'Mjesto rođenja', d.birthPlace);
+    txtLine(lines, 'Datum smrti', d.deathDate);
+    txtLine(lines, 'Mjesto smrti', d.deathPlace);
+    txtLine(lines, 'Otac', d.father);
+    txtLine(lines, 'Majka', d.mother);
+    lines.push('');
+    txtLine(lines, 'Šta se dodaje ili ispravlja', d.correction);
+    txtLine(lines, 'Odakle je poznat podatak', d.source);
+  } else {
+    lines.push(`PORODICA: ${txtValue(d.title) || 'Bez naslova'}`);
+    lines.push('='.repeat(Math.max(10, (`PORODICA: ${txtValue(d.title) || 'Bez naslova'}`).length)));
+    txtLine(lines, 'Podatke šalje', d.submittedBy);
+    lines.push('');
+
+    const primaryLabel = txtValue(d.primaryRelationship);
+    lines.push(`OSNOVNA PORODICA${primaryLabel ? ' · ' + primaryLabel : ''}`);
+    lines.push('----------------');
+    lines.push('');
+
+    txtPerson(lines, 'OTAC', d.father || {});
+    txtPerson(lines, 'MAJKA', d.mother || {}, true);
+
+    const kids = Array.isArray(d.children) ? d.children : [];
+    lines.push(`SPISAK DJECE OSNOVNE PORODICE (${kids.length})`);
+    lines.push('--------------------------------');
+    if (kids.length) {
+      kids.forEach((c, i) => {
+        const name = [c.firstName, c.lastName].filter(Boolean).join(' ') || `Dijete ${i+1}`;
+        lines.push(`${i+1}. ${name}`);
+      });
+    } else {
+      lines.push('Nema unesene djece.');
+    }
+    lines.push('');
+
+    if (kids.length) {
+      lines.push('PORODICE DJECE OSNOVNE PORODICE');
+      lines.push('===============================');
+      lines.push('');
+
+      kids.forEach((c, i) => {
+        const name = [c.firstName, c.lastName].filter(Boolean).join(' ') || `Dijete ${i+1}`;
+        lines.push(`${i+1}. ${name}`);
+        lines.push('~'.repeat(Math.max(8, `${i+1}. ${name}`.length)));
+        txtLine(lines, 'Ime', c.firstName);
+        txtLine(lines, 'Prezime', c.lastName);
+        txtLine(lines, 'Nadimak', c.nickname);
+        txtLine(lines, 'Datum rođenja', c.birthDate);
+        txtLine(lines, 'Mjesto rođenja', c.birthPlace);
+        txtLine(lines, 'Datum smrti', c.deathDate);
+        txtLine(lines, 'Mjesto smrti', c.deathPlace);
+        lines.push('');
+
+        const s = c.spouse || {};
+        const hasSpouse = Object.values(s).some(v => txtValue(v));
+        if (hasSpouse) {
+          lines.push('SUPRUŽNIK / PARTNER');
+          lines.push('-------------------');
+          txtLine(lines, 'Ime', s.firstName);
+          txtLine(lines, 'Prezime', s.lastName);
+          txtLine(lines, 'Djevojačko prezime', s.maidenName);
+          txtLine(lines, 'Nadimak', s.nickname);
+          txtLine(lines, 'Datum rođenja', s.birthDate);
+          txtLine(lines, 'Mjesto rođenja', s.birthPlace);
+          txtLine(lines, 'Datum smrti', s.deathDate);
+          txtLine(lines, 'Mjesto smrti', s.deathPlace);
+          txtLine(lines, 'Vrsta veze', s.relationship);
+          lines.push('');
+        }
+
+        const gc = Array.isArray(c.children) ? c.children : [];
+        lines.push(`DJECA OVOG PARA (${gc.length})`);
+        lines.push('----------------');
+        if (gc.length) {
+          gc.forEach((g, j) => {
+            let line = `${j+1}. ${txtValue(g.name) || `Dijete ${j+1}`}`;
+            if (txtValue(g.birthDate)) line += ` — ${txtValue(g.birthDate)}`;
+            if (txtValue(g.birthPlace)) line += ` (${txtValue(g.birthPlace)})`;
+            lines.push(line);
+          });
+        } else {
+          lines.push('Nema unesene djece.');
+        }
+        lines.push('');
+        txtLine(lines, 'Napomena za ovu porodicu', c.notes);
+        if (txtValue(c.notes)) lines.push('');
+      });
+    }
+
+    lines.push('IZVOR I NAPOMENE');
+    lines.push('----------------');
+    txtLine(lines, 'Odakle su poznati podaci', d.source);
+    txtLine(lines, 'Napomena', d.notes);
+  }
+
+  if (Array.isArray(files) && files.length) {
+    lines.push('');
+    lines.push('PRILOŽENI DOKUMENTI I FOTOGRAFIJE');
+    lines.push('---------------------------------');
+    files.forEach((f, i) => {
+      const kb = f.size ? ` (${Math.ceil(f.size/1024)} KB)` : '';
+      lines.push(`${i+1}. ${txtValue(f.original_name) || 'Fajl'}${kb}`);
+    });
+  }
+
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+
 function renderPayload(d={}) {
   if (d.type === 'pojedinac') return `<div class="report"><h2>Unos / dopuna pojedinca</h2>${row('Ime',d.firstName)}${row('Prezime',d.lastName)}${row('Djevojačko prezime',d.maidenName)}${row('Nadimak',d.nickname)}${row('Datum rođenja',d.birthDate)}${row('Mjesto rođenja',d.birthPlace)}${row('Datum smrti',d.deathDate)}${row('Mjesto smrti',d.deathPlace)}${row('Otac',d.father)}${row('Majka',d.mother)}${row('Šta se dodaje ili ispravlja',d.correction)}${row('Odakle je poznat podatak',d.source)}${row('Podatke šalje',d.submittedBy)}</div>`;
   const kids = Array.isArray(d.children) ? d.children : [];
