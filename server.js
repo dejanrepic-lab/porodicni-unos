@@ -175,7 +175,7 @@ app.get('/api/receipt/:publicId', (req, res) => {
 app.get('/admin/login', (req, res) => {
   if (verifySession(parseCookies(req)[ADMIN_COOKIE])) return res.redirect('/admin');
   const nextUrl = typeof req.query.next === 'string' && req.query.next.startsWith('/admin') ? req.query.next : '/admin';
-  res.send(page('Admin prijava', `
+  res.send(adminShell('Admin prijava', `
     <div class="login-wrap">
       <div class="login-card">
         <h1>Admin prijava</h1>
@@ -204,7 +204,7 @@ app.post('/admin/login', express.urlencoded({extended:false}), (req, res) => {
     crypto.timingSafeEqual(Buffer.from(password), Buffer.from(ADMIN_PASSWORD));
 
   if (!userOk || !passOk) {
-    return res.status(401).send(page('Neuspješna prijava', `
+    return res.status(401).send(adminShell('Neuspješna prijava', `
       <div class="login-wrap">
         <div class="login-card">
           <h1>Prijava nije uspjela</h1>
