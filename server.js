@@ -12,6 +12,9 @@ const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const DB_PATH = path.join(DATA_DIR, 'porodicni-unos.db');
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'promijeni-me';
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const ADMIN_COOKIE = 'porodicni_admin';
+const ADMIN_SESSION_HOURS = Math.max(1, Number(process.env.ADMIN_SESSION_HOURS || 12));
 const MAX_UPLOAD_MB = Math.max(1, Number(process.env.MAX_UPLOAD_MB || 15));
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -49,23 +52,39 @@ function esc(v='') {
 function cleanFilename(name='file') {
   return name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(-120) || 'file';
 }
-function basicAuth(req, res, next) {
-  const hdr = req.headers.authorization || '';
-  if (!hdr.startsWith('Basic ')) return deny();
-  let decoded = '';
-  try { decoded = Buffer.from(hdr.slice(6), 'base64').toString('utf8'); } catch { return deny(); }
-  const idx = decoded.indexOf(':');
-  const user = idx >= 0 ? decoded.slice(0, idx) : decoded;
-  const pass = idx >= 0 ? decoded.slice(idx + 1) : '';
-  const userOk = crypto.timingSafeEqual(Buffer.from(user.padEnd(ADMIN_USER.length)), Buffer.from(ADMIN_USER.padEnd(user.length))) && user === ADMIN_USER;
-  const passOk = crypto.timingSafeEqual(Buffer.from(pass.padEnd(ADMIN_PASSWORD.length)), Buffer.from(ADMIN_PASSWORD.padEnd(pass.length))) && pass === ADMIN_PASSWORD;
-  if (!userOk || !passOk) return deny();
-  next();
-  function deny() {
-    res.set('WWW-Authenticate', 'Basic realm="Porodicni unos"');
-    res.status(401).send('Potrebna je administratorska prijava.');
+function parseCookies(req) {
+  const out = {};
+  const raw = req.headers.cookie || '';
+  raw.split(';').forEach(part => {
+    const i = part.indexOf('=');
+    if (i > -1) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+  });
+  return out;
+}
+function signSession(payload) {
+  const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', ADMIN_SESSION_SECRET).update(data).digest('base64url');
+  return `${data}.${sig}`;
+}
+function verifySession(token='') {
+  try {
+    const [data, sig] = token.split('.');
+    if (!data || !sig) return false;
+    const expected = crypto.createHmac('sha256', ADMIN_SESSION_SECRET).update(data).digest('base64url');
+    if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
+    const payload = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'));
+    return payload.user === ADMIN_USER && Number(payload.exp || 0) > Date.now();
+  } catch {
+    return false;
   }
 }
+function adminAuth(req, res, next) {
+  const token = parseCookies(req)[ADMIN_COOKIE];
+  if (verifySession(token)) return next();
+  const nextUrl = encodeURIComponent(req.originalUrl || '/admin');
+  return res.redirect(`/admin/login?next=${nextUrl}`);
+}
+
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
@@ -152,7 +171,82 @@ app.get('/api/receipt/:publicId', (req, res) => {
   res.json({ ...row, payload: JSON.parse(row.payload_json), payload_json: undefined, files });
 });
 
-app.get('/admin', basicAuth, (req, res) => {
+
+app.get('/admin/login', (req, res) => {
+  if (verifySession(parseCookies(req)[ADMIN_COOKIE])) return res.redirect('/admin');
+  const nextUrl = typeof req.query.next === 'string' && req.query.next.startsWith('/admin') ? req.query.next : '/admin';
+  res.send(page('Admin prijava', `
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1>Admin prijava</h1>
+        <p class="muted">Prijavi se za pregled i obradu primljenih podataka.</p>
+        <form method="post" action="/admin/login">
+          <input type="hidden" name="next" value="${esc(nextUrl)}">
+          <label>Korisničko ime</label>
+          <input name="username" autocomplete="username" required>
+          <label>Lozinka</label>
+          <input name="password" type="password" autocomplete="current-password" required>
+          <button class="btn primary" type="submit">Prijavi se</button>
+        </form>
+      </div>
+    </div>
+  `));
+});
+
+app.post('/admin/login', express.urlencoded({extended:false}), (req, res) => {
+  const username = String(req.body.username || '');
+  const password = String(req.body.password || '');
+  const nextUrl = typeof req.body.next === 'string' && req.body.next.startsWith('/admin') ? req.body.next : '/admin';
+
+  const userOk = username.length === ADMIN_USER.length &&
+    crypto.timingSafeEqual(Buffer.from(username), Buffer.from(ADMIN_USER));
+  const passOk = password.length === ADMIN_PASSWORD.length &&
+    crypto.timingSafeEqual(Buffer.from(password), Buffer.from(ADMIN_PASSWORD));
+
+  if (!userOk || !passOk) {
+    return res.status(401).send(page('Neuspješna prijava', `
+      <div class="login-wrap">
+        <div class="login-card">
+          <h1>Prijava nije uspjela</h1>
+          <p class="muted">Korisničko ime ili lozinka nisu ispravni.</p>
+          <a class="btn primary" href="/admin/login">Pokušaj ponovo</a>
+        </div>
+      </div>
+    `));
+  }
+
+  const token = signSession({
+    user: ADMIN_USER,
+    exp: Date.now() + ADMIN_SESSION_HOURS * 60 * 60 * 1000
+  });
+  const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
+  const parts = [
+    `${ADMIN_COOKIE}=${encodeURIComponent(token)}`,
+    'Path=/admin',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${ADMIN_SESSION_HOURS * 60 * 60}`
+  ];
+  if (secure) parts.push('Secure');
+  res.setHeader('Set-Cookie', parts.join('; '));
+  res.redirect(nextUrl);
+});
+
+app.post('/admin/logout', adminAuth, express.urlencoded({extended:false}), (req, res) => {
+  const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
+  const parts = [
+    `${ADMIN_COOKIE}=`,
+    'Path=/admin',
+    'HttpOnly',
+    'SameSite=Lax',
+    'Max-Age=0'
+  ];
+  if (secure) parts.push('Secure');
+  res.setHeader('Set-Cookie', parts.join('; '));
+  res.redirect('/admin/login');
+});
+
+app.get('/admin', adminAuth, (req, res) => {
   const view = ['active','archived','all'].includes(req.query.view) ? req.query.view : 'active';
   const where = view === 'archived' ? "WHERE s.status='arhivirano'" : view === 'all' ? '' : "WHERE s.status<>'arhivirano'";
   const rows = db.prepare(`
@@ -173,7 +267,15 @@ app.get('/admin', basicAuth, (req, res) => {
     <td>${r.file_count}</td><td><span class="status ${esc(r.status)}">${esc(r.status)}</span></td>
   </tr>`).join('');
   res.send(adminShell('Primljeni odgovori', `
-    <div class="toolbar"><h1>Primljeni odgovori</h1><a class="btn" href="/admin/export.csv">Izvezi CSV pregled</a></div>
+    <div class="toolbar">
+      <h1>Primljeni odgovori</h1>
+      <div class="admin-actions">
+        <a class="btn" href="/admin/export.csv">Izvezi CSV pregled</a>
+        <form method="post" action="/admin/logout" style="margin:0">
+          <button class="btn soft" type="submit">Odjavi se</button>
+        </form>
+      </div>
+    </div>
     <div class="admin-tabs">
       <a class="tab ${view==='active'?'active':''}" href="/admin?view=active">Aktivni (${counts.active_count || 0})</a>
       <a class="tab ${view==='archived'?'active':''}" href="/admin?view=archived">Arhiva (${counts.archived_count || 0})</a>
@@ -228,7 +330,7 @@ app.get('/admin', basicAuth, (req, res) => {
   `));
 });
 
-app.get('/admin/submissions/:id', basicAuth, (req, res) => {
+app.get('/admin/submissions/:id', adminAuth, (req, res) => {
   const row = db.prepare(`SELECT * FROM submissions WHERE id=?`).get(req.params.id);
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
   const payload = JSON.parse(row.payload_json);
@@ -248,7 +350,7 @@ app.get('/admin/submissions/:id', basicAuth, (req, res) => {
   `));
 });
 
-app.post('/admin/submissions/:id/status', basicAuth, express.urlencoded({extended:false}), (req, res) => {
+app.post('/admin/submissions/:id/status', adminAuth, express.urlencoded({extended:false}), (req, res) => {
   const current = db.prepare(`SELECT status FROM submissions WHERE id=?`).get(req.params.id);
   if (!current) return res.status(404).send('Odgovor nije pronađen.');
   if (current.status === 'arhivirano') return res.redirect(`/admin/submissions/${req.params.id}`);
@@ -257,7 +359,7 @@ app.post('/admin/submissions/:id/status', basicAuth, express.urlencoded({extende
   res.redirect(`/admin/submissions/${req.params.id}`);
 });
 
-app.post('/admin/submissions/:id/archive', basicAuth, express.urlencoded({extended:false}), (req, res) => {
+app.post('/admin/submissions/:id/archive', adminAuth, express.urlencoded({extended:false}), (req, res) => {
   const row = db.prepare(`SELECT status FROM submissions WHERE id=?`).get(req.params.id);
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
   const status = row.status === 'arhivirano' ? 'novo' : 'arhivirano';
@@ -265,7 +367,7 @@ app.post('/admin/submissions/:id/archive', basicAuth, express.urlencoded({extend
   res.redirect(status === 'arhivirano' ? '/admin?view=archived' : `/admin/submissions/${req.params.id}`);
 });
 
-app.post('/admin/submissions/bulk-delete', basicAuth, express.urlencoded({extended:false}), (req, res) => {
+app.post('/admin/submissions/bulk-delete', adminAuth, express.urlencoded({extended:false}), (req, res) => {
   const rawIds = Array.isArray(req.body.ids) ? req.body.ids : (req.body.ids ? [req.body.ids] : []);
   const ids = [...new Set(rawIds.map(v => Number(v)).filter(v => Number.isInteger(v) && v > 0))].slice(0, 500);
   const view = ['active','archived','all'].includes(req.body.view) ? req.body.view : 'active';
@@ -293,7 +395,7 @@ app.post('/admin/submissions/bulk-delete', basicAuth, express.urlencoded({extend
   res.redirect(`/admin?view=${view}`);
 });
 
-app.post('/admin/submissions/:id/delete', basicAuth, express.urlencoded({extended:false}), (req, res) => {
+app.post('/admin/submissions/:id/delete', adminAuth, express.urlencoded({extended:false}), (req, res) => {
   const row = db.prepare(`SELECT id FROM submissions WHERE id=?`).get(req.params.id);
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
   const files = db.prepare(`SELECT stored_name FROM attachments WHERE submission_id=?`).all(row.id);
@@ -309,7 +411,7 @@ app.post('/admin/submissions/:id/delete', basicAuth, express.urlencoded({extende
   res.redirect('/admin');
 });
 
-app.get('/admin/files/:id', basicAuth, (req, res) => {
+app.get('/admin/files/:id', adminAuth, (req, res) => {
   const f = db.prepare(`SELECT * FROM attachments WHERE id=?`).get(req.params.id);
   if (!f) return res.status(404).send('Fajl nije pronađen.');
   const full = path.join(UPLOAD_DIR, f.stored_name);
@@ -317,7 +419,7 @@ app.get('/admin/files/:id', basicAuth, (req, res) => {
   res.download(full, f.original_name);
 });
 
-app.get('/admin/export.csv', basicAuth, (_req, res) => {
+app.get('/admin/export.csv', adminAuth, (_req, res) => {
   const rows = db.prepare(`SELECT id,title,type,submitted_by,status,created_at FROM submissions ORDER BY id DESC`).all();
   const q = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
   const csv = ['ID,Naslov,Tip,Poslao,Status,Vrijeme', ...rows.map(r => [r.id,r.title,r.type,r.submitted_by,r.status,r.created_at].map(q).join(','))].join('\n');
@@ -363,7 +465,15 @@ function renderPayload(d={}) {
 function publicShell(title, body) {
   return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
   body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#1f2937;margin:0}.wrap{max-width:900px;margin:auto;padding:16px}.card,.report section{background:#fff;border:1px solid #dfe5ee;border-radius:14px;padding:15px;margin:12px 0}.muted{color:#667085}.report h2{margin-top:24px}.report h3{margin-top:0}.r{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #eef1f5}.r:last-child{border-bottom:0}.r i{color:#98a2b3}.receipt-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.btn{border:0;background:#245ec7;color:#fff;padding:10px 13px;border-radius:9px;font-weight:700;cursor:pointer}.btn.secondary{background:#eef2f6;color:#1f2937}@media(max-width:700px){.r{grid-template-columns:1fr;gap:2px}.wrap{padding:10px}}@media print{body{background:#fff}.wrap{max-width:none;padding:0}.no-print{display:none!important}.card,.report section{box-shadow:none;break-inside:avoid;border-color:#bbb}.report section{page-break-inside:avoid}}
-  </style></head><body><div class="wrap">${body}</div></body></html>`;
+  
+.login-wrap{min-height:70vh;display:grid;place-items:center;padding:28px 16px}
+.login-card{width:min(440px,100%);background:#fff;border:1px solid #dde5ee;border-radius:18px;padding:24px;box-shadow:0 12px 36px rgba(15,23,42,.08)}
+.login-card h1{margin-top:0}
+.login-card label{display:block;font-weight:700;margin:14px 0 6px}
+.login-card input{width:100%;box-sizing:border-box;padding:12px 13px;border:1px solid #cfd8e3;border-radius:10px;font-size:16px}
+.login-card .btn{margin-top:18px;width:100%}
+
+</style></head><body><div class="wrap">${body}</div></body></html>`;
 }
 function adminShell(title, body) {
   return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
