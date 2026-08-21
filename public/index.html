@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Porodično stablo – unos podataka</title>
+<style>
+  :root{--bg:#f5f7fb;--card:#fff;--line:#dfe5ee;--text:#1f2937;--muted:#667085;--accent:#2f6feb;--accent2:#eaf1ff;--danger:#b42318}
+  *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  .wrap{max-width:980px;margin:auto;padding:18px}.hero{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:16px;box-shadow:0 8px 24px rgba(16,24,40,.05)}
+  h1{font-size:clamp(24px,4vw,34px);margin:0 0 8px} .lead{margin:0;color:var(--muted)}
+  .choice{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.choice button{padding:16px;border-radius:14px;border:1px solid var(--line);background:#fff;font-weight:700;font-size:16px;cursor:pointer}.choice button.active{border-color:var(--accent);background:var(--accent2);color:#174ea6}
+  .section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:14px 0}.section h2,.section h3{margin:0 0 14px}.section h2{font-size:20px}.section h3{font-size:17px}.subtle{color:var(--muted);font-size:14px}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}.field label{font-size:13px;font-weight:700;color:#344054}.field input,.field textarea,.field select{width:100%;border:1px solid #cfd6e2;border-radius:10px;padding:11px 12px;font:inherit;background:#fff}.field textarea{min-height:88px;resize:vertical}.field input:focus,.field textarea:focus,.field select:focus{outline:2px solid #cfe0ff;border-color:var(--accent)}
+  .family-title{background:#101828;color:#fff;border-radius:14px;padding:14px 16px;margin:14px 0;font-size:18px;font-weight:800}.family-title span{color:#b7cdfd}
+  .child-card{border:1px solid #cfd6e2;border-radius:14px;padding:14px;margin-top:12px;background:#fbfcfe}.child-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.child-head strong{font-size:16px}.remove{border:0;background:#fff1f0;color:var(--danger);padding:7px 10px;border-radius:9px;cursor:pointer;font-weight:700}
+  .nested{margin-top:14px;padding-top:14px;border-top:1px dashed #cfd6e2}.nested-list{display:grid;gap:10px}.grandchild{display:grid;grid-template-columns:1.2fr 1fr 1fr auto;gap:8px;align-items:end}.grandchild .remove{height:42px}
+  .btn{border:0;border-radius:11px;padding:11px 14px;font-weight:800;cursor:pointer}.btn:disabled{opacity:.55;cursor:not-allowed}.btn.primary{background:var(--accent);color:#fff}.btn.soft{background:var(--accent2);color:#174ea6}.btn.dark{background:#101828;color:white}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.footer-note{color:var(--muted);font-size:13px;margin:12px 2px 30px}
+  #result{background:#fff;border:1px solid var(--line);padding:16px;border-radius:14px;overflow:auto;max-height:700px}.report h3{margin:18px 0 8px;font-size:18px}.report h4{margin:14px 0 6px;font-size:16px}.report .report-card{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#fbfcfe}.report .row{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:10px;padding:5px 0;border-bottom:1px solid #eef1f5}.report .row:last-child{border-bottom:0}.report .label{font-weight:700;color:#344054}.report .empty{color:#98a2b3;font-style:italic}@media(max-width:720px){.report .row{grid-template-columns:1fr;gap:2px}}
+  @media(max-width:720px){.choice,.grid{grid-template-columns:1fr}.grandchild{grid-template-columns:1fr}.wrap{padding:10px}.section,.hero{padding:14px;border-radius:14px}.child-card{padding:12px}}
+
+.children-summary{margin:8px 0 20px 24px;padding:0}.children-summary li{padding:5px 0;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>Porodično stablo – unos podataka</h1>
+    <p class="lead">Popunite samo ono što znate. Nepoznate podatke slobodno ostavite prazne.</p>
+    <div class="choice">
+      <button id="familyBtn" class="active" type="button">👨‍👩‍👧‍👦 Unos porodice</button>
+      <button id="personBtn" type="button">👤 Unos pojedinca</button>
+    </div>
+  </div>
+
+  <form id="familyForm">
+    <div class="section">
+      <h2>Ko šalje podatke?</h2>
+      <div class="grid">
+        <div class="field full"><label>Vaše ime i prezime</label><input name="submittedBy" placeholder="npr. Pero Perić"></div>
+      </div>
+    </div>
+
+    <div class="family-title">Porodica: <span id="generatedTitle">— naslov će se napraviti automatski —</span></div>
+
+    <div class="section">
+      <h2>Osnovna porodica</h2>
+      <div class="grid">
+        <div class="field"><label>Vrsta veze</label><select name="primaryRelationship"><option value=""></option><option>Brak</option><option>Vanbračna zajednica</option><option>Partnerstvo</option><option>Nepoznato</option></select></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Otac</h2>
+      <div class="grid person-fields" data-prefix="father">
+        <div class="field"><label>Ime</label><input name="father_firstName" class="title-watch" placeholder="Pero"></div>
+        <div class="field"><label>Prezime</label><input name="father_lastName" class="title-watch" placeholder="Perić"></div>
+        <div class="field"><label>Nadimak</label><input name="father_nickname"></div>
+        <div class="field"><label>Datum rođenja</label><input name="father_birthDate" placeholder="15.02.1956 ili oko 1956"></div>
+        <div class="field"><label>Mjesto rođenja</label><input name="father_birthPlace"></div>
+        <div class="field"><label>Datum smrti</label><input name="father_deathDate"></div>
+        <div class="field"><label>Mjesto smrti</label><input name="father_deathPlace"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Majka</h2>
+      <div class="grid person-fields" data-prefix="mother">
+        <div class="field"><label>Ime</label><input name="mother_firstName" class="title-watch" placeholder="Mara"></div>
+        <div class="field"><label>Prezime</label><input name="mother_lastName" placeholder="Marić"></div>
+        <div class="field"><label>Djevojačko prezime</label><input name="mother_maidenName" class="title-watch" placeholder="Jovanović"></div>
+        <div class="field"><label>Nadimak</label><input name="mother_nickname"></div>
+        <div class="field"><label>Datum rođenja</label><input name="mother_birthDate"></div>
+        <div class="field"><label>Mjesto rođenja</label><input name="mother_birthPlace"></div>
+        <div class="field"><label>Datum smrti</label><input name="mother_deathDate"></div>
+        <div class="field"><label>Mjesto smrti</label><input name="mother_deathPlace"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Djeca ove porodice</h2>
+      <p class="subtle">Dodajte samo onoliko djece koliko porodica ima.</p>
+      <div id="children"></div>
+      <div class="actions"><button type="button" class="btn soft" id="addChild">＋ Dodaj dijete osnovne porodice</button></div>
+    </div>
+
+    <div class="section">
+      <h2>Izvor i dodatne napomene</h2>
+      <div class="grid">
+        <div class="field full"><label>Odakle znate ove podatke?</label><textarea name="source" placeholder="npr. lično poznajem porodicu, porodični dokumenti, pričala tetka Ana..."></textarea></div>
+        <div class="field full"><label>Napomena</label><textarea name="notes"></textarea></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Dokumenti i fotografije <span class="subtle">(opcionalno)</span></h2>
+      <div class="field full">
+        <label>Dodaj PDF ili fotografije</label>
+        <input id="familyFiles" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif">
+        <div class="subtle">Možete dodati do 10 fajlova. Ako nemate ništa za priložiti, preskočite.</div>
+      </div>
+    </div>
+
+    <div class="actions"><button type="submit" class="btn dark">Pregled unosa</button></div>
+  </form>
+
+  <form id="personForm" style="display:none">
+    <div class="section">
+      <h2>Unos / dopuna pojedinca</h2>
+      <div class="grid">
+        <div class="field"><label>Ime</label><input name="firstName"></div><div class="field"><label>Prezime</label><input name="lastName"></div>
+        <div class="field"><label>Djevojačko prezime</label><input name="maidenName"></div><div class="field"><label>Nadimak</label><input name="nickname"></div>
+        <div class="field"><label>Datum rođenja</label><input name="birthDate"></div><div class="field"><label>Mjesto rođenja</label><input name="birthPlace"></div>
+        <div class="field"><label>Datum smrti</label><input name="deathDate"></div><div class="field"><label>Mjesto smrti</label><input name="deathPlace"></div>
+        <div class="field"><label>Otac</label><input name="father"></div><div class="field"><label>Majka</label><input name="mother"></div>
+        <div class="field full"><label>Šta želite dodati ili ispraviti?</label><textarea name="correction"></textarea></div>
+        <div class="field full"><label>Odakle znate podatak?</label><textarea name="source"></textarea></div>
+        <div class="field full"><label>Ko šalje podatke?</label><input name="submittedBy"></div>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Dokumenti i fotografije <span class="subtle">(opcionalno)</span></h2>
+      <div class="field full">
+        <label>Dodaj PDF ili fotografije</label>
+        <input id="personFiles" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif">
+        <div class="subtle">Možete dodati do 10 fajlova. Ako nemate ništa za priložiti, preskočite.</div>
+      </div>
+    </div>
+    <div class="actions"><button type="submit" class="btn dark">Pregled unosa</button></div>
+  </form>
+
+  <div id="previewBox" class="section" style="display:none">
+    <h2>Pregled unesenih podataka</h2>
+    <p class="subtle">Provjerite podatke prije slanja. Ako je nešto pogrešno, vratite se gore i ispravite.</p>
+    <div id="result" class="report"></div>
+    <div class="actions">
+      <button type="button" class="btn primary" id="sendBtn">Pošalji podatke</button>
+      <button type="button" class="btn soft" id="backBtn">Vrati se na uređivanje</button>
+    </div>
+    <div id="sendStatus" class="subtle" style="margin-top:10px"></div>
+  </div>
+  <div id="receiptBox" class="section" style="display:none">
+    <h2>Podaci su uspješno poslani</h2>
+    <p id="receiptText" class="lead"></p>
+    <div id="receiptReport" class="report"></div>
+    <div class="actions">
+      <button type="button" class="btn primary" id="copyReceiptBtn">Kopiraj link</button>
+      <button type="button" class="btn dark" id="printReceiptBtn">Sačuvaj / štampaj kao PDF</button>
+      <button type="button" class="btn soft" id="openReceiptBtn">Otvori trajni pregled</button>
+      <button type="button" class="btn soft" id="newEntryBtn">Novi unos</button>
+    </div>
+    <div id="receiptActionStatus" class="subtle" style="margin-top:10px"></div>
+  </div>
+  <p class="footer-note">Porodični unos v1.1 – javna forma za prikupljanje podataka za Gramps.</p>
+</div>
+<script>
+let childCounter = 0;
+const children = document.getElementById('children');
+
+function val(name){ const e=document.querySelector(`[name="${name}"]`); return e?e.value.trim():''; }
+function updateTitle(){
+  const ff=val('father_firstName'), fl=val('father_lastName'), mf=val('mother_firstName'), mm=val('mother_maidenName'), ml=val('mother_lastName');
+  const father=[fl,ff].filter(Boolean).join(' ');
+  const mother=[mm||ml,mf].filter(Boolean).join(' ');
+  document.getElementById('generatedTitle').textContent = (father||mother) ? [father,mother].filter(Boolean).join(' & ') : '— naslov će se napraviti automatski —';
+}
+document.querySelectorAll('.title-watch').forEach(e=>e.addEventListener('input',updateTitle));
+
+function addGrandchild(card){
+  const list=card.querySelector('.nested-list');
+  const row=document.createElement('div'); row.className='grandchild';
+  row.innerHTML=`<div class="field"><label>Ime i prezime</label><input data-g="name"></div><div class="field"><label>Datum rođenja</label><input data-g="birthDate"></div><div class="field"><label>Mjesto rođenja</label><input data-g="birthPlace"></div><button type="button" class="remove">Ukloni</button>`;
+  row.querySelector('.remove').onclick=()=>row.remove(); list.appendChild(row);
+}
+function addChild(){
+  childCounter++;
+  const card=document.createElement('div'); card.className='child-card'; card.dataset.index=childCounter;
+  card.innerHTML=`
+    <div class="child-head"><strong>Dijete ${childCounter}</strong><button type="button" class="remove child-remove">Ukloni dijete</button></div>
+    <div class="grid">
+      <div class="field"><label>Ime</label><input data-c="firstName"></div><div class="field"><label>Prezime</label><input data-c="lastName"></div>
+      <div class="field"><label>Nadimak</label><input data-c="nickname"></div><div class="field"><label>Datum rođenja</label><input data-c="birthDate"></div>
+      <div class="field"><label>Mjesto rođenja</label><input data-c="birthPlace"></div><div class="field"><label>Datum smrti</label><input data-c="deathDate"></div>
+      <div class="field"><label>Mjesto smrti</label><input data-c="deathPlace"></div>
+    </div>
+    <div class="nested"><h3>Supružnik / partner</h3><div class="grid">
+      <div class="field"><label>Ime</label><input data-s="firstName"></div><div class="field"><label>Prezime</label><input data-s="lastName"></div>
+      <div class="field"><label>Djevojačko prezime</label><input data-s="maidenName"></div><div class="field"><label>Nadimak</label><input data-s="nickname"></div>
+      <div class="field"><label>Datum rođenja</label><input data-s="birthDate"></div><div class="field"><label>Mjesto rođenja</label><input data-s="birthPlace"></div>
+      <div class="field"><label>Datum smrti</label><input data-s="deathDate"></div><div class="field"><label>Mjesto smrti</label><input data-s="deathPlace"></div>
+      <div class="field"><label>Vrsta veze</label><select data-s="relationship"><option value=""></option><option>Brak</option><option>Vanbračna zajednica</option><option>Partnerstvo</option><option>Nepoznato</option></select></div>
+    </div></div>
+    <div class="nested"><h3>Djeca ovog para</h3><div class="nested-list"></div><div class="actions"><button type="button" class="btn soft add-grandchild">＋ Dodaj dijete ovog para</button></div></div>
+    <div class="field full" style="margin-top:14px"><label>Napomena za ovu porodicu</label><textarea data-c="notes"></textarea></div>`;
+  card.querySelector('.child-remove').onclick=()=>{card.remove(); renumberChildren();};
+  card.querySelector('.add-grandchild').onclick=()=>addGrandchild(card);
+  children.appendChild(card);
+}
+function renumberChildren(){[...children.children].forEach((c,i)=>c.querySelector('.child-head strong').textContent=`Dijete ${i+1}`)}
+document.getElementById('addChild').onclick=addChild;
+addChild();
+
+function objFrom(prefix, scope=document){const o={};scope.querySelectorAll(`[data-${prefix}]`).forEach(e=>o[e.dataset[prefix]]=e.value.trim());return o;}
+function familyData(){
+  const d={type:'porodica',title:document.getElementById('generatedTitle').textContent,submittedBy:val('submittedBy'),primaryRelationship:val('primaryRelationship'),father:{},mother:{},children:[],source:val('source'),notes:val('notes')};
+  ['firstName','lastName','nickname','birthDate','birthPlace','deathDate','deathPlace'].forEach(k=>d.father[k]=val('father_'+k));
+  ['firstName','lastName','maidenName','nickname','birthDate','birthPlace','deathDate','deathPlace'].forEach(k=>d.mother[k]=val('mother_'+k));
+  [...children.children].forEach(card=>{const c=objFrom('c',card), s=objFrom('s',card);c.spouse=s;c.children=[];card.querySelectorAll('.grandchild').forEach(r=>{const g={};r.querySelectorAll('[data-g]').forEach(e=>g[e.dataset.g]=e.value.trim());c.children.push(g)});d.children.push(c)});return d;
+}
+function formToObject(form){const fd=new FormData(form),o={type:'pojedinac'};for(const [k,v] of fd.entries())o[k]=v;return o}
+function esc(v){return String(v??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]));}
+function shown(v){return v ? esc(v) : '<span class="empty">nije navedeno</span>';}
+function row(label,value){return `<div class="row"><div class="label">${esc(label)}</div><div>${shown(value)}</div></div>`;}
+function personBlock(title,p,maiden=false){
+  let h=`<div class="report-card"><h4>${esc(title)}</h4>`;
+  h+=row('Ime',p.firstName)+row('Prezime',p.lastName);
+  if(maiden) h+=row('Djevojačko prezime',p.maidenName);
+  h+=row('Nadimak',p.nickname)+row('Datum rođenja',p.birthDate)+row('Mjesto rođenja',p.birthPlace)+row('Datum smrti',p.deathDate)+row('Mjesto smrti',p.deathPlace);
+  return h+'</div>';
+}
+function familyReport(d){
+  let h=`<h3>Porodica: ${shown(d.title && !d.title.startsWith('—') ? d.title : '')}</h3>`;
+  h+=row('Podatke šalje',d.submittedBy)+row('Vrsta veze osnovne porodice',d.primaryRelationship);
+  h+=personBlock('Otac',d.father,false)+personBlock('Majka',d.mother,true);
+
+  // Prvo čist spisak sve djece osnovnog para — praktično za unos u Gramps.
+  h+=`<h3>Spisak djece osnovne porodice (${d.children.length})</h3>`;
+  if(!d.children.length) h+='<p class="empty">Nije dodano nijedno dijete.</p>';
+  if(d.children.length){
+    h+='<ol class="children-summary">';
+    d.children.forEach((c,i)=>{
+      const punoIme=[c.firstName,c.lastName].filter(Boolean).join(' ');
+      h+=`<li>${punoIme ? esc(punoIme) : 'Dijete '+(i+1)}</li>`;
+    });
+    h+='</ol>';
+  }
+
+  // Zatim svako dijete posebno, sa njegovim partnerom i djecom.
+  if(d.children.length) h+=`<h3>Porodice djece osnovne porodice</h3>`;
+  d.children.forEach((c,i)=>{
+    const punoIme=[c.firstName,c.lastName].filter(Boolean).join(' ');
+    h+=`<div class="report-card"><h4>${i+1}. ${punoIme ? esc(punoIme) : 'Dijete '+(i+1)}</h4>`;
+    const s=c.spouse||{};
+    h+=`<h4>Supružnik / partner</h4>`+row('Ime',s.firstName)+row('Prezime',s.lastName)+row('Djevojačko prezime',s.maidenName)+row('Nadimak',s.nickname)+row('Datum rođenja',s.birthDate)+row('Mjesto rođenja',s.birthPlace)+row('Datum smrti',s.deathDate)+row('Mjesto smrti',s.deathPlace)+row('Vrsta veze',s.relationship);
+    h+=`<h4>Djeca ovog para (${(c.children||[]).length})</h4>`;
+    if(!(c.children||[]).length) h+='<p class="empty">Nisu navedena djeca ovog para.</p>';
+    (c.children||[]).forEach((g,j)=>{h+=`<div class="report-card"><strong>Dijete ${j+1}</strong>`+row('Ime i prezime',g.name)+row('Datum rođenja',g.birthDate)+row('Mjesto rođenja',g.birthPlace)+'</div>';});
+    h+=row('Napomena za ovu porodicu',c.notes)+'</div>';
+  });
+  h+=`<h3>Izvor i napomene</h3>`+row('Odakle su poznati podaci',d.source)+row('Napomena',d.notes);
+  return h;
+}
+function personReport(d){
+  let h='<h3>Unos / dopuna pojedinca</h3>';
+  h+=row('Ime',d.firstName)+row('Prezime',d.lastName)+row('Djevojačko prezime',d.maidenName)+row('Nadimak',d.nickname)+row('Datum rođenja',d.birthDate)+row('Mjesto rođenja',d.birthPlace)+row('Datum smrti',d.deathDate)+row('Mjesto smrti',d.deathPlace)+row('Otac',d.father)+row('Majka',d.mother)+row('Šta se dodaje ili ispravlja',d.correction)+row('Odakle je poznat podatak',d.source)+row('Podatke šalje',d.submittedBy);
+  return h;
+}
+let currentPreview = null;
+let currentMode = 'family';
+let currentReceiptUrl = '';
+function show(obj){
+  currentPreview=obj;
+  document.getElementById('result').innerHTML=obj.type==='porodica'?familyReport(obj):personReport(obj);
+  document.getElementById('previewBox').style.display='block';
+  document.getElementById('receiptBox').style.display='none';
+  document.getElementById('sendStatus').textContent='';
+  document.getElementById('sendBtn').disabled=false;
+  document.getElementById('previewBox').scrollIntoView({behavior:'smooth'});
+}
+document.getElementById('familyForm').onsubmit=e=>{e.preventDefault();show(familyData())};
+document.getElementById('personForm').onsubmit=e=>{e.preventDefault();show(formToObject(e.currentTarget))};
+function switchMode(mode){
+  currentMode=mode; const family=mode==='family';
+  document.getElementById('familyForm').style.display=family?'block':'none';
+  document.getElementById('personForm').style.display=family?'none':'block';
+  document.getElementById('familyBtn').classList.toggle('active',family);
+  document.getElementById('personBtn').classList.toggle('active',!family);
+  document.getElementById('previewBox').style.display='none';
+  document.getElementById('receiptBox').style.display='none';
+  currentPreview=null;
+}
+document.getElementById('familyBtn').onclick=()=>switchMode('family');document.getElementById('personBtn').onclick=()=>switchMode('person');
+document.getElementById('backBtn').onclick=()=>{
+  document.getElementById('previewBox').style.display='none';
+  (currentMode==='family'?document.getElementById('familyForm'):document.getElementById('personForm')).scrollIntoView({behavior:'smooth'});
+};
+document.getElementById('sendBtn').onclick=async()=>{
+  if(!currentPreview) return;
+  const btn=document.getElementById('sendBtn'); const status=document.getElementById('sendStatus');
+  btn.disabled=true; status.textContent='Šaljem podatke...';
+  const fd=new FormData(); fd.append('payload',JSON.stringify(currentPreview));
+  const input=currentPreview.type==='porodica'?document.getElementById('familyFiles'):document.getElementById('personFiles');
+  for(const f of (input?.files||[])) fd.append('files',f);
+  try{
+    const r=await fetch('/api/submissions',{method:'POST',body:fd});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error||'Slanje nije uspjelo.');
+    document.getElementById('previewBox').style.display='none';
+    document.getElementById('receiptBox').style.display='block';
+    currentReceiptUrl=`${location.origin}/receipt/${j.publicId}`;
+    document.getElementById('receiptText').innerHTML=`Sačuvano kao odgovor #${j.id}: <b>${esc(j.title)}</b>.<br>Ovaj unos ima svoj trajni link. Možete ga sačuvati, kopirati ili spremiti kao PDF.`;
+    document.getElementById('receiptReport').innerHTML=currentPreview.type==='porodica'?familyReport(currentPreview):personReport(currentPreview);
+    document.getElementById('receiptActionStatus').textContent='';
+    document.getElementById('receiptBox').scrollIntoView({behavior:'smooth'});
+  }catch(err){ status.textContent=err.message; btn.disabled=false; }
+};
+document.getElementById('copyReceiptBtn').onclick=async()=>{
+  if(!currentReceiptUrl) return;
+  const status=document.getElementById('receiptActionStatus');
+  try{ await navigator.clipboard.writeText(currentReceiptUrl); status.textContent='Link je kopiran.'; }
+  catch{ window.prompt('Kopirajte ovaj link:',currentReceiptUrl); }
+};
+document.getElementById('openReceiptBtn').onclick=()=>{ if(currentReceiptUrl) location.href=currentReceiptUrl; };
+document.getElementById('printReceiptBtn').onclick=()=>{ if(currentReceiptUrl) window.open(currentReceiptUrl+'?print=1','_blank','noopener'); };
+document.getElementById('newEntryBtn').onclick=()=>location.reload();
+</script>
+</body>
+</html>
