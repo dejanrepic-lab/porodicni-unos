@@ -6,6 +6,11 @@ const multer = require('multer');
 const Database = require('better-sqlite3');
 
 const app = express();
+app.set('trust proxy', 1);
+app.use((req, res, next) => {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  next();
+});
 const PORT = Number(process.env.PORT || 8787);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
@@ -15,6 +20,11 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'promijeni-me';
 const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const ADMIN_COOKIE = 'porodicni_admin';
 const ADMIN_SESSION_HOURS = Math.max(1, Number(process.env.ADMIN_SESSION_HOURS || 12));
+const FORM_ACCESS_PASSWORD = process.env.FORM_ACCESS_PASSWORD || '';
+const FORM_ACCESS_DAYS = Math.max(1, Number(process.env.FORM_ACCESS_DAYS || 7));
+const SUBMIT_RATE_LIMIT = Math.max(1, Number(process.env.SUBMIT_RATE_LIMIT || 5));
+const FORM_COOKIE = 'porodicni_form_access';
+const FORM_COOKIE_SECRET = process.env.FORM_COOKIE_SECRET || ADMIN_SESSION_SECRET;
 const MAX_UPLOAD_MB = Math.max(1, Number(process.env.MAX_UPLOAD_MB || 15));
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -78,6 +88,36 @@ function verifySession(token='') {
     return false;
   }
 }
+
+function signFormAccess() {
+  const data = Buffer.from(JSON.stringify({
+    ok: true,
+    exp: Date.now() + FORM_ACCESS_DAYS * 24 * 60 * 60 * 1000
+  })).toString('base64url');
+  const sig = crypto.createHmac('sha256', FORM_COOKIE_SECRET).update(data).digest('base64url');
+  return `${data}.${sig}`;
+}
+function verifyFormAccess(token='') {
+  try {
+    const [data, sig] = token.split('.');
+    if (!data || !sig) return false;
+    const expected = crypto.createHmac('sha256', FORM_COOKIE_SECRET).update(data).digest('base64url');
+    if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
+    const payload = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'));
+    return payload.ok === true && Number(payload.exp || 0) > Date.now();
+  } catch {
+    return false;
+  }
+}
+function formAccessRequired(req, res, next) {
+  // Ako šifra nije podešena, forma ostaje otvorena.
+  if (!FORM_ACCESS_PASSWORD) return next();
+  const token = parseCookies(req)[FORM_COOKIE];
+  if (verifyFormAccess(token)) return next();
+  const nextUrl = encodeURIComponent(req.originalUrl || '/');
+  return res.redirect(`/access?next=${nextUrl}`);
+}
+
 function adminAuth(req, res, next) {
   const token = parseCookies(req)[ADMIN_COOKIE];
   if (verifySession(token)) return next();
@@ -105,11 +145,122 @@ const upload = multer({
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '3mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', formAccessRequired, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/access', (req, res) => {
+  if (!FORM_ACCESS_PASSWORD) return res.redirect('/');
+  if (verifyFormAccess(parseCookies(req)[FORM_COOKIE])) return res.redirect('/');
+  const nextUrl = typeof req.query.next === 'string' && req.query.next.startsWith('/') ? req.query.next : '/';
+  res.send(`<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Pristup porodičnom unosu</title>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f4f7fb}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px}
+.card{width:min(440px,100%);background:#fff;border:1px solid #dfe6ef;border-radius:18px;padding:24px;box-shadow:0 12px 36px rgba(15,23,42,.08)}
+h1{margin:0 0 10px;font-size:28px}.muted{color:#667085;line-height:1.45}
+label{display:block;font-weight:700;margin:18px 0 7px}
+input{width:100%;min-height:52px;padding:12px 13px;border:1px solid #cfd8e3;border-radius:11px;font-size:16px}
+button{width:100%;min-height:50px;margin-top:16px;border:0;border-radius:11px;background:#2563eb;color:#fff;font-size:16px;font-weight:800;cursor:pointer}
+.error{background:#fff1f0;color:#b42318;border:1px solid #f5c2bd;border-radius:10px;padding:10px 12px;margin-top:12px}
+</style>
+</head>
+<body><div class="card">
+<h1>Porodično stablo</h1>
+<p class="muted">Ovaj obrazac je namijenjen porodici i rodbini. Unesite zajedničku pristupnu šifru.</p>
+<form method="post" action="/access">
+<input type="hidden" name="next" value="${esc(nextUrl)}">
+<label>Pristupna šifra</label>
+<input name="password" type="password" autocomplete="current-password" required autofocus>
+<button type="submit">Otvori obrazac</button>
+</form>
+</div></body></html>`);
+});
+
+app.post('/access', express.urlencoded({extended:false}), (req, res) => {
+  if (!FORM_ACCESS_PASSWORD) return res.redirect('/');
+  const password = String(req.body.password || '');
+  const nextUrl = typeof req.body.next === 'string' && req.body.next.startsWith('/') ? req.body.next : '/';
+
+  const ok = password.length === FORM_ACCESS_PASSWORD.length &&
+    crypto.timingSafeEqual(Buffer.from(password), Buffer.from(FORM_ACCESS_PASSWORD));
+
+  if (!ok) {
+    return res.status(401).send(`<!doctype html>
+<html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive"><title>Pogrešna šifra</title>
+<style>:root{font-family:system-ui;color:#172033;background:#f4f7fb}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px}.card{width:min(440px,100%);background:#fff;border:1px solid #dfe6ef;border-radius:18px;padding:24px}a{display:inline-block;margin-top:14px;color:#2563eb;font-weight:700}</style>
+</head><body><div class="card"><h1>Pogrešna šifra</h1><p>Pristupna šifra nije ispravna.</p><a href="/access?next=${encodeURIComponent(nextUrl)}">Pokušaj ponovo</a></div></body></html>`);
+  }
+
+  const token = signFormAccess();
+  const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
+  const parts = [
+    `${FORM_COOKIE}=${encodeURIComponent(token)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${FORM_ACCESS_DAYS * 24 * 60 * 60}`
+  ];
+  if (secure) parts.push('Secure');
+  res.setHeader('Set-Cookie', parts.join('; '));
+  res.redirect(nextUrl);
+});
+
+app.post('/access/logout', express.urlencoded({extended:false}), (req, res) => {
+  const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
+  const parts = [
+    `${FORM_COOKIE}=`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    'Max-Age=0'
+  ];
+  if (secure) parts.push('Secure');
+  res.setHeader('Set-Cookie', parts.join('; '));
+  res.redirect('/access');
+});
+
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-app.post('/api/submissions', upload.array('files', 10), (req, res) => {
+
+const submitBuckets = new Map();
+function submitRateLimit(req, res, next) {
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000;
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const bucket = (submitBuckets.get(ip) || []).filter(ts => now - ts < windowMs);
+
+  if (bucket.length >= SUBMIT_RATE_LIMIT) {
+    res.setHeader('Retry-After', '3600');
+    return res.status(429).json({
+      error: `Previše poslanih obrazaca. Pokušajte ponovo kasnije.`
+    });
+  }
+  bucket.push(now);
+  submitBuckets.set(ip, bucket);
+
+  // Povremeno očisti stare IP zapise.
+  if (submitBuckets.size > 5000) {
+    for (const [key, list] of submitBuckets) {
+      const fresh = list.filter(ts => now - ts < windowMs);
+      if (fresh.length) submitBuckets.set(key, fresh);
+      else submitBuckets.delete(key);
+    }
+  }
+  next();
+}
+
+app.post('/api/submissions', formAccessRequired, submitRateLimit, upload.array('files', 10), (req, res) => {
   let payload;
   try { payload = JSON.parse(req.body.payload || '{}'); }
   catch { cleanupFiles(req.files); return res.status(400).json({ error: 'Neispravan sadržaj obrasca.' }); }
@@ -140,7 +291,7 @@ app.post('/api/submissions', upload.array('files', 10), (req, res) => {
 });
 
 
-app.get('/receipt/:publicId', (req, res) => {
+app.get('/receipt/:publicId', formAccessRequired, (req, res) => {
   const row = db.prepare(`SELECT public_id,type,title,submitted_by,payload_json,created_at FROM submissions WHERE public_id=?`).get(req.params.publicId);
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
   const payload = JSON.parse(row.payload_json);
