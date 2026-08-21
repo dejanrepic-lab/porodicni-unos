@@ -151,7 +151,7 @@
     </div>
     <div id="receiptActionStatus" class="subtle" style="margin-top:10px"></div>
   </div>
-  <p class="footer-note">Porodični unos v1.1 – javna forma za prikupljanje podataka za Gramps.</p>
+  <p class="footer-note">Porodični unos v1.2 – javna forma za prikupljanje podataka za Gramps.</p>
 </div>
 <script>
 let childCounter = 0;
@@ -220,7 +220,8 @@ function personBlock(title,p,maiden=false){
 }
 function familyReport(d){
   let h=`<h3>Porodica: ${shown(d.title && !d.title.startsWith('—') ? d.title : '')}</h3>`;
-  h+=row('Podatke šalje',d.submittedBy)+row('Vrsta veze osnovne porodice',d.primaryRelationship);
+  h+=row('Podatke šalje',d.submittedBy);
+  h+=`<h3>Osnovna porodica${d.primaryRelationship ? ' · '+esc(d.primaryRelationship) : ''}</h3>`;
   h+=personBlock('Otac',d.father,false)+personBlock('Majka',d.mother,true);
 
   // Prvo čist spisak sve djece osnovnog para — praktično za unos u Gramps.
@@ -240,6 +241,7 @@ function familyReport(d){
   d.children.forEach((c,i)=>{
     const punoIme=[c.firstName,c.lastName].filter(Boolean).join(' ');
     h+=`<div class="report-card"><h4>${i+1}. ${punoIme ? esc(punoIme) : 'Dijete '+(i+1)}</h4>`;
+    h+=`<h4>Podaci o osobi</h4>`+row('Ime',c.firstName)+row('Prezime',c.lastName)+row('Nadimak',c.nickname)+row('Datum rođenja',c.birthDate)+row('Mjesto rođenja',c.birthPlace)+row('Datum smrti',c.deathDate)+row('Mjesto smrti',c.deathPlace);
     const s=c.spouse||{};
     h+=`<h4>Supružnik / partner</h4>`+row('Ime',s.firstName)+row('Prezime',s.lastName)+row('Djevojačko prezime',s.maidenName)+row('Nadimak',s.nickname)+row('Datum rođenja',s.birthDate)+row('Mjesto rođenja',s.birthPlace)+row('Datum smrti',s.deathDate)+row('Mjesto smrti',s.deathPlace)+row('Vrsta veze',s.relationship);
     h+=`<h4>Djeca ovog para (${(c.children||[]).length})</h4>`;
