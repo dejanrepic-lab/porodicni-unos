@@ -586,13 +586,28 @@ app.post('/admin/logout', adminAuth, express.urlencoded({extended:false}), (req,
 
 app.get('/admin', adminAuth, (req, res) => {
   const view = ['active','archived','all'].includes(req.query.view) ? req.query.view : 'active';
-  const where = view === 'archived' ? "WHERE s.status='arhivirano'" : view === 'all' ? '' : "WHERE s.status<>'arhivirano'";
+  const q = String(req.query.q || '').trim().slice(0,120);
+  const clauses = [];
+  const params = [];
+
+  if (view === 'archived') clauses.push("s.status='arhivirano'");
+  else if (view !== 'all') clauses.push("s.status<>'arhivirano'");
+
+  if (q) {
+    clauses.push("(s.title LIKE ? OR s.submitted_by LIKE ?)");
+    params.push(`%${q}%`, `%${q}%`);
+  }
+
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
   const rows = db.prepare(`
-    SELECT s.id,s.type,s.title,s.submitted_by,s.status,s.created_at,
+    SELECT s.id,s.type,s.title,s.submitted_by,s.status,s.created_at,s.updated_at,
            (SELECT COUNT(*) FROM attachments a WHERE a.submission_id=s.id) AS file_count,
-           (SELECT COUNT(*) FROM submission_history h WHERE h.submission_id=s.id) AS edit_count
-    FROM submissions s ${where} ORDER BY s.id DESC LIMIT 500
-  `).all();
+           (SELECT COUNT(*) FROM submission_history h WHERE h.submission_id=s.id) AS edit_count,
+           (SELECT h.changed_by FROM submission_history h
+              WHERE h.submission_id=s.id ORDER BY h.id DESC LIMIT 1) AS last_changed_by
+    FROM submissions s ${where} ORDER BY COALESCE(s.updated_at,s.created_at) DESC, s.id DESC LIMIT 500
+  `).all(...params);
   const counts = db.prepare(`SELECT
     SUM(CASE WHEN status<>'arhivirano' THEN 1 ELSE 0 END) AS active_count,
     SUM(CASE WHEN status='arhivirano' THEN 1 ELSE 0 END) AS archived_count,
@@ -602,7 +617,11 @@ app.get('/admin', adminAuth, (req, res) => {
     <td><input class="row-select" type="checkbox" name="ids" value="${r.id}" aria-label="Označi odgovor #${r.id}"></td>
     <td><a href="/admin/submissions/${r.id}">#${r.id}</a></td>
     <td><a href="/admin/submissions/${r.id}">${esc(r.title)}</a>${r.edit_count ? ' <span class="edited-badge">DORAĐENO</span>' : ''}</td><td>${esc(r.type === 'porodica' ? 'Porodica' : 'Pojedinac')}</td>
-    <td>${esc(r.submitted_by || '—')}</td><td>${esc(new Date(r.created_at).toLocaleString('sr-Latn'))}</td>
+    <td>${esc(r.submitted_by || '—')}</td>
+    <td>${esc(new Date(r.created_at).toLocaleString('sr-Latn'))}</td>
+    <td>${r.updated_at && r.edit_count
+      ? `${esc(new Date(r.updated_at).toLocaleString('sr-Latn'))}${r.last_changed_by ? `<div class="table-sub">od: ${esc(r.last_changed_by)}</div>` : ''}`
+      : '<span class="muted">—</span>'}</td>
     <td>${r.file_count}</td><td><span class="status ${esc(r.status)}">${esc(r.status)}</span></td>
   </tr>`).join('');
   res.send(adminShell('Primljeni odgovori', `
@@ -622,6 +641,12 @@ app.get('/admin', adminAuth, (req, res) => {
       <a class="tab ${view==='all'?'active':''}" href="/admin?view=all">Svi (${counts.total_count || 0})</a>
     </div>
     <p class="muted">Klikni na odgovor da ga otvoriš. Za masovno brisanje označi više odgovora ili koristi „Označi sve“.</p>
+    <form class="admin-search" method="get" action="/admin">
+      <input type="hidden" name="view" value="${esc(view)}">
+      <input type="search" name="q" value="${esc(q)}" placeholder="Pretraži porodicu ili pošiljaoca…" autocomplete="off">
+      <button class="btn" type="submit">Pretraži</button>
+      ${q ? `<a class="btn soft" href="/admin?view=${encodeURIComponent(view)}">Očisti</a>` : ''}
+    </form>
 
     <form method="post" action="/admin/submissions/bulk-delete" id="bulkForm"
       onsubmit="return confirmBulkDelete();">
@@ -633,7 +658,7 @@ app.get('/admin', adminAuth, (req, res) => {
         <span class="muted" id="selectedCount">0 označeno</span>
         <button class="btn danger" type="submit" id="bulkDeleteBtn" disabled>Obriši označene</button>
       </div>
-      <div class="tablewrap"><table><thead><tr><th style="width:42px">✓</th><th>ID</th><th>Naslov</th><th>Tip</th><th>Poslao</th><th>Vrijeme</th><th>Fajlovi</th><th>Status</th></tr></thead><tbody>${trs || '<tr><td colspan="8">Nema odgovora u ovom prikazu.</td></tr>'}</tbody></table></div>
+      <div class="tablewrap"><table><thead><tr><th style="width:42px">✓</th><th>ID</th><th>Naslov</th><th>Tip</th><th>Poslao</th><th>Prvi unos</th><th>Zadnja izmjena</th><th>Fajlovi</th><th>Status</th></tr></thead><tbody>${trs || '<tr><td colspan="8">Nema odgovora u ovom prikazu.</td></tr>'}</tbody></table></div>
     </form>
 
     <script>
@@ -1158,6 +1183,15 @@ function adminShell(title, body) {
     .change-values{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:#475467}
     .change-arrow{font-weight:800;color:#98a2b3}
     .change-empty{margin-top:10px;color:#667085}
+
+    .admin-search{display:flex;gap:8px;align-items:center;margin:12px 0 14px}
+    .admin-search input[type="search"]{min-width:280px;max-width:520px;flex:1;padding:10px 12px;border:1px solid #d0d7e2;border-radius:10px;background:#fff;color:#1f2937}
+    .admin-search input[type="search"]:focus{outline:2px solid #9cc5ff;outline-offset:1px;border-color:#6aa7ef}
+    .table-sub{margin-top:3px;font-size:11px;color:#667085;white-space:nowrap}
+    @media (max-width:760px){
+      .admin-search{align-items:stretch;flex-wrap:wrap}
+      .admin-search input[type="search"]{min-width:100%;max-width:none}
+    }
 </style></head><body><div class="wrap">${body}</div>
 <script>
 async function copyPrivateLink(btn){
