@@ -596,7 +596,7 @@ app.get('/admin/submissions/:id', adminAuth, (req, res) => {
   res.send(adminShell(`#${row.id} – ${esc(row.title)}`, `
     <div class="toolbar"><div><a href="/admin${archived?'?view=archived':''}">← ${archived?'Arhiva':'Aktivni odgovori'}</a><h1>${esc(row.title)}</h1></div>
       <div class="admin-actions">
-        <button class="btn" type="button" onclick="copyPrivateLink('/receipt/${encodeURIComponent(row.public_id)}', this)">Kopiraj privatni link</button>
+        <button class="btn" type="button" data-private-url="/receipt/${encodeURIComponent(row.public_id)}" onclick="copyPrivateLink(this)">Kopiraj privatni link</button>
         <a class="btn secondary" href="/receipt/${encodeURIComponent(row.public_id)}" target="_blank" rel="noopener">Otvori kao korisnik</a>
         ${!archived ? `<form method="post" action="/admin/submissions/${row.id}/status"><button class="btn" name="status" value="${row.status === 'obradjeno' ? 'novo' : 'obradjeno'}">${row.status === 'obradjeno' ? 'Vrati na novo' : 'Označi kao obrađeno'}</button></form>` : ''}
         <a class="btn" href="/admin/submissions/${row.id}/download.txt">Preuzmi TXT</a>
@@ -921,11 +921,27 @@ function publicShell(title, body) {
 
 </style></head><body><div class="wrap">${body}</div>
 <script>
-async function copyPrivateLink(path, btn){
-  const url = location.origin + path;
+async function copyPrivateLink(btn){
+  const path = btn?.dataset?.privateUrl || '';
+  const url = new URL(path, window.location.origin).href;
   const original = btn.textContent;
+
   try {
-    await navigator.clipboard.writeText(url);
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      if (!ok) throw new Error('copy failed');
+    }
+
     btn.textContent = 'Link kopiran';
     setTimeout(()=>btn.textContent=original, 1800);
   } catch {
