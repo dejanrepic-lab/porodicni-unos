@@ -164,7 +164,8 @@ app.get('/', formAccessRequired, (req, res) => {
 
 
 
-function grantFormAccessAndRedirect(req, res) {
+
+function grantFormAccess(req, res) {
   const formToken = signFormAccess();
   const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
   const parts = [
@@ -177,6 +178,10 @@ function grantFormAccessAndRedirect(req, res) {
 
   if (secure) parts.push('Secure');
   res.setHeader('Set-Cookie', parts.join('; '));
+}
+
+function grantFormAccessAndRedirect(req, res) {
+  grantFormAccess(req, res);
   res.redirect('/');
 }
 
@@ -413,6 +418,7 @@ app.post('/api/submissions/:publicId/update', formAccessRequired, submitRateLimi
 });
 
 app.get('/receipt/:publicId', formAccessRequired, (req, res) => {
+  grantFormAccess(req, res);
   const row = db.prepare(`SELECT public_id,type,title,submitted_by,payload_json,created_at,updated_at FROM submissions WHERE public_id=?`).get(req.params.publicId);
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
   const payload = JSON.parse(row.payload_json);
