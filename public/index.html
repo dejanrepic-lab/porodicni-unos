@@ -820,6 +820,11 @@ button:active{
 }
 
 @media (max-width:700px){
+  .section-toggle,.child-collapse{
+    width:100%;
+    text-align:center;
+    font-weight:750;
+  }
   body{font-size:14px}
   .wrap{padding-left:8px!important;padding-right:8px!important}
   .hero{border-radius:14px!important}
@@ -1057,7 +1062,7 @@ button:active{
     <div class="subtle" style="margin-bottom:8px"><b>Pregled poslanih podataka</b></div>
     <div id="receiptReport" class="report"></div>
   </div>
-  <p class="footer-note">Porodični unos v2.8.1 – ispravljen direktni Nextcloud pristup.</p>
+  <p class="footer-note">Porodični unos v2.9 – jasnija dinamička dugmad za završetak sekcija.</p>
 </div>
 <div id="toast" class="toast"></div>
 <script>
@@ -1313,7 +1318,24 @@ function addChild(data={}){
 
   const collapseBtn=card.querySelector('.child-collapse');
   const nameInputs=[card.querySelector('[data-c="firstName"]'),card.querySelector('[data-c="lastName"]')].filter(Boolean);
-  nameInputs.forEach(inp=>inp.addEventListener('input',()=>refreshChildTitles()));
+
+  const childFinishLabel=()=>{
+    const cards=[...children.children];
+    const index=Math.max(1,cards.indexOf(card)+1);
+    const display=childDisplayName(card,index);
+    return `Završi unos za ${display}`;
+  };
+
+  const refreshChildButton=()=>{
+    if(!card.classList.contains('user-collapsed')){
+      collapseBtn.textContent=childFinishLabel();
+    }
+  };
+
+  nameInputs.forEach(inp=>inp.addEventListener('input',()=>{
+    refreshChildTitles();
+    refreshChildButton();
+  }));
   collapseBtn.onclick=()=>{
     const collapsed=card.classList.toggle('user-collapsed');
 
@@ -1338,7 +1360,7 @@ function addChild(data={}){
         });
       }
     }else{
-      collapseBtn.textContent='Dalje';
+      collapseBtn.textContent=childFinishLabel();
       requestAnimationFrame(()=>{
         const y=card.getBoundingClientRect().top + window.scrollY - 80;
         window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
@@ -1349,6 +1371,7 @@ function addChild(data={}){
   card.querySelector('.add-grandchild').onclick=()=>addGrandchild(card);
   children.appendChild(card);
   refreshChildTitles();
+  refreshChildButton();
 }
 
 function childDisplayName(card, index){
@@ -1439,6 +1462,28 @@ function sectionPersonSummary(section){
   return full ? `${baseTitle} — ${full}` : baseTitle;
 }
 
+
+function sectionFinishLabel(section){
+  const h=section.querySelector(':scope > h2');
+  const base=(section.dataset.baseTitle || (h ? h.textContent.trim() : '')).trim();
+
+  const labels={
+    'Otac':'Završi unos za oca',
+    'Majka':'Završi unos za majku',
+    'Djeca ove porodice':'Završi unos djece osnovne porodice',
+    'Izvor i dodatne napomene':'Završi izvor i napomene',
+    'Dokumenti i fotografije (opcionalno)':'Završi priloge',
+    'Unos / dopuna pojedinca':'Završi unos pojedinca',
+    'Partner / supružnik':'Završi unos partnera / supružnika',
+    'Djeca ovog para':'Završi unos djece ovog para',
+    'Dopuna i izvor':'Završi dopunu i izvor'
+  };
+
+  // h2 sa <span> daje textContent bez idealnog razmaka u nekim browserima.
+  if(base.startsWith('Dokumenti i fotografije')) return 'Završi priloge';
+  return labels[base] || `Završi: ${base}`;
+}
+
 function setupSectionCollapsing(){
   document.querySelectorAll('form .section').forEach(section=>{
     if(section.classList.contains('no-collapse')) return;
@@ -1450,7 +1495,7 @@ function setupSectionCollapsing(){
     const btn=document.createElement('button');
     btn.type='button';
     btn.className='section-toggle';
-    btn.textContent='Dalje';
+    btn.textContent=sectionFinishLabel(section);
     section.appendChild(btn);
 
     const refreshHeading=()=>{
@@ -1484,7 +1529,7 @@ function setupSectionCollapsing(){
           });
         }
       }else{
-        btn.textContent='Dalje';
+        btn.textContent=sectionFinishLabel(section);
         h.textContent = section.dataset.baseTitle || h.textContent;
         requestAnimationFrame(()=>{
           const y=section.getBoundingClientRect().top + window.scrollY - 80;
