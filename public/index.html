@@ -1007,10 +1007,10 @@ button:active{
     </div>
 
     <div class="section">
-      <h2>Djeca ovog para</h2>
+      <h2 id="personPairChildrenHeading">Djeca ovog para</h2>
       <p class="subtle">Dodajte samo djecu ove osobe i navedenog partnera / supružnika.</p>
       <div id="personChildren"></div>
-      <div class="actions"><button type="button" class="btn soft" id="addPersonChild">＋ Dodaj dijete ovog para</button></div>
+      <div class="actions"><button type="button" class="person-pair-add-child pair-add-child btn soft" id="addPersonChild">＋ Dodaj dijete ovog para</button></div>
     </div>
 
 
@@ -1062,13 +1062,42 @@ button:active{
     <div class="subtle" style="margin-bottom:8px"><b>Pregled poslanih podataka</b></div>
     <div id="receiptReport" class="report"></div>
   </div>
-  <p class="footer-note">Porodični unos v2.11 – unaprijeđen admin pregled i pretraga.</p>
+  <p class="footer-note">Porodični unos v2.12 – dinamički nazivi para u sekcijama njihove djece.</p>
 </div>
 <div id="toast" class="toast"></div>
 <script>
 let childCounter = 0;
 const children = document.getElementById('children');
 const editPublicId = new URLSearchParams(location.search).get('edit') || '';
+
+
+function refreshPersonPairContext(){
+  const heading=document.getElementById('personPairChildrenHeading');
+  if(!heading) return;
+
+  const pf=(document.querySelector('[name="firstName"]')?.value || document.querySelector('[data-person="firstName"]')?.value || '').trim();
+  const pl=(document.querySelector('[name="lastName"]')?.value || document.querySelector('[data-person="lastName"]')?.value || '').trim();
+  const sf=(document.querySelector('[name="partnerFirstName"]')?.value || document.querySelector('[data-partner="firstName"]')?.value || '').trim();
+  const sl=(document.querySelector('[name="partnerLastName"]')?.value || document.querySelector('[data-partner="lastName"]')?.value || '').trim();
+
+  const person=[pf,pl].filter(Boolean).join(' ');
+  const partner=[sf,sl].filter(Boolean).join(' ');
+  const pair=partner ? [person,partner].filter(Boolean).join(' & ') : (person || 'ovog para');
+
+  heading.textContent=pair === 'ovog para' ? 'Djeca ovog para' : `Djeca od ${pair}`;
+
+  const section=heading.closest('.section');
+  const addBtn=section?.querySelector('.person-pair-add-child');
+  if(addBtn) addBtn.textContent=pair === 'ovog para' ? '＋ Dodaj dijete ovog para' : `＋ Dodaj dijete za ${pair}`;
+
+  if(section){
+    section.dataset.baseTitle=heading.textContent;
+    const finishBtn=section.querySelector(':scope > .section-toggle');
+    if(finishBtn && !section.classList.contains('user-collapsed')){
+      finishBtn.textContent=pair === 'ovog para' ? 'Završi unos djece ovog para' : `Završi unos djece od ${pair}`;
+    }
+  }
+}
 
 function updateSenderLabelForEditMode(isEditing){
   document.querySelectorAll('.sender-label').forEach(el=>{
@@ -1333,7 +1362,7 @@ function addChild(data={}){
       <div class="field"><label>Datum smrti</label><input data-s="deathDate"></div><div class="field"><label>Mjesto smrti</label><input data-s="deathPlace"></div>
       <div class="field"><label>Vrsta veze</label><select data-s="relationship"><option value=""></option><option>Brak</option><option>Vanbračna zajednica</option><option>Partnerstvo</option><option>Nepoznato</option></select></div>
     </div></div>
-    <div class="nested"><h3>Djeca ovog para</h3><div class="nested-list"></div><div class="actions"><button type="button" class="btn soft add-grandchild">＋ Dodaj dijete ovog para</button></div></div>
+    <div class="nested"><h3>Djeca ovog para</h3><div class="nested-list"></div><div class="actions"><button type="button" class="pair-add-child btn soft add-grandchild">＋ Dodaj dijete ovog para</button></div></div>
     <div class="field full" style="margin-top:14px"><label>Napomena za ovu porodicu</label><textarea data-c="notes"></textarea></div>
     <div class="actions"><button type="button" class="child-collapse">Dalje</button></div>`;
   card.querySelectorAll('[data-c]').forEach(e=>{ e.value=data[e.dataset.c]||''; });
@@ -1347,8 +1376,7 @@ function addChild(data={}){
   const childFinishLabel=()=>{
     const cards=[...children.children];
     const index=Math.max(1,cards.indexOf(card)+1);
-    const display=childDisplayName(card,index);
-    return `Završi unos za ${display}`;
+    return `Završi unos za ${pairDisplayName(card,index)}`;
   };
 
   const refreshChildButton=()=>{
@@ -1359,8 +1387,13 @@ function addChild(data={}){
 
   nameInputs.forEach(inp=>inp.addEventListener('input',()=>{
     refreshChildTitles();
-    refreshChildButton();
+    refreshPairContext(card);
   }));
+
+  const pairInputs=[
+    ...card.querySelectorAll('[data-p="firstName"],[data-p="lastName"]')
+  ];
+  pairInputs.forEach(inp=>inp.addEventListener('input',()=>refreshPairContext(card)));
   collapseBtn.onclick=()=>{
     const collapsed=card.classList.toggle('user-collapsed');
 
@@ -1396,7 +1429,7 @@ function addChild(data={}){
   card.querySelector('.add-grandchild').onclick=()=>addGrandchild(card);
   children.appendChild(card);
   refreshChildTitles();
-  refreshChildButton();
+  refreshPairContext(card);
 }
 
 function childDisplayName(card, index){
@@ -1405,6 +1438,43 @@ function childDisplayName(card, index){
   const full=[first,last].filter(Boolean).join(' ');
   return full || `Dijete ${index}`;
 }
+
+function pairPersonName(card){
+  const first=(card.querySelector('[data-c="firstName"]')?.value || '').trim();
+  const last=(card.querySelector('[data-c="lastName"]')?.value || '').trim();
+  return [first,last].filter(Boolean).join(' ');
+}
+
+function pairPartnerName(card){
+  const first=(card.querySelector('[data-p="firstName"]')?.value || '').trim();
+  const last=(card.querySelector('[data-p="lastName"]')?.value || '').trim();
+  return [first,last].filter(Boolean).join(' ');
+}
+
+function pairDisplayName(card, fallbackIndex){
+  const person=pairPersonName(card) || `Dijete ${fallbackIndex}`;
+  const partner=pairPartnerName(card);
+  return partner ? `${person} & ${partner}` : person;
+}
+
+function refreshPairContext(card){
+  if(!card) return;
+  const cards=[...children.children];
+  const index=Math.max(1,cards.indexOf(card)+1);
+  const pairName=pairDisplayName(card,index);
+
+  const title=card.querySelector('.pair-children-title');
+  if(title) title.textContent=`Djeca od ${pairName}`;
+
+  const addBtn=card.querySelector('.pair-add-child');
+  if(addBtn) addBtn.textContent=`＋ Dodaj dijete za ${pairName}`;
+
+  const collapseBtn=card.querySelector('.child-collapse');
+  if(collapseBtn && !card.classList.contains('user-collapsed')){
+    collapseBtn.textContent=`Završi unos za ${pairName}`;
+  }
+}
+
 function refreshChildTitles(){
   [...children.children].forEach((card,i)=>{
     const strong=card.querySelector('.child-head strong');
@@ -1767,6 +1837,17 @@ offerSavedDraft();
 loadEditSubmission();
 
 updateSenderLabelForEditMode(new URLSearchParams(location.search).has('edit'));
+
+
+document.addEventListener('input', e=>{
+  if(
+    e.target.matches('[name="firstName"],[name="lastName"],[name="partnerFirstName"],[name="partnerLastName"],[data-person="firstName"],[data-person="lastName"],[data-partner="firstName"],[data-partner="lastName"]')
+  ){
+    refreshPersonPairContext();
+  }
+});
+refreshPersonPairContext();
+
 </script>
 </body>
 </html>
