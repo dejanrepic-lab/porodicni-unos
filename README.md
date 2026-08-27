@@ -132,6 +132,26 @@ Mogućnosti uključuju:
 - otvaranje odgovora kao korisnik;
 - pregled istorije dorada.
 
+
+## Licenca
+
+Ovaj projekat je objavljen pod **MIT licencom**.
+
+To znači da ga drugi mogu slobodno:
+
+- koristiti privatno ili javno;
+- instalirati na svom serveru;
+- mijenjati i prilagođavati svojim potrebama;
+- napraviti vlastiti fork;
+- distribuirati dalje;
+- koristiti i u drugim projektima.
+
+Jedini glavni uslov je da se originalna MIT licenca i copyright napomena zadrže uz kopiju projekta.
+
+Softver se daje **bez garancije** — svako ga koristi na vlastitu odgovornost.
+
+Puni tekst licence nalazi se u fajlu [`LICENSE`](LICENSE).
+
 ## Docker / GHCR
 
 Aplikacija se gradi kroz GitHub Actions i objavljuje kao:
