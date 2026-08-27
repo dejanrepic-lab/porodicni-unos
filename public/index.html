@@ -930,7 +930,7 @@ button:active{
     </div>
 
     <div class="section">
-      <h2>Djeca ove porodice</h2>
+      <h2 id="familyChildrenHeading">Djeca ove porodice</h2>
       <p class="subtle">Dodajte samo onoliko djece koliko porodica ima.</p>
       <div id="children"></div>
       <div class="actions"><button type="button" class="btn soft" id="addChild">＋ Dodaj dijete osnovne porodice</button></div>
@@ -1062,7 +1062,7 @@ button:active{
     <div class="subtle" style="margin-bottom:8px"><b>Pregled poslanih podataka</b></div>
     <div id="receiptReport" class="report"></div>
   </div>
-  <p class="footer-note">Porodični unos v2.9 – jasnija dinamička dugmad za završetak sekcija.</p>
+  <p class="footer-note">Porodični unos v2.9.1 – naslov djece prati automatski naziv roditelja.</p>
 </div>
 <div id="toast" class="toast"></div>
 <script>
@@ -1263,9 +1263,28 @@ function updateTitle(){
   const ff=val('father_firstName'), fl=val('father_lastName'), mf=val('mother_firstName'), mm=val('mother_maidenName'), ml=val('mother_lastName');
   const father=[fl,ff].filter(Boolean).join(' ');
   const mother=[mm||ml,mf].filter(Boolean).join(' ');
-  document.getElementById('generatedTitle').textContent = (father||mother) ? [father,mother].filter(Boolean).join(' & ') : '— naslov će se napraviti automatski —';
+  const generated=(father||mother) ? [father,mother].filter(Boolean).join(' & ') : '— naslov će se napraviti automatski —';
+
+  document.getElementById('generatedTitle').textContent = generated;
+
+  const childrenHeading=document.getElementById('familyChildrenHeading');
+  if(childrenHeading){
+    const childrenSection=childrenHeading.closest('.section');
+    const childrenTitle=(father||mother) ? `Djeca od ${generated}` : 'Djeca ove porodice';
+
+    childrenHeading.textContent=childrenTitle;
+
+    if(childrenSection){
+      childrenSection.dataset.baseTitle=childrenTitle;
+      const btn=childrenSection.querySelector(':scope > .section-toggle');
+      if(btn && !childrenSection.classList.contains('user-collapsed')){
+        btn.textContent=sectionFinishLabel(childrenSection);
+      }
+    }
+  }
 }
 document.querySelectorAll('.title-watch').forEach(e=>e.addEventListener('input',updateTitle));
+updateTitle();
 
 
 function addPersonChild(data={}){
@@ -1481,6 +1500,7 @@ function sectionFinishLabel(section){
 
   // h2 sa <span> daje textContent bez idealnog razmaka u nekim browserima.
   if(base.startsWith('Dokumenti i fotografije')) return 'Završi priloge';
+  if(base.startsWith('Djeca od ')) return `Završi unos djece od ${base.substring('Djeca od '.length)}`;
   return labels[base] || `Završi: ${base}`;
 }
 
