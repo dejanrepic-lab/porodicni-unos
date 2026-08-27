@@ -1062,7 +1062,7 @@ button:active{
     <div class="subtle" style="margin-bottom:8px"><b>Pregled poslanih podataka</b></div>
     <div id="receiptReport" class="report"></div>
   </div>
-  <p class="footer-note">Porodični unos v2.12 – dinamički nazivi para u sekcijama njihove djece.</p>
+  <p class="footer-note">Porodični unos v2.12.1 – usklađeni dinamički nazivi para u karticama djece.</p>
 </div>
 <div id="toast" class="toast"></div>
 <script>
@@ -1362,7 +1362,7 @@ function addChild(data={}){
       <div class="field"><label>Datum smrti</label><input data-s="deathDate"></div><div class="field"><label>Mjesto smrti</label><input data-s="deathPlace"></div>
       <div class="field"><label>Vrsta veze</label><select data-s="relationship"><option value=""></option><option>Brak</option><option>Vanbračna zajednica</option><option>Partnerstvo</option><option>Nepoznato</option></select></div>
     </div></div>
-    <div class="nested"><h3>Djeca ovog para</h3><div class="nested-list"></div><div class="actions"><button type="button" class="pair-add-child btn soft add-grandchild">＋ Dodaj dijete ovog para</button></div></div>
+    <div class="nested"><h3 class="pair-children-title">Djeca ovog para</h3><div class="nested-list"></div><div class="actions"><button type="button" class="pair-add-child btn soft add-grandchild">＋ Dodaj dijete ovog para</button></div></div>
     <div class="field full" style="margin-top:14px"><label>Napomena za ovu porodicu</label><textarea data-c="notes"></textarea></div>
     <div class="actions"><button type="button" class="child-collapse">Dalje</button></div>`;
   card.querySelectorAll('[data-c]').forEach(e=>{ e.value=data[e.dataset.c]||''; });
@@ -1391,7 +1391,7 @@ function addChild(data={}){
   }));
 
   const pairInputs=[
-    ...card.querySelectorAll('[data-p="firstName"],[data-p="lastName"]')
+    ...card.querySelectorAll('[data-s="firstName"],[data-s="lastName"],[data-p="firstName"],[data-p="lastName"]')
   ];
   pairInputs.forEach(inp=>inp.addEventListener('input',()=>refreshPairContext(card)));
   collapseBtn.onclick=()=>{
@@ -1446,8 +1446,8 @@ function pairPersonName(card){
 }
 
 function pairPartnerName(card){
-  const first=(card.querySelector('[data-p="firstName"]')?.value || '').trim();
-  const last=(card.querySelector('[data-p="lastName"]')?.value || '').trim();
+  const first=(card.querySelector('[data-s="firstName"]')?.value || card.querySelector('[data-p="firstName"]')?.value || '').trim();
+  const last=(card.querySelector('[data-s="lastName"]')?.value || card.querySelector('[data-p="lastName"]')?.value || '').trim();
   return [first,last].filter(Boolean).join(' ');
 }
 
@@ -1466,7 +1466,7 @@ function refreshPairContext(card){
   const title=card.querySelector('.pair-children-title');
   if(title) title.textContent=`Djeca od ${pairName}`;
 
-  const addBtn=card.querySelector('.pair-add-child');
+  const addBtn=card.querySelector('.pair-add-child, .add-grandchild');
   if(addBtn) addBtn.textContent=`＋ Dodaj dijete za ${pairName}`;
 
   const collapseBtn=card.querySelector('.child-collapse');
