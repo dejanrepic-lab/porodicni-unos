@@ -417,10 +417,14 @@ app.post('/api/submissions/:publicId/update', formAccessRequired, submitRateLimi
   }
 });
 
-app.get('/receipt/:publicId', formAccessRequired, (req, res) => {
-  grantFormAccess(req, res);
+app.get('/receipt/:publicId', (req, res) => {
   const row = db.prepare(`SELECT public_id,type,title,submitted_by,payload_json,created_at,updated_at FROM submissions WHERE public_id=?`).get(req.params.publicId);
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
+
+  // Važeći privatni link je pristupni ključ za ovaj unos.
+  // Nakon provjere public_id postavljamo standardni cookie za pristup formi,
+  // pa korisnik može otvoriti i uređivanje bez ponovnog unošenja zajedničke šifre.
+  grantFormAccess(req, res);
   const payload = JSON.parse(row.payload_json);
   const files = db.prepare(`SELECT original_name,size FROM attachments WHERE submission_id=(SELECT id FROM submissions WHERE public_id=?) ORDER BY id`).all(req.params.publicId);
   const fileHtml = files.length ? `<h2>Priloženi fajlovi</h2><ul>${files.map(f=>`<li>${esc(f.original_name)} <span class="muted">(${Math.ceil(f.size/1024)} KB)</span></li>`).join('')}</ul>` : '';
