@@ -695,6 +695,163 @@ textarea:focus{
   }
 }
 
+
+/* v2.6 professional polish */
+:root{
+  --surface:#ffffff;
+  --surface-soft:#f8fafc;
+  --line:#dfe6ef;
+  --line-strong:#c8d3e1;
+  --text:#172033;
+  --muted:#667085;
+  --accent:#245ec7;
+  --accent-soft:#eef4ff;
+  --success:#27824a;
+  --danger:#b42318;
+  --shadow:0 6px 22px rgba(15,23,42,.045);
+}
+
+body{background:#f4f7fb;color:var(--text)}
+.section{
+  background:var(--surface);
+  border-color:var(--line);
+  box-shadow:var(--shadow);
+}
+.section h2{
+  letter-spacing:-.01em;
+}
+.section.user-collapsed{
+  background:#fbfdff;
+  border-color:#b8d0f5;
+  box-shadow:none;
+}
+.section.user-collapsed h2{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.section.user-collapsed h2::before{
+  content:"✓";
+  color:var(--success);
+  font-weight:900;
+}
+.section-toggle,
+.child-collapse{
+  background:var(--accent-soft);
+  color:var(--accent);
+  border:1px solid #d8e4fb;
+  transition:transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.section-toggle:active,
+.child-collapse:active,
+.btn:active,
+button:active{
+  transform:translateY(1px);
+}
+.field input:focus,
+.field select:focus,
+.field textarea:focus{
+  outline:none;
+  border-color:#7aa5f7;
+  box-shadow:0 0 0 3px rgba(36,94,199,.10);
+}
+.child-card{
+  border-color:var(--line-strong);
+  box-shadow:0 4px 16px rgba(15,23,42,.035);
+}
+.child-card.user-collapsed{
+  box-shadow:none;
+}
+.child-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.child-head strong{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.remove{
+  white-space:nowrap;
+}
+.draft-status{
+  display:none;
+  margin:0 0 12px;
+  padding:10px 12px;
+  border:1px solid #d9e3ef;
+  border-radius:12px;
+  background:#f8fafc;
+  color:#536174;
+  font-size:14px;
+}
+.draft-status.show{display:block}
+.draft-status strong{color:#24364c}
+.draft-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:8px;
+}
+.draft-actions button{
+  min-height:36px;
+  padding:7px 10px;
+  font-size:13px;
+}
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%) translateY(20px);
+  opacity:0;
+  pointer-events:none;
+  z-index:9999;
+  background:#172033;
+  color:#fff;
+  padding:10px 14px;
+  border-radius:11px;
+  box-shadow:0 10px 30px rgba(0,0,0,.18);
+  transition:.18s ease;
+  font-size:14px;
+}
+.toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+
+@media (max-width:700px){
+  body{font-size:14px}
+  .wrap{padding-left:8px!important;padding-right:8px!important}
+  .hero{border-radius:14px!important}
+  .section{
+    border-radius:14px!important;
+    box-shadow:none!important;
+  }
+  .section h2{
+    padding-left:8px!important;
+    border-left-width:3px!important;
+  }
+  .child-card{
+    border-radius:14px!important;
+    box-shadow:none!important;
+  }
+  .child-head{
+    align-items:flex-start!important;
+  }
+  .remove{
+    min-height:36px!important;
+    padding:6px 9px!important;
+    font-size:12px!important;
+  }
+  .file-item{
+    padding:8px 9px!important;
+  }
+  .draft-status{
+    font-size:13px;
+    padding:9px 10px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -705,6 +862,16 @@ textarea:focus{
     <div class="choice">
       <button id="familyBtn" class="active" type="button">👨‍👩‍👧‍👦 Unos porodice</button>
       <button id="personBtn" type="button">👤 Unos pojedinca</button>
+    </div>
+  </div>
+
+
+  <div id="draftStatus" class="draft-status">
+    <strong>Nacrt je sačuvan na ovom uređaju.</strong>
+    <div id="draftStatusText">Možete nastaviti tamo gdje ste stali.</div>
+    <div class="draft-actions">
+      <button type="button" class="btn soft" id="restoreDraftBtn">Nastavi nacrt</button>
+      <button type="button" class="btn soft" id="discardDraftBtn">Obriši nacrt</button>
     </div>
   </div>
 
@@ -890,19 +1057,134 @@ textarea:focus{
     <div class="subtle" style="margin-bottom:8px"><b>Pregled poslanih podataka</b></div>
     <div id="receiptReport" class="report"></div>
   </div>
-  <p class="footer-note">Porodični unos v2.5.2 – sažeci za roditeljske sekcije i kompaktniji mobilni prikaz.</p>
+  <p class="footer-note">Porodični unos v2.6 – profesionalno dotjeran mobilni prikaz i automatsko čuvanje nacrta.</p>
 </div>
+<div id="toast" class="toast"></div>
 <script>
 let childCounter = 0;
 const children = document.getElementById('children');
 const editPublicId = new URLSearchParams(location.search).get('edit') || '';
 let editMode = false;
 let existingFiles = [];
+const DRAFT_KEY = 'porodicni_unos_draft_v26';
+let draftTimer = null;
+let draftRestored = false;
 
 const selectedFiles = { family: [], person: [] };
 let personChildCounter = 0;
 const personChildren = document.getElementById('personChildren');
 const MAX_FILES = 10;
+
+
+function showToast(message){
+  const t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=message;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+function hasMeaningfulDraft(d){
+  if(!d || !d.payload) return false;
+  const s=JSON.stringify(d.payload).replace(/["{}\[\]:,]/g,'').trim();
+  return s.length > 12;
+}
+
+function currentDraftPayload(){
+  try{
+    const payload=currentMode==='family' ? familyData() : formToObject(document.getElementById('personForm'));
+    return {
+      version:26,
+      mode:currentMode,
+      payload,
+      savedAt:new Date().toISOString()
+    };
+  }catch{
+    return null;
+  }
+}
+
+function saveDraftNow(){
+  if(editMode) return; // existing submitted entries already persist on server
+  const d=currentDraftPayload();
+  if(!hasMeaningfulDraft(d)) return;
+  try{
+    localStorage.setItem(DRAFT_KEY,JSON.stringify(d));
+    const box=document.getElementById('draftStatus');
+    const text=document.getElementById('draftStatusText');
+    if(box && !draftRestored){
+      const tm=new Date(d.savedAt).toLocaleTimeString('sr-Latn',{hour:'2-digit',minute:'2-digit'});
+      text.textContent=`Posljednje automatsko čuvanje: ${tm}.`;
+    }
+  }catch{}
+}
+
+function scheduleDraftSave(){
+  if(editMode) return;
+  clearTimeout(draftTimer);
+  draftTimer=setTimeout(saveDraftNow,600);
+}
+
+function clearDraft(showMessage=false){
+  try{ localStorage.removeItem(DRAFT_KEY); }catch{}
+  const box=document.getElementById('draftStatus');
+  if(box) box.classList.remove('show');
+  if(showMessage) showToast('Nacrt je obrisan.');
+}
+
+function getSavedDraft(){
+  try{
+    const raw=localStorage.getItem(DRAFT_KEY);
+    if(!raw) return null;
+    const d=JSON.parse(raw);
+    if(!d || !d.payload || !d.savedAt) return null;
+    return d;
+  }catch{
+    return null;
+  }
+}
+
+function restoreDraft(d){
+  if(!d || !d.payload) return;
+  draftRestored=true;
+  if(d.mode==='person' || d.payload.type==='pojedinac') fillPerson(d.payload);
+  else fillFamily(d.payload);
+  switchMode(d.mode==='person' || d.payload.type==='pojedinac' ? 'person' : 'family');
+  const box=document.getElementById('draftStatus');
+  if(box) box.classList.remove('show');
+  showToast('Nacrt je vraćen.');
+}
+
+function offerSavedDraft(){
+  if(editPublicId) return;
+  const d=getSavedDraft();
+  if(!hasMeaningfulDraft(d)) return;
+  const box=document.getElementById('draftStatus');
+  const text=document.getElementById('draftStatusText');
+  if(!box || !text) return;
+  const when=new Date(d.savedAt).toLocaleString('sr-Latn');
+  text.textContent=`Pronađen je nacrt sačuvan ${when}.`;
+  box.classList.add('show');
+  document.getElementById('restoreDraftBtn').onclick=()=>restoreDraft(d);
+  document.getElementById('discardDraftBtn').onclick=()=>clearDraft(true);
+}
+
+function bindDraftAutosave(){
+  document.addEventListener('input',e=>{
+    if(e.target.matches('input,textarea,select')) scheduleDraftSave();
+  },true);
+  document.addEventListener('change',e=>{
+    if(e.target.matches('input,textarea,select')) scheduleDraftSave();
+  },true);
+  document.addEventListener('click',e=>{
+    if(e.target.closest('#addChild,#addPersonChild,.add-grandchild,.remove,.child-remove')) scheduleDraftSave();
+  },true);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='hidden') saveDraftNow();
+  });
+  window.addEventListener('pagehide',saveDraftNow);
+}
 
 function formatFileSize(bytes){
   if(bytes < 1024) return `${bytes} B`;
@@ -1385,6 +1667,7 @@ document.getElementById('sendBtn').onclick=async()=>{
     if(!r.ok) throw new Error(j.error||'Slanje nije uspjelo.');
     document.getElementById('previewBox').style.display='none';
     document.getElementById('receiptBox').style.display='block';
+    if(!editMode) clearDraft(false);
     currentReceiptUrl=`${location.origin}/receipt/${j.publicId}`;
     document.getElementById('receiptText').innerHTML=editMode
       ? `Izmjene su sačuvane u odgovoru #${j.id}: <b>${esc(j.title)}</b>.<br><b>Privatni trajni link ostao je isti.</b> Preko njega se ovaj unos može ponovo uređivati.`
@@ -1402,8 +1685,14 @@ document.getElementById('copyReceiptBtn').onclick=async()=>{
 };
 document.getElementById('openReceiptBtn').onclick=()=>{ if(currentReceiptUrl) location.href=currentReceiptUrl; };
 document.getElementById('printReceiptBtn').onclick=()=>{ if(currentReceiptUrl) window.open(currentReceiptUrl+'?print=1','_blank','noopener'); };
-document.getElementById('newEntryBtn').onclick=()=>{ location.href=editMode&&currentReceiptUrl?currentReceiptUrl:'/'; };
+document.getElementById('newEntryBtn').onclick=()=>{
+  if(editMode&&currentReceiptUrl){ location.href=currentReceiptUrl; return; }
+  clearDraft(false);
+  location.href='/';
+};
 setupSectionCollapsing();
+bindDraftAutosave();
+offerSavedDraft();
 loadEditSubmission();
 </script>
 </body>
