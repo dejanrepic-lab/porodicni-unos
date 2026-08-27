@@ -887,7 +887,7 @@ button:active{
 
   <form id="familyForm">
     <div class="section no-collapse sender-section">
-      <h2>Ko šalje podatke?</h2>
+      <h2><span class="sender-label">Ko šalje podatke?</span></h2>
       <div class="grid">
         <div class="field full"><label>Vaše ime i prezime</label><input name="submittedBy" placeholder="npr. Pero Perić"></div>
       </div>
@@ -1062,13 +1062,20 @@ button:active{
     <div class="subtle" style="margin-bottom:8px"><b>Pregled poslanih podataka</b></div>
     <div id="receiptReport" class="report"></div>
   </div>
-  <p class="footer-note">Porodični unos v2.9.3 – privatni link ispravno preskače zajedničku šifru.</p>
+  <p class="footer-note">Porodični unos v2.10.2 – ime pošiljaoca se koristi kao autor dorade.</p>
 </div>
 <div id="toast" class="toast"></div>
 <script>
 let childCounter = 0;
 const children = document.getElementById('children');
-const editPublicId = new URLSearchParams(location.search).get('edit') || '';
+const editPublicId = new 
+function updateSenderLabelForEditMode(isEditing){
+  document.querySelectorAll('.sender-label').forEach(el=>{
+    el.textContent = isEditing ? 'Podatke šalje / doradu vrši' : 'Ko šalje podatke?';
+  });
+}
+
+URLSearchParams(location.search).get('edit') || '';
 let editMode = false;
 let existingFiles = [];
 const DRAFT_KEY = 'porodicni_unos_draft_v26';
@@ -1759,6 +1766,8 @@ setupSectionCollapsing();
 bindDraftAutosave();
 offerSavedDraft();
 loadEditSubmission();
+
+updateSenderLabelForEditMode(new URLSearchParams(location.search).has('edit'));
 </script>
 </body>
 </html>
