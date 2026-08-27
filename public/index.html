@@ -653,6 +653,48 @@ textarea:focus{
   }
 }
 
+
+/* v2.5.1 mobile compact overrides */
+@media (max-width:700px){
+  .hero{padding:13px 12px !important;margin-bottom:10px !important}
+  .hero h1{font-size:23px !important;margin-bottom:4px !important}
+  .lead{font-size:13px !important;line-height:1.35 !important}
+  .choice{gap:7px !important;margin-top:10px !important}
+  .choice button{min-height:40px !important;padding:7px 9px !important;font-size:13px !important}
+  .section{padding:12px 12px !important;margin-bottom:11px !important;border-radius:18px !important}
+  .section h2{font-size:18px !important;margin-bottom:10px !important}
+  .family-title{margin:9px 0 11px !important;padding:10px 12px !important;font-size:17px !important;border-radius:14px !important}
+  .grid{gap:10px !important}
+  label{font-size:13px !important;margin-bottom:4px !important}
+  input,select,textarea{min-height:42px !important;padding:8px 10px !important;font-size:14px !important;border-radius:12px !important}
+  textarea{min-height:74px !important}
+  .btn,button{min-height:40px !important;padding:8px 10px !important;font-size:13px !important;border-radius:12px !important}
+  #addChild,#addPersonChild{width:100%}
+  .child-card{padding:10px !important;margin:11px 0 !important;border-radius:16px !important}
+  .child-head{margin-bottom:10px !important;padding-bottom:8px !important}
+  .child-head strong{font-size:17px !important;line-height:1.25 !important}
+  .child-card .nested{padding:10px !important;margin-top:10px !important;border-radius:14px !important}
+  .child-card .nested h3{font-size:16px !important;margin-bottom:9px !important}
+  .actions{margin-top:11px !important;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn.soft,button.btn.soft{flex:1 1 auto}
+  .section-toggle{min-height:38px !important;padding:7px 11px !important;font-size:13px !important;margin-top:10px !important}
+  .child-collapse{min-height:38px !important;padding:7px 11px !important;font-size:13px !important}
+}
+
+
+/* v2.5.2 collapsed parent summaries */
+.section.user-collapsed h2{
+  font-size:20px;
+  line-height:1.25;
+}
+@media (max-width:700px){
+  .section.user-collapsed h2{
+    font-size:17px !important;
+    line-height:1.25 !important;
+    padding-right:6px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -848,7 +890,7 @@ textarea:focus{
     <div class="subtle" style="margin-bottom:8px"><b>Pregled poslanih podataka</b></div>
     <div id="receiptReport" class="report"></div>
   </div>
-  <p class="footer-note">Porodični unos v2.5 – poboljšan tok za mobilni unos.</p>
+  <p class="footer-note">Porodični unos v2.5.2 – sažeci za roditeljske sekcije i kompaktniji mobilni prikaz.</p>
 </div>
 <script>
 let childCounter = 0;
@@ -988,15 +1030,15 @@ function addChild(data={}){
   (Array.isArray(data.children)?data.children:[]).forEach(g=>addGrandchild(card,g));
 
   const collapseBtn=card.querySelector('.child-collapse');
+  const nameInputs=[card.querySelector('[data-c="firstName"]'),card.querySelector('[data-c="lastName"]')].filter(Boolean);
+  nameInputs.forEach(inp=>inp.addEventListener('input',()=>refreshChildTitles()));
   collapseBtn.onclick=()=>{
     const collapsed=card.classList.toggle('user-collapsed');
 
     if(collapsed){
       collapseBtn.textContent='Otvori ponovo';
-
       const nextCard=card.nextElementSibling;
       let target=null;
-
       if(nextCard && nextCard.classList.contains('child-card')){
         target=nextCard;
       }else{
@@ -1007,7 +1049,6 @@ function addChild(data={}){
         }
         target=next;
       }
-
       if(target){
         requestAnimationFrame(()=>{
           const y=target.getBoundingClientRect().top + window.scrollY - 90;
@@ -1025,9 +1066,24 @@ function addChild(data={}){
   card.querySelector('.child-remove').onclick=()=>{card.remove(); renumberChildren();};
   card.querySelector('.add-grandchild').onclick=()=>addGrandchild(card);
   children.appendChild(card);
+  refreshChildTitles();
 }
-function renumberChildren(){[...children.children].forEach((c,i)=>c.querySelector('.child-head strong').textContent=`Dijete ${i+1}`)}
+
+function childDisplayName(card, index){
+  const first=(card.querySelector('[data-c="firstName"]')?.value || '').trim();
+  const last=(card.querySelector('[data-c="lastName"]')?.value || '').trim();
+  const full=[first,last].filter(Boolean).join(' ');
+  return full || `Dijete ${index}`;
+}
+function refreshChildTitles(){
+  [...children.children].forEach((card,i)=>{
+    const strong=card.querySelector('.child-head strong');
+    if(strong) strong.textContent=childDisplayName(card, i+1);
+  });
+}
+function renumberChildren(){refreshChildTitles()}
 document.getElementById('addChild').onclick=()=>addChild();
+
 if(!editPublicId) addChild();
 
 function objFrom(prefix, scope=document){const o={};scope.querySelectorAll(`[data-${prefix}]`).forEach(e=>o[e.dataset[prefix]]=e.value.trim());return o;}
@@ -1083,12 +1139,31 @@ function fillPerson(d){
   const kids=Array.isArray(d.children)?d.children:[];
   kids.forEach(g=>addPersonChild(g));
 }
+function sectionPersonSummary(section){
+  const titleEl = section.querySelector(':scope > h2');
+  const baseTitle = (section.dataset.baseTitle || (titleEl ? titleEl.textContent.trim() : '')).trim();
+  if(titleEl && !section.dataset.baseTitle) section.dataset.baseTitle = baseTitle;
+
+  const map = {
+    'Otac': ['father_firstName','father_lastName'],
+    'Majka': ['mother_firstName','mother_lastName']
+  };
+  const names = map[baseTitle];
+  if(!names) return baseTitle;
+
+  const first = section.querySelector(`[name="${names[0]}"]`)?.value?.trim() || '';
+  const last = section.querySelector(`[name="${names[1]}"]`)?.value?.trim() || '';
+  const full = [first,last].filter(Boolean).join(' ');
+  return full ? `${baseTitle} — ${full}` : baseTitle;
+}
+
 function setupSectionCollapsing(){
   document.querySelectorAll('form .section').forEach(section=>{
     if(section.classList.contains('no-collapse')) return;
     if(section.querySelector(':scope > .section-toggle')) return;
     const h=section.querySelector(':scope > h2');
     if(!h) return;
+    if(!section.dataset.baseTitle) section.dataset.baseTitle = h.textContent.trim();
 
     const btn=document.createElement('button');
     btn.type='button';
@@ -1096,21 +1171,31 @@ function setupSectionCollapsing(){
     btn.textContent='Dalje';
     section.appendChild(btn);
 
+    const refreshHeading=()=>{
+      h.textContent = section.classList.contains('user-collapsed')
+        ? sectionPersonSummary(section)
+        : (section.dataset.baseTitle || h.textContent);
+    };
+
+    // Live update for Otac/Majka names
+    section.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('input', refreshHeading);
+      inp.addEventListener('change', refreshHeading);
+    });
+
     btn.onclick=()=>{
       const collapsed=section.classList.toggle('user-collapsed');
 
       if(collapsed){
         btn.textContent='Otvori ponovo';
+        refreshHeading();
 
-        // Sljedeća vidljiva sekcija istog obrasca.
         let next=section.nextElementSibling;
         while(next && (!next.classList || !next.classList.contains('section'))){
           next=next.nextElementSibling;
         }
 
         if(next){
-          // Pozicioniraj tako da se vidi završena sekcija iznad,
-          // a sljedeća sekcija bude odmah u prvom planu.
           requestAnimationFrame(()=>{
             const y=next.getBoundingClientRect().top + window.scrollY - 90;
             window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
@@ -1118,12 +1203,15 @@ function setupSectionCollapsing(){
         }
       }else{
         btn.textContent='Dalje';
+        h.textContent = section.dataset.baseTitle || h.textContent;
         requestAnimationFrame(()=>{
           const y=section.getBoundingClientRect().top + window.scrollY - 80;
           window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
         });
       }
     };
+
+    refreshHeading();
   });
 }
 async function loadEditSubmission(){
