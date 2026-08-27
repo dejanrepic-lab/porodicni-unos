@@ -2,7 +2,7 @@
 
 Jednostavna, self-hosted web aplikacija za prikupljanje porodičnih i genealoških podataka od članova porodice, sa ciljem da se provjereni podaci kasnije ručno unesu u **Gramps**.
 
-**Trenutna verzija: v2.11**
+**Trenutna verzija: v2.12**
 
 ## Šta aplikacija radi
 
@@ -173,6 +173,14 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 # Istorija verzija
 
 Najnovije izmjene su prikazane prve.
+
+### v2.12
+- Naslov **Djeca ovog para** sada koristi stvarna imena para čim su dostupna.
+- Primjer: **Djeca od Dejan Repić & Ana Petrović**.
+- Dugme za dodavanje djeteta postaje **＋ Dodaj dijete za Dejan Repić & Ana Petrović**.
+- Dugme za završetak sekcije prati isti dinamički naziv para.
+- Ako partner još nije unesen, koristi se samo ime glavne osobe/djeteta.
+- Promjene se automatski osvježavaju pri unosu imena ili prezimena.
 
 ### v2.11
 - Admin tabela sada ima odvojene kolone „Prvi unos“ i „Zadnja izmjena“.
