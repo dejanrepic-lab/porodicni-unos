@@ -165,7 +165,19 @@ app.get('/', formAccessRequired, (req, res) => {
 
 
 function grantFormAccessAndRedirect(req, res) {
-  grantFormAccessAndRedirect(req, res);
+  const formToken = signFormAccess();
+  const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
+  const parts = [
+    `${FORM_COOKIE}=${encodeURIComponent(formToken)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${FORM_ACCESS_DAYS * 24 * 60 * 60}`
+  ];
+
+  if (secure) parts.push('Secure');
+  res.setHeader('Set-Cookie', parts.join('; '));
+  res.redirect('/');
 }
 
 
@@ -188,19 +200,7 @@ app.get('/family-access/:token', (req, res) => {
     return res.status(403).send('Pristupni link nije ispravan.');
   }
 
-  const formToken = signFormAccess();
-  const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
-  const parts = [
-    `${FORM_COOKIE}=${encodeURIComponent(formToken)}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Max-Age=${FORM_ACCESS_DAYS * 24 * 60 * 60}`
-  ];
-
-  if (secure) parts.push('Secure');
-  res.setHeader('Set-Cookie', parts.join('; '));
-  res.redirect('/');
+  grantFormAccessAndRedirect(req, res);
 });
 
 app.get('/access', (req, res) => {
