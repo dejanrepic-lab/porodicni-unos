@@ -57,6 +57,26 @@ CREATE INDEX IF NOT EXISTS idx_submissions_created ON submissions(created_at DES
 CREATE INDEX IF NOT EXISTS idx_attachments_submission ON attachments(submission_id);
 `);
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS submission_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  submission_id INTEGER NOT NULL,
+  public_id TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  title TEXT,
+  submitted_by TEXT,
+  saved_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_submission_history_submission_id
+  ON submission_history(submission_id);
+`);
+
+try { db.exec(`ALTER TABLE submission_history ADD COLUMN changed_by TEXT`); } catch {}
+try { db.exec(`ALTER TABLE submission_history ADD COLUMN changed_via TEXT`); } catch {}
+
+
+
 // v2.3 migracija: postojeće baze dobijaju vrijeme posljednje izmjene.
 try {
   const cols = db.prepare(`PRAGMA table_info(submissions)`).all().map(c => c.name);
@@ -378,11 +398,27 @@ app.post('/api/submissions/:publicId/update', formAccessRequired, submitRateLimi
 
   const title = String(payload.title || (type === 'pojedinac' ? [payload.firstName,payload.lastName].filter(Boolean).join(' ') : '') || existing.title || 'Bez naslova').trim().slice(0, 240);
   const submittedBy = String(payload.submittedBy || '').trim().slice(0, 180);
+  const changedBy = submittedBy || existing.submitted_by || 'Korisnik preko privatnog linka';
   const now = new Date().toISOString();
 
   try {
     const tx = db.transaction(() => {
-      db.prepare(`UPDATE submissions SET title=?, submitted_by=?, payload_json=?, status='novo', updated_at=? WHERE id=?`)
+      
+  db.prepare(`
+    INSERT INTO submission_history
+      (submission_id, public_id, payload_json, title, submitted_by, changed_by, changed_via)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    existing.id,
+    existing.public_id,
+    existing.payload_json,
+    existing.title || '',
+    existing.submitted_by || '',
+    changedBy,
+    'private_link'
+  );
+
+db.prepare(`UPDATE submissions SET title=?, submitted_by=?, payload_json=?, status='novo', updated_at=? WHERE id=?`)
         .run(title, submittedBy, JSON.stringify(payload), now, existing.id);
 
       const currentCount = Number(db.prepare(`SELECT COUNT(*) AS c FROM attachments WHERE submission_id=?`).get(existing.id).c || 0);
@@ -553,7 +589,8 @@ app.get('/admin', adminAuth, (req, res) => {
   const where = view === 'archived' ? "WHERE s.status='arhivirano'" : view === 'all' ? '' : "WHERE s.status<>'arhivirano'";
   const rows = db.prepare(`
     SELECT s.id,s.type,s.title,s.submitted_by,s.status,s.created_at,
-           (SELECT COUNT(*) FROM attachments a WHERE a.submission_id=s.id) AS file_count
+           (SELECT COUNT(*) FROM attachments a WHERE a.submission_id=s.id) AS file_count,
+           (SELECT COUNT(*) FROM submission_history h WHERE h.submission_id=s.id) AS edit_count
     FROM submissions s ${where} ORDER BY s.id DESC LIMIT 500
   `).all();
   const counts = db.prepare(`SELECT
@@ -564,7 +601,7 @@ app.get('/admin', adminAuth, (req, res) => {
   const trs = rows.map(r => `<tr>
     <td><input class="row-select" type="checkbox" name="ids" value="${r.id}" aria-label="Označi odgovor #${r.id}"></td>
     <td><a href="/admin/submissions/${r.id}">#${r.id}</a></td>
-    <td><a href="/admin/submissions/${r.id}">${esc(r.title)}</a></td><td>${esc(r.type === 'porodica' ? 'Porodica' : 'Pojedinac')}</td>
+    <td><a href="/admin/submissions/${r.id}">${esc(r.title)}</a>${r.edit_count ? ' <span class="edited-badge">DORAĐENO</span>' : ''}</td><td>${esc(r.type === 'porodica' ? 'Porodica' : 'Pojedinac')}</td>
     <td>${esc(r.submitted_by || '—')}</td><td>${esc(new Date(r.created_at).toLocaleString('sr-Latn'))}</td>
     <td>${r.file_count}</td><td><span class="status ${esc(r.status)}">${esc(r.status)}</span></td>
   </tr>`).join('');
@@ -661,13 +698,41 @@ app.get('/admin/submissions/:id/download.txt', adminAuth, (req, res) => {
 
 app.get('/admin/submissions/:id', adminAuth, (req, res) => {
   const row = db.prepare(`SELECT * FROM submissions WHERE id=?`).get(req.params.id);
+
+
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
+  const historyRows = db.prepare(`
+    SELECT id,payload_json,title,submitted_by,changed_by,changed_via,saved_at
+    FROM submission_history
+    WHERE submission_id=?
+    ORDER BY id DESC
+  `).all(row.id);
+
+  const latestChanges = historyRows.length
+    ? buildHistoryDiff(historySafeParse(historyRows[0].payload_json), historySafeParse(row.payload_json))
+    : [];
+
   const payload = JSON.parse(row.payload_json);
   const files = db.prepare(`SELECT * FROM attachments WHERE submission_id=? ORDER BY id`).all(row.id);
   const archived = row.status === 'arhivirano';
   res.send(adminShell(`#${row.id} – ${esc(row.title)}`, `
     <div class="toolbar"><div><a href="/admin${archived?'?view=archived':''}">← ${archived?'Arhiva':'Aktivni odgovori'}</a><h1>${esc(row.title)}</h1></div>
-      <div class="admin-actions">
+      
+      ${historyRows.length ? `
+      <section class="admin-change-panel">
+        <div class="change-title-row">
+          <h2>Šta je promijenjeno</h2>
+          <span class="edited-badge">DORAĐENO</span>
+        </div>
+        <div class="muted">
+          Posljednja dorada: ${historyEsc(row.updated_at || '')}
+          ${historyRows[0]?.changed_by ? ` · Doradu izvršio: <b>${historyEsc(historyRows[0].changed_by)}</b>` : ''}
+          ${historyRows[0]?.changed_via === 'admin' ? ' · Administrator' : ''}
+        </div>
+        ${renderHistoryDiff(latestChanges)}
+      </section>` : ''}
+
+<div class="admin-actions">
         <a class="btn secondary" href="/admin/user-mode">Korisnički prikaz</a>
         <button class="btn" type="button" data-private-url="/receipt/${encodeURIComponent(row.public_id)}" onclick="copyPrivateLink(this)">Kopiraj privatni link</button>
         <a class="btn secondary" href="/receipt/${encodeURIComponent(row.public_id)}" target="_blank" rel="noopener">Otvori kao korisnik</a>
@@ -995,10 +1060,105 @@ function publicShell(title, body) {
 </style></head><body><div class="wrap">${body}</div>
 </body></html>`;
 }
+
+function historySafeParse(text) {
+  try { return JSON.parse(text || '{}'); } catch { return {}; }
+}
+
+function flattenHistoryValue(value, prefix = '', out = {}) {
+  if (Array.isArray(value)) {
+    if (!value.length && prefix) out[prefix] = '';
+    value.forEach((item, i) => {
+      const p = prefix ? `${prefix}[${i + 1}]` : `[${i + 1}]`;
+      if (item && typeof item === 'object') flattenHistoryValue(item, p, out);
+      else out[p] = item ?? '';
+    });
+    return out;
+  }
+  if (value && typeof value === 'object') {
+    const keys = Object.keys(value);
+    if (!keys.length && prefix) out[prefix] = '';
+    keys.forEach(k => flattenHistoryValue(value[k], prefix ? `${prefix}.${k}` : k, out));
+    return out;
+  }
+  if (prefix) out[prefix] = value ?? '';
+  return out;
+}
+
+function historyLabel(path) {
+  const lastLabels = {
+    firstName:'Ime', lastName:'Prezime', maidenName:'Djevojačko prezime',
+    nickname:'Nadimak', birthDate:'Datum rođenja', birthPlace:'Mjesto rođenja',
+    deathDate:'Datum smrti', deathPlace:'Mjesto smrti', relationshipType:'Vrsta veze',
+    notes:'Napomene', source:'Izvor', correction:'Dopuna / ispravka'
+  };
+  let s = path
+    .replace(/^father\./, 'Otac · ')
+    .replace(/^mother\./, 'Majka · ')
+    .replace(/^person\./, 'Osoba · ')
+    .replace(/^partner\./, 'Partner / supružnik · ')
+    .replace(/^children\[(\d+)\]\./, 'Dijete $1 · ')
+    .replace(/\.partner\./g, ' · Partner · ')
+    .replace(/\.children\[(\d+)\]\./g, ' · Dijete $1 · ');
+  const parts = s.split('.');
+  const last = parts.pop();
+  if (last && lastLabels[last]) parts.push(lastLabels[last]); else if (last) parts.push(last);
+  return parts.join(' · ');
+}
+
+function buildHistoryDiff(beforeObj, afterObj) {
+  const before = flattenHistoryValue(beforeObj || {});
+  const after = flattenHistoryValue(afterObj || {});
+  const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])].sort();
+  return keys.flatMap(key => {
+    const a = before[key] ?? '';
+    const b = after[key] ?? '';
+    if (JSON.stringify(a) === JSON.stringify(b)) return [];
+    let kind = 'changed';
+    if ((a === '' || a === null) && !(b === '' || b === null)) kind = 'added';
+    else if (!(a === '' || a === null) && (b === '' || b === null)) kind = 'removed';
+    return [{ label: historyLabel(key), before: a, after: b, kind }];
+  });
+}
+
+function historyEsc(s) {
+  return String(s ?? '')
+    .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+    .replaceAll('"','&quot;').replaceAll("'","&#039;");
+}
+
+function renderHistoryDiff(changes) {
+  if (!changes.length) return '<div class="change-empty">Nema promjena u podacima.</div>';
+  return `<div class="change-list">${changes.map(c => {
+    const badge = c.kind === 'added' ? 'Dopunjeno' : c.kind === 'removed' ? 'Obrisano' : 'Izmijenjeno';
+    const before = c.before === '' ? '—' : historyEsc(c.before);
+    const after = c.after === '' ? '—' : historyEsc(c.after);
+    return `<div class="change-row">
+      <div class="change-head"><strong>${historyEsc(c.label)}</strong><span class="change-badge ${c.kind}">${badge}</span></div>
+      <div class="change-values"><span>${before}</span><span class="change-arrow">→</span><span>${after}</span></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
 function adminShell(title, body) {
   return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
   body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#1f2937;margin:0}.wrap{max-width:1100px;margin:auto;padding:20px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}a{color:#245ec7}.btn{display:inline-block;border:0;background:#245ec7;color:#fff;text-decoration:none;padding:10px 13px;border-radius:9px;font-weight:700;cursor:pointer}.btn.secondary{background:#eef2f6;color:#1f2937}.btn.danger{background:#b42318}.admin-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-actions form{margin:0}.admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}.tab{display:inline-block;padding:8px 11px;border-radius:999px;background:#eef2f6;text-decoration:none;color:#344054;font-weight:700}.tab.active{background:#245ec7;color:#fff}.muted{color:#667085}.tablewrap{overflow:auto;background:#fff;border:1px solid #dfe5ee;border-radius:14px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #eef1f5}th{background:#f8fafc}.status{padding:4px 8px;border-radius:999px;background:#eef2f6}.status.obradjeno{background:#dcfae6;color:#067647}.status.arhivirano{background:#f2f4f7;color:#475467}.report section{background:#fff;border:1px solid #dfe5ee;border-radius:13px;padding:14px;margin:12px 0}.report h2{margin-top:24px}.report h3{margin-top:0}.r{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #eef1f5}.r:last-child{border-bottom:0}.r i{color:#98a2b3}@media(max-width:700px){.r{grid-template-columns:1fr;gap:2px}.wrap{padding:12px}}
-  </style></head><body><div class="wrap">${body}</div>
+  
+    .edited-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;background:#fff3cd;color:#7a5a00;border:1px solid #f0d98a;vertical-align:middle}
+    .admin-change-panel{margin:18px 0;padding:16px;border:1px solid #dbe4ef;border-radius:14px;background:#f8fbff}
+    .change-title-row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .change-title-row h2{margin:0}
+    .change-list{display:grid;gap:10px;margin-top:12px}
+    .change-row{background:white;border:1px solid #e3e8ef;border-radius:12px;padding:12px}
+    .change-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
+    .change-badge{display:inline-flex;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+    .change-badge.added{background:#eaf7ee;color:#176b35}
+    .change-badge.changed{background:#fff3cd;color:#7a5a00}
+    .change-badge.removed{background:#fdecec;color:#a12222}
+    .change-values{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:#475467}
+    .change-arrow{font-weight:800;color:#98a2b3}
+    .change-empty{margin-top:10px;color:#667085}
+</style></head><body><div class="wrap">${body}</div>
 <script>
 async function copyPrivateLink(btn){
   const path = btn?.dataset?.privateUrl || '';
