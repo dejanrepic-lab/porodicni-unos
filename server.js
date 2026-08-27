@@ -403,6 +403,25 @@ app.get('/api/receipt/:publicId', formAccessRequired, (req, res) => {
 });
 
 
+
+app.get('/admin/user-mode', adminAuth, (req, res) => {
+  // Admin može direktno u korisnički prikaz bez ponovnog unošenja porodične šifre.
+  if (FORM_ACCESS_PASSWORD) {
+    const token = signFormAccess();
+    const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
+    const parts = [
+      `${FORM_COOKIE}=${encodeURIComponent(token)}`,
+      'Path=/',
+      'HttpOnly',
+      'SameSite=Lax',
+      `Max-Age=${FORM_ACCESS_DAYS * 24 * 60 * 60}`
+    ];
+    if (secure) parts.push('Secure');
+    res.setHeader('Set-Cookie', parts.join('; '));
+  }
+  res.redirect('/');
+});
+
 app.get('/admin/login', (req, res) => {
   if (verifySession(parseCookies(req)[ADMIN_COOKIE])) return res.redirect('/admin');
   const nextUrl = typeof req.query.next === 'string' && req.query.next.startsWith('/admin') ? req.query.next : '/admin';
@@ -501,6 +520,7 @@ app.get('/admin', adminAuth, (req, res) => {
     <div class="toolbar">
       <h1>Primljeni odgovori</h1>
       <div class="admin-actions">
+        <a class="btn secondary" href="/admin/user-mode">Korisnički prikaz</a>
         <a class="btn" href="/admin/export.csv">Izvezi CSV pregled</a>
         <form method="post" action="/admin/logout" style="margin:0">
           <button class="btn soft" type="submit">Odjavi se</button>
@@ -596,6 +616,7 @@ app.get('/admin/submissions/:id', adminAuth, (req, res) => {
   res.send(adminShell(`#${row.id} – ${esc(row.title)}`, `
     <div class="toolbar"><div><a href="/admin${archived?'?view=archived':''}">← ${archived?'Arhiva':'Aktivni odgovori'}</a><h1>${esc(row.title)}</h1></div>
       <div class="admin-actions">
+        <a class="btn secondary" href="/admin/user-mode">Korisnički prikaz</a>
         <button class="btn" type="button" data-private-url="/receipt/${encodeURIComponent(row.public_id)}" onclick="copyPrivateLink(this)">Kopiraj privatni link</button>
         <a class="btn secondary" href="/receipt/${encodeURIComponent(row.public_id)}" target="_blank" rel="noopener">Otvori kao korisnik</a>
         ${!archived ? `<form method="post" action="/admin/submissions/${row.id}/status"><button class="btn" name="status" value="${row.status === 'obradjeno' ? 'novo' : 'obradjeno'}">${row.status === 'obradjeno' ? 'Vrati na novo' : 'Označi kao obrađeno'}</button></form>` : ''}
@@ -920,6 +941,12 @@ function publicShell(title, body) {
 .login-card .btn{margin-top:18px;width:100%}
 
 </style></head><body><div class="wrap">${body}</div>
+</body></html>`;
+}
+function adminShell(title, body) {
+  return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#1f2937;margin:0}.wrap{max-width:1100px;margin:auto;padding:20px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}a{color:#245ec7}.btn{display:inline-block;border:0;background:#245ec7;color:#fff;text-decoration:none;padding:10px 13px;border-radius:9px;font-weight:700;cursor:pointer}.btn.secondary{background:#eef2f6;color:#1f2937}.btn.danger{background:#b42318}.admin-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-actions form{margin:0}.admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}.tab{display:inline-block;padding:8px 11px;border-radius:999px;background:#eef2f6;text-decoration:none;color:#344054;font-weight:700}.tab.active{background:#245ec7;color:#fff}.muted{color:#667085}.tablewrap{overflow:auto;background:#fff;border:1px solid #dfe5ee;border-radius:14px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #eef1f5}th{background:#f8fafc}.status{padding:4px 8px;border-radius:999px;background:#eef2f6}.status.obradjeno{background:#dcfae6;color:#067647}.status.arhivirano{background:#f2f4f7;color:#475467}.report section{background:#fff;border:1px solid #dfe5ee;border-radius:13px;padding:14px;margin:12px 0}.report h2{margin-top:24px}.report h3{margin-top:0}.r{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #eef1f5}.r:last-child{border-bottom:0}.r i{color:#98a2b3}@media(max-width:700px){.r{grid-template-columns:1fr;gap:2px}.wrap{padding:12px}}
+  </style></head><body><div class="wrap">${body}</div>
 <script>
 async function copyPrivateLink(btn){
   const path = btn?.dataset?.privateUrl || '';
@@ -935,24 +962,24 @@ async function copyPrivateLink(btn){
       ta.setAttribute('readonly', '');
       ta.style.position = 'fixed';
       ta.style.left = '-9999px';
+      ta.style.top = '0';
       document.body.appendChild(ta);
+      ta.focus();
       ta.select();
+
       const ok = document.execCommand('copy');
       ta.remove();
+
       if (!ok) throw new Error('copy failed');
     }
 
     btn.textContent = 'Link kopiran';
-    setTimeout(()=>btn.textContent=original, 1800);
-  } catch {
+    setTimeout(() => { btn.textContent = original; }, 1800);
+  } catch (err) {
     window.prompt('Kopirajte privatni link:', url);
   }
 }
 </script>
+
 </body></html>`;
-}
-function adminShell(title, body) {
-  return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
-  body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#1f2937;margin:0}.wrap{max-width:1100px;margin:auto;padding:20px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}a{color:#245ec7}.btn{display:inline-block;border:0;background:#245ec7;color:#fff;text-decoration:none;padding:10px 13px;border-radius:9px;font-weight:700;cursor:pointer}.btn.secondary{background:#eef2f6;color:#1f2937}.btn.danger{background:#b42318}.admin-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-actions form{margin:0}.admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}.tab{display:inline-block;padding:8px 11px;border-radius:999px;background:#eef2f6;text-decoration:none;color:#344054;font-weight:700}.tab.active{background:#245ec7;color:#fff}.muted{color:#667085}.tablewrap{overflow:auto;background:#fff;border:1px solid #dfe5ee;border-radius:14px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #eef1f5}th{background:#f8fafc}.status{padding:4px 8px;border-radius:999px;background:#eef2f6}.status.obradjeno{background:#dcfae6;color:#067647}.status.arhivirano{background:#f2f4f7;color:#475467}.report section{background:#fff;border:1px solid #dfe5ee;border-radius:13px;padding:14px;margin:12px 0}.report h2{margin-top:24px}.report h3{margin-top:0}.r{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #eef1f5}.r:last-child{border-bottom:0}.r i{color:#98a2b3}@media(max-width:700px){.r{grid-template-columns:1fr;gap:2px}.wrap{padding:12px}}
-  </style></head><body><div class="wrap">${body}</div></body></html>`;
 }
