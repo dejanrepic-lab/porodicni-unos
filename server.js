@@ -25,6 +25,7 @@ const FORM_ACCESS_DAYS = Math.max(1, Number(process.env.FORM_ACCESS_DAYS || 7));
 const SUBMIT_RATE_LIMIT = Math.max(1, Number(process.env.SUBMIT_RATE_LIMIT || 5));
 const FORM_COOKIE = 'porodicni_form_access';
 const FORM_COOKIE_SECRET = process.env.FORM_COOKIE_SECRET || ADMIN_SESSION_SECRET;
+const NEXTCLOUD_ACCESS_TOKEN = process.env.NEXTCLOUD_ACCESS_TOKEN || '';
 const MAX_UPLOAD_MB = Math.max(1, Number(process.env.MAX_UPLOAD_MB || 15));
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -159,6 +160,35 @@ app.use(express.json({ limit: '3mb' }));
 
 app.get('/', formAccessRequired, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+
+app.get('/family-access/:token', (req, res) => {
+  if (!NEXTCLOUD_ACCESS_TOKEN) {
+    return res.status(404).send('Direktni porodični pristup nije podešen.');
+  }
+
+  const token = String(req.params.token || '');
+  const ok = token.length === NEXTCLOUD_ACCESS_TOKEN.length &&
+    crypto.timingSafeEqual(Buffer.from(token), Buffer.from(NEXTCLOUD_ACCESS_TOKEN));
+
+  if (!ok) {
+    return res.status(403).send('Pristupni link nije ispravan.');
+  }
+
+  const formToken = signFormAccess();
+  const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
+  const parts = [
+    `${FORM_COOKIE}=${encodeURIComponent(formToken)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${FORM_ACCESS_DAYS * 24 * 60 * 60}`
+  ];
+
+  if (secure) parts.push('Secure');
+  res.setHeader('Set-Cookie', parts.join('; '));
+  res.redirect('/');
 });
 
 app.get('/access', (req, res) => {
