@@ -163,6 +163,18 @@ app.get('/', formAccessRequired, (req, res) => {
 });
 
 
+
+function grantFormAccessAndRedirect(req, res) {
+  grantFormAccessAndRedirect(req, res);
+}
+
+
+// Trajni kratki link namijenjen kopiranju u više Nextcloud foldera.
+// Ko ima ovaj URL dobija isti pristup javnoj formi kao nakon unosa porodične šifre.
+app.get('/porodica', (req, res) => {
+  grantFormAccessAndRedirect(req, res);
+});
+
 app.get('/family-access/:token', (req, res) => {
   if (!NEXTCLOUD_ACCESS_TOKEN) {
     return res.status(404).send('Direktni porodični pristup nije podešen.');
