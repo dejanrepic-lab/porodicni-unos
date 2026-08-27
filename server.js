@@ -56,6 +56,17 @@ CREATE INDEX IF NOT EXISTS idx_submissions_created ON submissions(created_at DES
 CREATE INDEX IF NOT EXISTS idx_attachments_submission ON attachments(submission_id);
 `);
 
+// v2.3 migracija: postojeće baze dobijaju vrijeme posljednje izmjene.
+try {
+  const cols = db.prepare(`PRAGMA table_info(submissions)`).all().map(c => c.name);
+  if (!cols.includes('updated_at')) {
+    db.exec(`ALTER TABLE submissions ADD COLUMN updated_at TEXT`);
+  }
+} catch (e) {
+  console.error('Ne mogu izvršiti migraciju updated_at:', e);
+}
+
+
 function esc(v='') {
   return String(v).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 }
@@ -291,17 +302,86 @@ app.post('/api/submissions', formAccessRequired, submitRateLimit, upload.array('
 });
 
 
+
+app.get('/edit/:publicId', formAccessRequired, (req, res) => {
+  const row = db.prepare(`SELECT public_id FROM submissions WHERE public_id=?`).get(req.params.publicId);
+  if (!row) return res.status(404).send('Odgovor nije pronađen.');
+  res.redirect(`/?edit=${encodeURIComponent(row.public_id)}`);
+});
+
+app.post('/api/submissions/:publicId/update', formAccessRequired, submitRateLimit, upload.array('files', 10), (req, res) => {
+  const existing = db.prepare(`SELECT * FROM submissions WHERE public_id=?`).get(req.params.publicId);
+  if (!existing) {
+    cleanupFiles(req.files);
+    return res.status(404).json({ error: 'Odgovor nije pronađen.' });
+  }
+
+  let payload;
+  try { payload = JSON.parse(req.body.payload || '{}'); }
+  catch {
+    cleanupFiles(req.files);
+    return res.status(400).json({ error: 'Neispravan sadržaj obrasca.' });
+  }
+
+  const type = payload.type === 'pojedinac' ? 'pojedinac' : 'porodica';
+  if (type !== existing.type) {
+    cleanupFiles(req.files);
+    return res.status(400).json({ error: 'Vrsta unosa se ne može promijeniti.' });
+  }
+
+  const title = String(payload.title || (type === 'pojedinac' ? [payload.firstName,payload.lastName].filter(Boolean).join(' ') : '') || existing.title || 'Bez naslova').trim().slice(0, 240);
+  const submittedBy = String(payload.submittedBy || '').trim().slice(0, 180);
+  const now = new Date().toISOString();
+
+  try {
+    const tx = db.transaction(() => {
+      db.prepare(`UPDATE submissions SET title=?, submitted_by=?, payload_json=?, status='novo', updated_at=? WHERE id=?`)
+        .run(title, submittedBy, JSON.stringify(payload), now, existing.id);
+
+      const currentCount = Number(db.prepare(`SELECT COUNT(*) AS c FROM attachments WHERE submission_id=?`).get(existing.id).c || 0);
+      const incoming = req.files || [];
+      if (currentCount + incoming.length > 10) {
+        throw new Error('MAX_FILES');
+      }
+
+      const ins = db.prepare(`INSERT INTO attachments (submission_id,original_name,stored_name,mime_type,size,created_at) VALUES (?,?,?,?,?,?)`);
+      for (const f of incoming) {
+        ins.run(existing.id, f.originalname, f.filename, f.mimetype, f.size, now);
+      }
+    });
+    tx();
+
+    const files = db.prepare(`SELECT original_name,mime_type,size FROM attachments WHERE submission_id=? ORDER BY id`).all(existing.id);
+    res.json({
+      ok: true,
+      id: existing.id,
+      publicId: existing.public_id,
+      title,
+      updatedAt: now,
+      files
+    });
+  } catch (e) {
+    cleanupFiles(req.files);
+    if (e && e.message === 'MAX_FILES') {
+      return res.status(400).json({ error: 'Ukupno može biti najviše 10 priloženih fajlova.' });
+    }
+    console.error(e);
+    res.status(500).json({ error: 'Izmjene nisu sačuvane. Pokušajte ponovo.' });
+  }
+});
+
 app.get('/receipt/:publicId', formAccessRequired, (req, res) => {
-  const row = db.prepare(`SELECT public_id,type,title,submitted_by,payload_json,created_at FROM submissions WHERE public_id=?`).get(req.params.publicId);
+  const row = db.prepare(`SELECT public_id,type,title,submitted_by,payload_json,created_at,updated_at FROM submissions WHERE public_id=?`).get(req.params.publicId);
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
   const payload = JSON.parse(row.payload_json);
   const files = db.prepare(`SELECT original_name,size FROM attachments WHERE submission_id=(SELECT id FROM submissions WHERE public_id=?) ORDER BY id`).all(req.params.publicId);
   const fileHtml = files.length ? `<h2>Priloženi fajlovi</h2><ul>${files.map(f=>`<li>${esc(f.original_name)} <span class="muted">(${Math.ceil(f.size/1024)} KB)</span></li>`).join('')}</ul>` : '';
   res.send(publicShell(`Poslani podaci – ${row.title}`, `
-    <div class="card"><h1>Podaci su poslani</h1><p class="muted">Ovo je trajni pregled onoga što ste poslali. Sačuvajte link ili ovu stranicu kao PDF.</p>
-    <p><b>${esc(row.title)}</b><br><span class="muted">${esc(new Date(row.created_at).toLocaleString('sr-Latn'))}</span></p>
+    <div class="card"><h1>Podaci su poslani</h1><p class="muted">Ovo je trajni privatni link vašeg unosa. Sačuvajte ga: preko njega možete kasnije ponovo otvoriti i dopuniti podatke.</p>
+    <p><b>${esc(row.title)}</b><br><span class="muted">Poslano: ${esc(new Date(row.created_at).toLocaleString('sr-Latn'))}${row.updated_at ? ` · posljednja izmjena: ${esc(new Date(row.updated_at).toLocaleString('sr-Latn'))}` : ''}</span></p>
     <div class="receipt-actions no-print">
       <button class="btn" type="button" onclick="copyReceiptLink(this)">Kopiraj link</button>
+      <a class="btn" href="/edit/${encodeURIComponent(row.public_id)}">Uredi podatke</a>
       <button class="btn secondary" type="button" onclick="window.print()">Sačuvaj / štampaj kao PDF</button>
     </div></div>
     ${renderPayload(payload)}${fileHtml}
@@ -315,8 +395,8 @@ app.get('/receipt/:publicId', formAccessRequired, (req, res) => {
     <\/script>
   `));
 });
-app.get('/api/receipt/:publicId', (req, res) => {
-  const row = db.prepare(`SELECT public_id,type,title,submitted_by,payload_json,created_at FROM submissions WHERE public_id=?`).get(req.params.publicId);
+app.get('/api/receipt/:publicId', formAccessRequired, (req, res) => {
+  const row = db.prepare(`SELECT public_id,type,title,submitted_by,payload_json,created_at,updated_at FROM submissions WHERE public_id=?`).get(req.params.publicId);
   if (!row) return res.status(404).json({ error: 'Odgovor nije pronađen.' });
   const files = db.prepare(`SELECT original_name,mime_type,size FROM attachments WHERE submission_id=(SELECT id FROM submissions WHERE public_id=?) ORDER BY id`).all(req.params.publicId);
   res.json({ ...row, payload: JSON.parse(row.payload_json), payload_json: undefined, files });
@@ -516,13 +596,15 @@ app.get('/admin/submissions/:id', adminAuth, (req, res) => {
   res.send(adminShell(`#${row.id} – ${esc(row.title)}`, `
     <div class="toolbar"><div><a href="/admin${archived?'?view=archived':''}">← ${archived?'Arhiva':'Aktivni odgovori'}</a><h1>${esc(row.title)}</h1></div>
       <div class="admin-actions">
+        <button class="btn" type="button" onclick="copyPrivateLink('/receipt/${encodeURIComponent(row.public_id)}', this)">Kopiraj privatni link</button>
+        <a class="btn secondary" href="/receipt/${encodeURIComponent(row.public_id)}" target="_blank" rel="noopener">Otvori kao korisnik</a>
         ${!archived ? `<form method="post" action="/admin/submissions/${row.id}/status"><button class="btn" name="status" value="${row.status === 'obradjeno' ? 'novo' : 'obradjeno'}">${row.status === 'obradjeno' ? 'Vrati na novo' : 'Označi kao obrađeno'}</button></form>` : ''}
         <a class="btn" href="/admin/submissions/${row.id}/download.txt">Preuzmi TXT</a>
         <form method="post" action="/admin/submissions/${row.id}/archive"><button class="btn secondary" type="submit">${archived ? 'Vrati iz arhive' : 'Arhiviraj'}</button></form>
         <form method="post" action="/admin/submissions/${row.id}/delete" onsubmit="return confirm('Trajno obrisati ovaj odgovor i sve njegove priložene fajlove? Ova radnja se ne može poništiti.');"><button class="btn danger" type="submit">Obriši trajno</button></form>
       </div>
     </div>
-    <p class="muted">ID #${row.id} · ${esc(new Date(row.created_at).toLocaleString('sr-Latn'))} · status: <b>${esc(row.status)}</b></p>
+    <p class="muted">ID #${row.id} · poslano: ${esc(new Date(row.created_at).toLocaleString('sr-Latn'))}${row.updated_at ? ` · posljednja izmjena: ${esc(new Date(row.updated_at).toLocaleString('sr-Latn'))}` : ''} · status: <b>${esc(row.status)}</b></p>
     ${renderPayload(payload)}
     ${files.length ? `<h2>Priloženi dokumenti i fotografije</h2><ul>${files.map(f=>`<li><a href="/admin/files/${f.id}">${esc(f.original_name)}</a> <span class="muted">(${Math.ceil(f.size/1024)} KB)</span></li>`).join('')}</ul>` : ''}
   `));
@@ -666,6 +748,36 @@ function renderPayloadTxt(d={}, files=[]) {
     txtLine(lines, 'Otac', d.father);
     txtLine(lines, 'Majka', d.mother);
     lines.push('');
+
+    const partner = d.partner || {};
+    lines.push('PARTNER / SUPRUŽNIK');
+    lines.push('-------------------');
+    txtLine(lines, 'Ime', partner.firstName);
+    txtLine(lines, 'Prezime', partner.lastName);
+    txtLine(lines, 'Djevojačko prezime', partner.maidenName);
+    txtLine(lines, 'Nadimak', partner.nickname);
+    txtLine(lines, 'Datum rođenja', partner.birthDate);
+    txtLine(lines, 'Mjesto rođenja', partner.birthPlace);
+    txtLine(lines, 'Datum smrti', partner.deathDate);
+    txtLine(lines, 'Mjesto smrti', partner.deathPlace);
+    txtLine(lines, 'Vrsta veze', partner.relationship);
+    lines.push('');
+
+    const personKids = Array.isArray(d.children) ? d.children : [];
+    lines.push(`DJECA OVOG PARA (${personKids.length})`);
+    lines.push('----------------');
+    if (personKids.length) {
+      personKids.forEach((g, i) => {
+        let item = `${i+1}. ${txtValue(g.name) || `Dijete ${i+1}`}`;
+        if (txtValue(g.birthDate)) item += ` — ${txtValue(g.birthDate)}`;
+        if (txtValue(g.birthPlace)) item += ` (${txtValue(g.birthPlace)})`;
+        lines.push(item);
+      });
+    } else {
+      lines.push('Nisu navedena djeca ovog para.');
+    }
+    lines.push('');
+
     txtLine(lines, 'Šta se dodaje ili ispravlja', d.correction);
     txtLine(lines, 'Odakle je poznat podatak', d.source);
   } else {
@@ -769,7 +881,20 @@ function renderPayloadTxt(d={}, files=[]) {
 }
 
 function renderPayload(d={}) {
-  if (d.type === 'pojedinac') return `<div class="report"><h2>Unos / dopuna pojedinca</h2>${row('Ime',d.firstName)}${row('Prezime',d.lastName)}${row('Djevojačko prezime',d.maidenName)}${row('Nadimak',d.nickname)}${row('Datum rođenja',d.birthDate)}${row('Mjesto rođenja',d.birthPlace)}${row('Datum smrti',d.deathDate)}${row('Mjesto smrti',d.deathPlace)}${row('Otac',d.father)}${row('Majka',d.mother)}${row('Šta se dodaje ili ispravlja',d.correction)}${row('Odakle je poznat podatak',d.source)}${row('Podatke šalje',d.submittedBy)}</div>`;
+  if (d.type === 'pojedinac') {
+    const p=d.partner||{};
+    const kids=Array.isArray(d.children)?d.children:[];
+    return `<div class="report">
+      <h2>Unos / dopuna pojedinca</h2>
+      ${row('Ime',d.firstName)}${row('Prezime',d.lastName)}${row('Djevojačko prezime',d.maidenName)}${row('Nadimak',d.nickname)}${row('Datum rođenja',d.birthDate)}${row('Mjesto rođenja',d.birthPlace)}${row('Datum smrti',d.deathDate)}${row('Mjesto smrti',d.deathPlace)}${row('Otac',d.father)}${row('Majka',d.mother)}
+      <h2>Partner / supružnik</h2>
+      ${row('Ime',p.firstName)}${row('Prezime',p.lastName)}${row('Djevojačko prezime',p.maidenName)}${row('Nadimak',p.nickname)}${row('Datum rođenja',p.birthDate)}${row('Mjesto rođenja',p.birthPlace)}${row('Datum smrti',p.deathDate)}${row('Mjesto smrti',p.deathPlace)}${row('Vrsta veze',p.relationship)}
+      <h2>Djeca ovog para (${kids.length})</h2>
+      ${kids.length ? `<ol>${kids.map((g,i)=>`<li>${esc(g.name||`Dijete ${i+1}`)}${g.birthDate?` — ${esc(g.birthDate)}`:''}${g.birthPlace?` (${esc(g.birthPlace)})`:''}</li>`).join('')}</ol>` : '<p class="muted">Nisu navedena djeca ovog para.</p>'}
+      <h2>Dopuna i izvor</h2>
+      ${row('Šta se dodaje ili ispravlja',d.correction)}${row('Odakle je poznat podatak',d.source)}${row('Podatke šalje',d.submittedBy)}
+    </div>`;
+  }
   const kids = Array.isArray(d.children) ? d.children : [];
   const primaryLabel = d.primaryRelationship ? ` · ${esc(d.primaryRelationship)}` : '';
   let h=`<div class="report"><h2>Porodica: ${esc(d.title || 'Bez naslova')}</h2>${row('Podatke šalje',d.submittedBy)}<h2>Osnovna porodica${primaryLabel}</h2>${person('Otac',d.father)}${person('Majka',d.mother,true)}`;
@@ -794,7 +919,21 @@ function publicShell(title, body) {
 .login-card input{width:100%;box-sizing:border-box;padding:12px 13px;border:1px solid #cfd8e3;border-radius:10px;font-size:16px}
 .login-card .btn{margin-top:18px;width:100%}
 
-</style></head><body><div class="wrap">${body}</div></body></html>`;
+</style></head><body><div class="wrap">${body}</div>
+<script>
+async function copyPrivateLink(path, btn){
+  const url = location.origin + path;
+  const original = btn.textContent;
+  try {
+    await navigator.clipboard.writeText(url);
+    btn.textContent = 'Link kopiran';
+    setTimeout(()=>btn.textContent=original, 1800);
+  } catch {
+    window.prompt('Kopirajte privatni link:', url);
+  }
+}
+</script>
+</body></html>`;
 }
 function adminShell(title, body) {
   return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
