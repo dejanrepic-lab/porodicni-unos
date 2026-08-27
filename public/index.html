@@ -453,6 +453,206 @@ textarea:focus{
   }
 }
 
+
+.edit-banner{
+  display:none;
+  background:#fff8e6;
+  border:1px solid #f1d48a;
+  border-radius:14px;
+  padding:13px 15px;
+  margin:0 0 16px;
+  color:#5f4614;
+}
+.edit-banner strong{display:block;margin-bottom:3px}
+.section-toggle{
+  border:0;
+  background:#eef4ff;
+  color:#245ec7;
+  border-radius:9px;
+  padding:9px 12px;
+  font-weight:750;
+  cursor:pointer;
+  margin:16px 0 0;
+}
+.section.user-collapsed{
+  border-color:#b8d0f5;
+  background:#fbfdff;
+}
+.section.user-collapsed > :not(h2):not(.section-toggle){
+  display:none !important;
+}
+.section.user-collapsed > .section-toggle{
+  display:block !important;
+  margin-top:10px;
+}
+.section.user-collapsed h2::before{
+  content:"✓ ";
+  color:#27824a;
+}
+.child-collapse{
+  border:0;
+  background:#eef4ff;
+  color:#245ec7;
+  border-radius:8px;
+  padding:7px 9px;
+  font-weight:700;
+  cursor:pointer;
+}
+.child-card.user-collapsed > :not(.child-head):not(.actions){
+  display:none !important;
+}
+.child-card.user-collapsed > .actions{
+  display:block !important;
+}
+.child-card.user-collapsed{
+  background:#fbfdff;
+  border-color:#b8d0f5;
+}
+.child-card.user-collapsed .child-head strong::before{
+  content:"✓ ";
+  color:#27824a;
+}
+.existing-files{
+  margin:10px 0 6px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#f7f9fc;
+  border:1px solid #e1e7ef;
+}
+.existing-files ul{margin:7px 0 0;padding-left:20px}
+
+
+/* v2.5 mobile flow refinements */
+.sender-section{
+  padding-bottom:14px;
+}
+.sender-section h2{
+  margin-bottom:12px;
+}
+.compact-section{
+  padding-top:15px;
+  padding-bottom:15px;
+}
+.relationship-section .grid{
+  gap:10px !important;
+}
+.section-toggle{
+  display:block;
+  width:auto;
+  margin:14px 0 0 auto;
+  padding:8px 12px;
+  min-height:40px;
+  font-size:14px;
+}
+.section.user-collapsed{
+  padding-top:12px;
+  padding-bottom:12px;
+}
+.section.user-collapsed h2{
+  margin-bottom:0;
+}
+.section.user-collapsed > .section-toggle{
+  margin-top:8px;
+}
+.child-collapse{
+  min-height:40px !important;
+  padding:8px 12px !important;
+  font-size:14px !important;
+}
+.child-card.user-collapsed{
+  padding-top:12px;
+  padding-bottom:12px;
+}
+.child-card.user-collapsed .child-head{
+  margin-bottom:0;
+  padding-bottom:0;
+  border-bottom:0;
+}
+@media (max-width:700px){
+  .wrap{
+    padding-top:8px;
+    padding-bottom:20px;
+  }
+  .hero{
+    padding:15px 13px;
+    margin-bottom:12px;
+  }
+  .hero h1{
+    font-size:25px;
+    margin-bottom:6px;
+  }
+  .lead{
+    font-size:14px;
+    line-height:1.4;
+  }
+  .choice{
+    gap:8px;
+    margin-top:12px;
+  }
+  .choice button{
+    min-height:44px !important;
+    padding:9px 10px !important;
+    font-size:14px !important;
+  }
+  .section{
+    padding:14px 13px;
+    margin-bottom:13px;
+  }
+  .section h2{
+    font-size:20px;
+    margin-bottom:13px;
+  }
+  .family-title{
+    margin:11px 0 13px;
+    padding:12px 13px;
+    font-size:18px !important;
+  }
+  .grid{
+    gap:12px !important;
+  }
+  label{
+    font-size:14px;
+    margin-bottom:5px;
+  }
+  input,
+  select,
+  textarea{
+    min-height:46px;
+    padding:10px 11px;
+    font-size:15px;
+  }
+  textarea{
+    min-height:88px;
+  }
+  .btn,
+  button{
+    min-height:44px;
+    padding:9px 11px;
+    font-size:14px;
+  }
+  #addChild,
+  #addPersonChild{
+    width:100%;
+  }
+  .child-card{
+    padding:12px;
+    margin:14px 0;
+  }
+  .child-head strong{
+    font-size:19px;
+  }
+  .child-card .nested{
+    padding:11px;
+    margin-top:12px;
+  }
+  .child-card .nested h3{
+    font-size:17px;
+  }
+  .actions{
+    margin-top:13px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -466,8 +666,13 @@ textarea:focus{
     </div>
   </div>
 
+  <div id="editBanner" class="edit-banner">
+    <strong>Uređujete već poslani unos.</strong>
+    Sve prethodne podatke možete dopuniti ili ispraviti. Sačuvane izmjene ostaju na istom privatnom linku.
+  </div>
+
   <form id="familyForm">
-    <div class="section">
+    <div class="section no-collapse sender-section">
       <h2>Ko šalje podatke?</h2>
       <div class="grid">
         <div class="field full"><label>Vaše ime i prezime</label><input name="submittedBy" placeholder="npr. Pero Perić"></div>
@@ -476,7 +681,7 @@ textarea:focus{
 
     <div class="family-title">Porodica: <span id="generatedTitle">— naslov će se napraviti automatski —</span></div>
 
-    <div class="section">
+    <div class="section compact-section relationship-section no-collapse">
       <h2>Osnovna porodica</h2>
       <div class="grid">
         <div class="field"><label>Vrsta veze</label><select name="primaryRelationship"><option value=""></option><option>Brak</option><option>Vanbračna zajednica</option><option>Partnerstvo</option><option>Nepoznato</option></select></div>
@@ -525,6 +730,7 @@ textarea:focus{
       </div>
     </div>
 
+
     <div class="section">
       <h2>Dokumenti i fotografije <span class="subtle">(opcionalno)</span></h2>
       <div class="field full">
@@ -534,6 +740,7 @@ textarea:focus{
           <button type="button" class="btn soft" data-file-pick="family">＋ Dodaj fajlove</button>
           <span class="subtle" id="familyFileCount">0 / 10 fajlova</span>
         </div>
+        <div id="familyExistingFiles" class="existing-files" style="display:none"></div>
         <div id="familyFileList" class="file-list"></div>
         <div id="familyFileStatus" class="file-status">Fajlove možete dodavati u više navrata. Svaki prilog možete ukloniti prije slanja.</div>
       </div>
@@ -543,7 +750,7 @@ textarea:focus{
   </form>
 
   <form id="personForm" style="display:none">
-    <div class="section">
+    <div class="section no-collapse sender-section">
       <h2>Ko šalje podatke?</h2>
       <div class="grid">
         <div class="field full"><label>Vaše ime i prezime</label><input name="submittedBy" placeholder="npr. Pero Perić"></div>
@@ -557,10 +764,50 @@ textarea:focus{
         <div class="field"><label>Datum rođenja</label><input name="birthDate"></div><div class="field"><label>Mjesto rođenja</label><input name="birthPlace"></div>
         <div class="field"><label>Datum smrti</label><input name="deathDate"></div><div class="field"><label>Mjesto smrti</label><input name="deathPlace"></div>
         <div class="field"><label>Otac</label><input name="father"></div><div class="field"><label>Majka</label><input name="mother"></div>
+        
+        
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Partner / supružnik</h2>
+      <div class="grid">
+        <div class="field"><label>Ime</label><input name="partner_firstName"></div>
+        <div class="field"><label>Prezime</label><input name="partner_lastName"></div>
+        <div class="field"><label>Djevojačko prezime</label><input name="partner_maidenName"></div>
+        <div class="field"><label>Nadimak</label><input name="partner_nickname"></div>
+        <div class="field"><label>Datum rođenja</label><input name="partner_birthDate"></div>
+        <div class="field"><label>Mjesto rođenja</label><input name="partner_birthPlace"></div>
+        <div class="field"><label>Datum smrti</label><input name="partner_deathDate"></div>
+        <div class="field"><label>Mjesto smrti</label><input name="partner_deathPlace"></div>
+        <div class="field"><label>Vrsta veze</label>
+          <select name="partner_relationship">
+            <option value=""></option>
+            <option>Brak</option>
+            <option>Vanbračna zajednica</option>
+            <option>Partnerstvo</option>
+            <option>Nepoznato</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Djeca ovog para</h2>
+      <p class="subtle">Dodajte samo djecu ove osobe i navedenog partnera / supružnika.</p>
+      <div id="personChildren"></div>
+      <div class="actions"><button type="button" class="btn soft" id="addPersonChild">＋ Dodaj dijete ovog para</button></div>
+    </div>
+
+
+    <div class="section">
+      <h2>Dopuna i izvor</h2>
+      <div class="grid">
         <div class="field full"><label>Šta želite dodati ili ispraviti?</label><textarea name="correction"></textarea></div>
         <div class="field full"><label>Odakle znate podatak?</label><textarea name="source"></textarea></div>
       </div>
     </div>
+
     <div class="section">
       <h2>Dokumenti i fotografije <span class="subtle">(opcionalno)</span></h2>
       <div class="field full">
@@ -570,6 +817,7 @@ textarea:focus{
           <button type="button" class="btn soft" data-file-pick="person">＋ Dodaj fajlove</button>
           <span class="subtle" id="personFileCount">0 / 10 fajlova</span>
         </div>
+        <div id="personExistingFiles" class="existing-files" style="display:none"></div>
         <div id="personFileList" class="file-list"></div>
         <div id="personFileStatus" class="file-status">Fajlove možete dodavati u više navrata. Svaki prilog možete ukloniti prije slanja.</div>
       </div>
@@ -600,13 +848,18 @@ textarea:focus{
     <div class="subtle" style="margin-bottom:8px"><b>Pregled poslanih podataka</b></div>
     <div id="receiptReport" class="report"></div>
   </div>
-  <p class="footer-note">Porodični unos v2.2 – zaštićena forma za prikupljanje podataka za Gramps.</p>
+  <p class="footer-note">Porodični unos v2.5 – poboljšan tok za mobilni unos.</p>
 </div>
 <script>
 let childCounter = 0;
 const children = document.getElementById('children');
+const editPublicId = new URLSearchParams(location.search).get('edit') || '';
+let editMode = false;
+let existingFiles = [];
 
 const selectedFiles = { family: [], person: [] };
+let personChildCounter = 0;
+const personChildren = document.getElementById('personChildren');
 const MAX_FILES = 10;
 
 function formatFileSize(bytes){
@@ -685,13 +938,30 @@ function updateTitle(){
 }
 document.querySelectorAll('.title-watch').forEach(e=>e.addEventListener('input',updateTitle));
 
-function addGrandchild(card){
+
+function addPersonChild(data={}){
+  personChildCounter++;
+  const row=document.createElement('div');
+  row.className='grandchild';
+  row.innerHTML=`
+    <div class="field"><label>Ime i prezime</label><input data-pc="name"></div>
+    <div class="field"><label>Datum rođenja</label><input data-pc="birthDate"></div>
+    <div class="field"><label>Mjesto rođenja</label><input data-pc="birthPlace"></div>
+    <button type="button" class="remove">Ukloni</button>`;
+  row.querySelectorAll('[data-pc]').forEach(e=>{ e.value=data[e.dataset.pc]||''; });
+  row.querySelector('.remove').onclick=()=>row.remove();
+  personChildren.appendChild(row);
+}
+document.getElementById('addPersonChild').onclick=()=>addPersonChild();
+
+function addGrandchild(card, data={}){
   const list=card.querySelector('.nested-list');
   const row=document.createElement('div'); row.className='grandchild';
   row.innerHTML=`<div class="field"><label>Ime i prezime</label><input data-g="name"></div><div class="field"><label>Datum rođenja</label><input data-g="birthDate"></div><div class="field"><label>Mjesto rođenja</label><input data-g="birthPlace"></div><button type="button" class="remove">Ukloni</button>`;
+  row.querySelectorAll('[data-g]').forEach(e=>{ e.value=data[e.dataset.g]||''; });
   row.querySelector('.remove').onclick=()=>row.remove(); list.appendChild(row);
 }
-function addChild(){
+function addChild(data={}){
   childCounter++;
   const card=document.createElement('div'); card.className='child-card'; card.dataset.index=childCounter;
   card.innerHTML=`
@@ -710,23 +980,206 @@ function addChild(){
       <div class="field"><label>Vrsta veze</label><select data-s="relationship"><option value=""></option><option>Brak</option><option>Vanbračna zajednica</option><option>Partnerstvo</option><option>Nepoznato</option></select></div>
     </div></div>
     <div class="nested"><h3>Djeca ovog para</h3><div class="nested-list"></div><div class="actions"><button type="button" class="btn soft add-grandchild">＋ Dodaj dijete ovog para</button></div></div>
-    <div class="field full" style="margin-top:14px"><label>Napomena za ovu porodicu</label><textarea data-c="notes"></textarea></div>`;
+    <div class="field full" style="margin-top:14px"><label>Napomena za ovu porodicu</label><textarea data-c="notes"></textarea></div>
+    <div class="actions"><button type="button" class="child-collapse">Dalje</button></div>`;
+  card.querySelectorAll('[data-c]').forEach(e=>{ e.value=data[e.dataset.c]||''; });
+  const spouse=data.spouse||{};
+  card.querySelectorAll('[data-s]').forEach(e=>{ e.value=spouse[e.dataset.s]||''; });
+  (Array.isArray(data.children)?data.children:[]).forEach(g=>addGrandchild(card,g));
+
+  const collapseBtn=card.querySelector('.child-collapse');
+  collapseBtn.onclick=()=>{
+    const collapsed=card.classList.toggle('user-collapsed');
+
+    if(collapsed){
+      collapseBtn.textContent='Otvori ponovo';
+
+      const nextCard=card.nextElementSibling;
+      let target=null;
+
+      if(nextCard && nextCard.classList.contains('child-card')){
+        target=nextCard;
+      }else{
+        const childrenSection=card.closest('.section');
+        let next=childrenSection ? childrenSection.nextElementSibling : null;
+        while(next && (!next.classList || !next.classList.contains('section'))){
+          next=next.nextElementSibling;
+        }
+        target=next;
+      }
+
+      if(target){
+        requestAnimationFrame(()=>{
+          const y=target.getBoundingClientRect().top + window.scrollY - 90;
+          window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
+        });
+      }
+    }else{
+      collapseBtn.textContent='Dalje';
+      requestAnimationFrame(()=>{
+        const y=card.getBoundingClientRect().top + window.scrollY - 80;
+        window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
+      });
+    }
+  };
   card.querySelector('.child-remove').onclick=()=>{card.remove(); renumberChildren();};
   card.querySelector('.add-grandchild').onclick=()=>addGrandchild(card);
   children.appendChild(card);
 }
 function renumberChildren(){[...children.children].forEach((c,i)=>c.querySelector('.child-head strong').textContent=`Dijete ${i+1}`)}
-document.getElementById('addChild').onclick=addChild;
-addChild();
+document.getElementById('addChild').onclick=()=>addChild();
+if(!editPublicId) addChild();
 
 function objFrom(prefix, scope=document){const o={};scope.querySelectorAll(`[data-${prefix}]`).forEach(e=>o[e.dataset[prefix]]=e.value.trim());return o;}
+
+function setNamed(form, name, value){
+  const e=form.querySelector(`[name="${name}"]`);
+  if(e) e.value=value??'';
+}
+function renderExistingFiles(mode){
+  const box=document.getElementById(mode+'ExistingFiles');
+  if(!box) return;
+  if(!editMode || !existingFiles.length){
+    box.style.display='none'; box.innerHTML=''; return;
+  }
+  box.style.display='block';
+  box.innerHTML=`<b>Već sačuvani prilozi (${existingFiles.length})</b><ul>${existingFiles.map(f=>`<li>${esc(f.original_name||f.name||'Fajl')} ${f.size?`<span class="subtle">(${formatFileSize(f.size)})</span>`:''}</li>`).join('')}</ul><div class="subtle">Novi fajlovi koje dodate biće pridruženi postojećima. Ukupno može biti najviše 10.</div>`;
+}
+function fillFamily(d){
+  switchMode('family');
+  const form=document.getElementById('familyForm');
+  setNamed(form,'submittedBy',d.submittedBy);
+  setNamed(form,'primaryRelationship',d.primaryRelationship);
+  for(const k of ['firstName','lastName','nickname','birthDate','birthPlace','deathDate','deathPlace']) setNamed(form,'father_'+k,(d.father||{})[k]);
+  for(const k of ['firstName','lastName','maidenName','nickname','birthDate','birthPlace','deathDate','deathPlace']) setNamed(form,'mother_'+k,(d.mother||{})[k]);
+  setNamed(form,'source',d.source);
+  setNamed(form,'notes',d.notes);
+  children.innerHTML=''; childCounter=0;
+  const kids=Array.isArray(d.children)?d.children:[];
+  kids.forEach(c=>addChild(c));
+  if(!kids.length) addChild();
+  updateTitle();
+}
+function fillPerson(d){
+  switchMode('person');
+  const form=document.getElementById('personForm');
+  for(const [k,v] of Object.entries(d)){
+    if(typeof v==='string') setNamed(form,k,v);
+  }
+
+  const p=d.partner||{};
+  setNamed(form,'partner_firstName',p.firstName);
+  setNamed(form,'partner_lastName',p.lastName);
+  setNamed(form,'partner_maidenName',p.maidenName);
+  setNamed(form,'partner_nickname',p.nickname);
+  setNamed(form,'partner_birthDate',p.birthDate);
+  setNamed(form,'partner_birthPlace',p.birthPlace);
+  setNamed(form,'partner_deathDate',p.deathDate);
+  setNamed(form,'partner_deathPlace',p.deathPlace);
+  setNamed(form,'partner_relationship',p.relationship);
+
+  personChildren.innerHTML='';
+  personChildCounter=0;
+  const kids=Array.isArray(d.children)?d.children:[];
+  kids.forEach(g=>addPersonChild(g));
+}
+function setupSectionCollapsing(){
+  document.querySelectorAll('form .section').forEach(section=>{
+    if(section.classList.contains('no-collapse')) return;
+    if(section.querySelector(':scope > .section-toggle')) return;
+    const h=section.querySelector(':scope > h2');
+    if(!h) return;
+
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='section-toggle';
+    btn.textContent='Dalje';
+    section.appendChild(btn);
+
+    btn.onclick=()=>{
+      const collapsed=section.classList.toggle('user-collapsed');
+
+      if(collapsed){
+        btn.textContent='Otvori ponovo';
+
+        // Sljedeća vidljiva sekcija istog obrasca.
+        let next=section.nextElementSibling;
+        while(next && (!next.classList || !next.classList.contains('section'))){
+          next=next.nextElementSibling;
+        }
+
+        if(next){
+          // Pozicioniraj tako da se vidi završena sekcija iznad,
+          // a sljedeća sekcija bude odmah u prvom planu.
+          requestAnimationFrame(()=>{
+            const y=next.getBoundingClientRect().top + window.scrollY - 90;
+            window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
+          });
+        }
+      }else{
+        btn.textContent='Dalje';
+        requestAnimationFrame(()=>{
+          const y=section.getBoundingClientRect().top + window.scrollY - 80;
+          window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
+        });
+      }
+    };
+  });
+}
+async function loadEditSubmission(){
+  if(!editPublicId) return;
+  try{
+    const r=await fetch('/api/receipt/'+encodeURIComponent(editPublicId));
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error||'Postojeći unos nije moguće otvoriti.');
+    editMode=true;
+    existingFiles=Array.isArray(j.files)?j.files:[];
+    document.getElementById('editBanner').style.display='block';
+    document.getElementById('newEntryBtn').textContent='Nazad na trajni pregled';
+    document.getElementById('familyBtn').disabled=true;
+    document.getElementById('personBtn').disabled=true;
+    if(j.payload?.type==='pojedinac') fillPerson(j.payload);
+    else fillFamily(j.payload||{});
+    renderExistingFiles(j.payload?.type==='pojedinac'?'person':'family');
+    currentReceiptUrl=`${location.origin}/receipt/${editPublicId}`;
+    document.title='Uredi postojeći porodični unos';
+  }catch(err){
+    document.getElementById('editBanner').style.display='block';
+    document.getElementById('editBanner').innerHTML=`<strong>Unos nije otvoren.</strong>${esc(err.message)}`;
+  }
+}
 function familyData(){
   const d={type:'porodica',title:document.getElementById('generatedTitle').textContent,submittedBy:val('submittedBy'),primaryRelationship:val('primaryRelationship'),father:{},mother:{},children:[],source:val('source'),notes:val('notes')};
   ['firstName','lastName','nickname','birthDate','birthPlace','deathDate','deathPlace'].forEach(k=>d.father[k]=val('father_'+k));
   ['firstName','lastName','maidenName','nickname','birthDate','birthPlace','deathDate','deathPlace'].forEach(k=>d.mother[k]=val('mother_'+k));
   [...children.children].forEach(card=>{const c=objFrom('c',card), s=objFrom('s',card);c.spouse=s;c.children=[];card.querySelectorAll('.grandchild').forEach(r=>{const g={};r.querySelectorAll('[data-g]').forEach(e=>g[e.dataset.g]=e.value.trim());c.children.push(g)});d.children.push(c)});return d;
 }
-function formToObject(form){const fd=new FormData(form),o={type:'pojedinac'};for(const [k,v] of fd.entries())o[k]=v;return o}
+function formToObject(form){
+  const fd=new FormData(form),o={type:'pojedinac'};
+  for(const [k,v] of fd.entries())o[k]=v;
+
+  o.partner={
+    firstName:o.partner_firstName||'',
+    lastName:o.partner_lastName||'',
+    maidenName:o.partner_maidenName||'',
+    nickname:o.partner_nickname||'',
+    birthDate:o.partner_birthDate||'',
+    birthPlace:o.partner_birthPlace||'',
+    deathDate:o.partner_deathDate||'',
+    deathPlace:o.partner_deathPlace||'',
+    relationship:o.partner_relationship||''
+  };
+  delete o.partner_firstName; delete o.partner_lastName; delete o.partner_maidenName; delete o.partner_nickname;
+  delete o.partner_birthDate; delete o.partner_birthPlace; delete o.partner_deathDate; delete o.partner_deathPlace; delete o.partner_relationship;
+
+  o.children=[];
+  [...personChildren.children].forEach(r=>{
+    const g={};
+    r.querySelectorAll('[data-pc]').forEach(e=>g[e.dataset.pc]=e.value.trim());
+    o.children.push(g);
+  });
+  return o;
+}
 function esc(v){return String(v??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]));}
 function shown(v){return v ? esc(v) : '<span class="empty">nije navedeno</span>';}
 function row(label,value){return `<div class="row"><div class="label">${esc(label)}</div><div>${shown(value)}</div></div>`;}
@@ -773,16 +1226,31 @@ function familyReport(d){
   return h;
 }
 function filesReport(mode){
-  const files=selectedFiles[mode]||[];
-  let h=`<h3>Priloženi dokumenti i fotografije (${files.length})</h3>`;
-  if(!files.length) return h+'<p class="empty">Nema priloženih fajlova.</p>';
+  const fresh=selectedFiles[mode]||[];
+  const old=editMode?existingFiles:[];
+  const total=old.length+fresh.length;
+  let h=`<h3>Priloženi dokumenti i fotografije (${total})</h3>`;
+  if(!total) return h+'<p class="empty">Nema priloženih fajlova.</p>';
   h+='<ul class="report-files">';
-  files.forEach(f=>h+=`<li><b>${esc(f.name)}</b> <span class="subtle">(${formatFileSize(f.size)})</span></li>`);
+  old.forEach(f=>h+=`<li><b>${esc(f.original_name||f.name||'Fajl')}</b> <span class="subtle">(već sačuvano${f.size?', '+formatFileSize(f.size):''})</span></li>`);
+  fresh.forEach(f=>h+=`<li><b>${esc(f.name)}</b> <span class="subtle">(${formatFileSize(f.size)})</span></li>`);
   return h+'</ul>';
 }
 function personReport(d){
   let h='<h3>Unos / dopuna pojedinca</h3>';
-  h+=row('Podatke šalje',d.submittedBy)+row('Ime',d.firstName)+row('Prezime',d.lastName)+row('Djevojačko prezime',d.maidenName)+row('Nadimak',d.nickname)+row('Datum rođenja',d.birthDate)+row('Mjesto rođenja',d.birthPlace)+row('Datum smrti',d.deathDate)+row('Mjesto smrti',d.deathPlace)+row('Otac',d.father)+row('Majka',d.mother)+row('Šta se dodaje ili ispravlja',d.correction)+row('Odakle je poznat podatak',d.source);
+  h+=row('Podatke šalje',d.submittedBy)+row('Ime',d.firstName)+row('Prezime',d.lastName)+row('Djevojačko prezime',d.maidenName)+row('Nadimak',d.nickname)+row('Datum rođenja',d.birthDate)+row('Mjesto rođenja',d.birthPlace)+row('Datum smrti',d.deathDate)+row('Mjesto smrti',d.deathPlace)+row('Otac',d.father)+row('Majka',d.mother);
+
+  const p=d.partner||{};
+  h+='<h3>Partner / supružnik</h3>';
+  h+=row('Ime',p.firstName)+row('Prezime',p.lastName)+row('Djevojačko prezime',p.maidenName)+row('Nadimak',p.nickname)+row('Datum rođenja',p.birthDate)+row('Mjesto rođenja',p.birthPlace)+row('Datum smrti',p.deathDate)+row('Mjesto smrti',p.deathPlace)+row('Vrsta veze',p.relationship);
+
+  const kids=Array.isArray(d.children)?d.children:[];
+  h+=`<h3>Djeca ovog para (${kids.length})</h3>`;
+  if(!kids.length) h+='<p class="empty">Nisu navedena djeca ovog para.</p>';
+  kids.forEach((g,j)=>{h+=`<div class="report-card"><strong>Dijete ${j+1}</strong>`+row('Ime i prezime',g.name)+row('Datum rođenja',g.birthDate)+row('Mjesto rođenja',g.birthPlace)+'</div>';});
+
+  h+='<h3>Dopuna i izvor</h3>';
+  h+=row('Šta se dodaje ili ispravlja',d.correction)+row('Odakle je poznat podatak',d.source);
   h+=filesReport('person');
   return h;
 }
@@ -823,13 +1291,16 @@ document.getElementById('sendBtn').onclick=async()=>{
   const uploadMode=currentPreview.type==='porodica'?'family':'person';
   for(const f of selectedFiles[uploadMode]) fd.append('files',f);
   try{
-    const r=await fetch('/api/submissions',{method:'POST',body:fd});
+    const endpoint=editMode?`/api/submissions/${encodeURIComponent(editPublicId)}/update`:'/api/submissions';
+    const r=await fetch(endpoint,{method:'POST',body:fd});
     const j=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(j.error||'Slanje nije uspjelo.');
     document.getElementById('previewBox').style.display='none';
     document.getElementById('receiptBox').style.display='block';
     currentReceiptUrl=`${location.origin}/receipt/${j.publicId}`;
-    document.getElementById('receiptText').innerHTML=`Sačuvano kao odgovor #${j.id}: <b>${esc(j.title)}</b>.<br>Ovaj unos ima svoj trajni link. Možete ga sačuvati, kopirati ili spremiti kao PDF.`;
+    document.getElementById('receiptText').innerHTML=editMode
+      ? `Izmjene su sačuvane u odgovoru #${j.id}: <b>${esc(j.title)}</b>.<br><b>Privatni trajni link ostao je isti.</b> Preko njega se ovaj unos može ponovo uređivati.`
+      : `Sačuvano kao odgovor #${j.id}: <b>${esc(j.title)}</b>.<br>Ovaj unos ima svoj privatni trajni link. Sačuvajte ga: preko njega se podaci mogu kasnije ponovo otvoriti i dopuniti.`;
     document.getElementById('receiptReport').innerHTML=currentPreview.type==='porodica'?familyReport(currentPreview):personReport(currentPreview);
     document.getElementById('receiptActionStatus').textContent='';
     document.getElementById('receiptBox').scrollIntoView({behavior:'smooth'});
@@ -843,7 +1314,9 @@ document.getElementById('copyReceiptBtn').onclick=async()=>{
 };
 document.getElementById('openReceiptBtn').onclick=()=>{ if(currentReceiptUrl) location.href=currentReceiptUrl; };
 document.getElementById('printReceiptBtn').onclick=()=>{ if(currentReceiptUrl) window.open(currentReceiptUrl+'?print=1','_blank','noopener'); };
-document.getElementById('newEntryBtn').onclick=()=>location.reload();
+document.getElementById('newEntryBtn').onclick=()=>{ location.href=editMode&&currentReceiptUrl?currentReceiptUrl:'/'; };
+setupSectionCollapsing();
+loadEditSubmission();
 </script>
 </body>
 </html>
