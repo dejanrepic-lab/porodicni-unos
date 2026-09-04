@@ -8,5 +8,11 @@ const links = `  <link rel="manifest" href="/manifest.webmanifest">\n  <meta nam
 
 if (!html.includes('rel="manifest"')) {
   html = html.replace('</head>', `${links}</head>`);
-  fs.writeFileSync(indexPath, html, 'utf8');
 }
+
+html = html.replace(
+  /Porodični unos v2\.12\.1[^<]*/,
+  'Porodični unos v2.12.2 – dodane app ikone, favicon i PWA manifest.'
+);
+
+fs.writeFileSync(indexPath, html, 'utf8');
