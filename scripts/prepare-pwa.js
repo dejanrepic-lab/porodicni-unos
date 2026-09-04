@@ -11,18 +11,15 @@ if (!html.includes('rel="manifest"')) {
   html = html.replace('</head>', `${links}</head>`);
 }
 html = html.replace(
-  /Porodični unos v2\.12\.\d+[^<]*/,
-  'Porodični unos v2.12.3 – ista app ikona i na javnom unosu i u admin panelu.'
+  /Porodični unos v2\.12\.[0-9]+[^<]*/,
+  'Porodični unos v2.12.3 – ista app ikona na javnom unosu i admin panelu.'
 );
 fs.writeFileSync(indexPath, html, 'utf8');
 
 let server = fs.readFileSync(serverPath, 'utf8');
 const adminNeedle = '<title>${esc(title)}</title><style>';
-const adminReplacement = `<title>${esc(title)}</title>\n${links}<style>`;
-if (!server.includes('admin-shell-pwa-icon')) {
-  server = server.replace(
-    adminNeedle,
-    `<!-- admin-shell-pwa-icon -->\n${adminReplacement}`
-  );
+const adminReplacement = '<title>${esc(title)}</title>\n' + links + '<style>';
+if (!server.includes('<title>${esc(title)}</title>\n  <link rel="manifest"')) {
+  server = server.replace(adminNeedle, adminReplacement);
 }
 fs.writeFileSync(serverPath, server, 'utf8');
