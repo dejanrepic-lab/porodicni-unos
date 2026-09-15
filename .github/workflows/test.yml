@@ -1,0 +1,59 @@
+name: Test application
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Syntax check
+        run: node --check server.js
+
+      - name: Build Docker image
+        run: docker build -t porodicni-unos:ci .
+
+      - name: Start application
+        run: |
+          docker run -d --rm \
+            --name porodicni-unos-ci \
+            -p 8787:8787 \
+            -e PORT=8787 \
+            -e DATA_DIR=/app/data \
+            -e ADMIN_USER=admin \
+            -e ADMIN_PASSWORD=ci-test-password \
+            -e ADMIN_SESSION_SECRET=ci-session-secret \
+            porodicni-unos:ci
+
+      - name: Smoke test HTTP
+        run: |
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:8787/ >/tmp/porodicni-home.html; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs porodicni-unos-ci
+          exit 1
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs porodicni-unos-ci || true
+
+      - name: Stop application
+        if: always()
+        run: docker rm -f porodicni-unos-ci || true
