@@ -27,9 +27,9 @@ jobs:
       - name: Syntax check
         run: |
           node --check server.js
-          node --check lib/database.js
-          node --check test/database.test.js
-          node --check test/app-flow.test.js
+          for file in lib/*.js scripts/*.js test/*.js; do
+            node --check "$file"
+          done
 
       - name: Run regression tests
         run: npm test
