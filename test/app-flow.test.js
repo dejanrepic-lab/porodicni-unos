@@ -19,7 +19,7 @@ async function waitForHealth(baseUrl) {
   throw lastError || new Error('Application did not become healthy');
 }
 
-test('submission can be created, read and updated through the real HTTP server', async (t) => {
+test('submission flow and admin authentication work through the real HTTP server', async (t) => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'porodicni-flow-'));
   const port = 19000 + (process.pid % 1000);
   const baseUrl = `http://127.0.0.1:${port}`;
@@ -92,4 +92,49 @@ test('submission can be created, read and updated through the real HTTP server',
   const updatedReceipt = await updatedReceiptResponse.json();
   assert.equal(updatedReceipt.title, 'Test Osoba izmjena');
   assert.ok(updatedReceipt.updated_at);
+
+  const anonymousAdmin = await fetch(`${baseUrl}/admin`, { redirect: 'manual' });
+  assert.equal(anonymousAdmin.status, 302);
+  assert.equal(anonymousAdmin.headers.get('location'), '/admin/login?next=%2Fadmin');
+
+  const wrongLogin = await fetch(`${baseUrl}/admin/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      username: 'admin',
+      password: 'wrong-password',
+      next: '/admin',
+    }),
+    redirect: 'manual',
+  });
+  assert.equal(wrongLogin.status, 401);
+
+  const login = await fetch(`${baseUrl}/admin/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      username: 'admin',
+      password: 'test-admin-password',
+      next: '/admin',
+    }),
+    redirect: 'manual',
+  });
+  assert.equal(login.status, 302);
+  assert.equal(login.headers.get('location'), '/admin');
+
+  const setCookie = login.headers.get('set-cookie') || '';
+  assert.match(setCookie, /porodicni_admin=/);
+  assert.match(setCookie, /HttpOnly/i);
+  assert.match(setCookie, /SameSite=Lax/i);
+  assert.match(setCookie, /Path=\/admin/i);
+  const sessionCookie = setCookie.split(';')[0];
+
+  const authenticatedAdmin = await fetch(`${baseUrl}/admin`, {
+    headers: { cookie: sessionCookie },
+    redirect: 'manual',
+  });
+  assert.equal(authenticatedAdmin.status, 200);
+  const adminPage = await authenticatedAdmin.text();
+  assert.match(adminPage, /Primljeni odgovori/);
+  assert.match(adminPage, /Test Osoba izmjena/);
 });
