@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
-const Database = require('better-sqlite3');
+const { initializeDatabase } = require('./lib/database');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -14,7 +14,6 @@ app.use((req, res, next) => {
 const PORT = Number(process.env.PORT || 8787);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
-const DB_PATH = path.join(DATA_DIR, 'porodicni-unos.db');
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'promijeni-me';
 const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || crypto.randomBytes(32).toString('hex');
@@ -29,64 +28,7 @@ const NEXTCLOUD_ACCESS_TOKEN = process.env.NEXTCLOUD_ACCESS_TOKEN || '';
 const MAX_UPLOAD_MB = Math.max(1, Number(process.env.MAX_UPLOAD_MB || 15));
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-db.exec(`
-CREATE TABLE IF NOT EXISTS submissions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  public_id TEXT NOT NULL UNIQUE,
-  type TEXT NOT NULL,
-  title TEXT NOT NULL,
-  submitted_by TEXT,
-  payload_json TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'novo',
-  created_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS attachments (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  submission_id INTEGER NOT NULL,
-  original_name TEXT NOT NULL,
-  stored_name TEXT NOT NULL,
-  mime_type TEXT,
-  size INTEGER NOT NULL,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY(submission_id) REFERENCES submissions(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_submissions_created ON submissions(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_attachments_submission ON attachments(submission_id);
-`);
-
-db.exec(`
-CREATE TABLE IF NOT EXISTS submission_history (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  submission_id INTEGER NOT NULL,
-  public_id TEXT NOT NULL,
-  payload_json TEXT NOT NULL,
-  title TEXT,
-  submitted_by TEXT,
-  saved_at TEXT NOT NULL DEFAULT (datetime('now')),
-  FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_submission_history_submission_id
-  ON submission_history(submission_id);
-`);
-
-try { db.exec(`ALTER TABLE submission_history ADD COLUMN changed_by TEXT`); } catch {}
-try { db.exec(`ALTER TABLE submission_history ADD COLUMN changed_via TEXT`); } catch {}
-
-
-
-// v2.3 migracija: postojeće baze dobijaju vrijeme posljednje izmjene.
-try {
-  const cols = db.prepare(`PRAGMA table_info(submissions)`).all().map(c => c.name);
-  if (!cols.includes('updated_at')) {
-    db.exec(`ALTER TABLE submissions ADD COLUMN updated_at TEXT`);
-  }
-} catch (e) {
-  console.error('Ne mogu izvršiti migraciju updated_at:', e);
-}
-
+const db = initializeDatabase(DATA_DIR);
 
 function esc(v='') {
   return String(v).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
@@ -142,7 +84,6 @@ function verifyFormAccess(token='') {
   }
 }
 function formAccessRequired(req, res, next) {
-  // Ako šifra nije podešena, forma ostaje otvorena.
   if (!FORM_ACCESS_PASSWORD) return next();
   const token = parseCookies(req)[FORM_COOKIE];
   if (verifyFormAccess(token)) return next();
@@ -156,7 +97,6 @@ function adminAuth(req, res, next) {
   const nextUrl = encodeURIComponent(req.originalUrl || '/admin');
   return res.redirect(`/admin/login?next=${nextUrl}`);
 }
-
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
@@ -182,9 +122,6 @@ app.get('/', formAccessRequired, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-
-
-
 function grantFormAccess(req, res) {
   const formToken = signFormAccess();
   const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
@@ -205,9 +142,6 @@ function grantFormAccessAndRedirect(req, res) {
   res.redirect('/');
 }
 
-
-// Trajni kratki link namijenjen kopiranju u više Nextcloud foldera.
-// Ko ima ovaj URL dobija isti pristup javnoj formi kao nakon unosa porodične šifre.
 app.get('/porodica', (req, res) => {
   grantFormAccessAndRedirect(req, res);
 });
@@ -310,7 +244,6 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-
 const submitBuckets = new Map();
 function submitRateLimit(req, res, next) {
   const now = Date.now();
@@ -327,7 +260,6 @@ function submitRateLimit(req, res, next) {
   bucket.push(now);
   submitBuckets.set(ip, bucket);
 
-  // Povremeno očisti stare IP zapise.
   if (submitBuckets.size > 5000) {
     for (const [key, list] of submitBuckets) {
       const fresh = list.filter(ts => now - ts < windowMs);
@@ -368,8 +300,6 @@ app.post('/api/submissions', formAccessRequired, submitRateLimit, upload.array('
   }
 });
 
-
-
 app.get('/edit/:publicId', formAccessRequired, (req, res) => {
   const row = db.prepare(`SELECT public_id FROM submissions WHERE public_id=?`).get(req.params.publicId);
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
@@ -403,22 +333,21 @@ app.post('/api/submissions/:publicId/update', formAccessRequired, submitRateLimi
 
   try {
     const tx = db.transaction(() => {
-      
-  db.prepare(`
-    INSERT INTO submission_history
-      (submission_id, public_id, payload_json, title, submitted_by, changed_by, changed_via)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    existing.id,
-    existing.public_id,
-    existing.payload_json,
-    existing.title || '',
-    existing.submitted_by || '',
-    changedBy,
-    'private_link'
-  );
+      db.prepare(`
+        INSERT INTO submission_history
+          (submission_id, public_id, payload_json, title, submitted_by, changed_by, changed_via)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        existing.id,
+        existing.public_id,
+        existing.payload_json,
+        existing.title || '',
+        existing.submitted_by || '',
+        changedBy,
+        'private_link'
+      );
 
-db.prepare(`UPDATE submissions SET title=?, submitted_by=?, payload_json=?, status='novo', updated_at=? WHERE id=?`)
+      db.prepare(`UPDATE submissions SET title=?, submitted_by=?, payload_json=?, status='novo', updated_at=? WHERE id=?`)
         .run(title, submittedBy, JSON.stringify(payload), now, existing.id);
 
       const currentCount = Number(db.prepare(`SELECT COUNT(*) AS c FROM attachments WHERE submission_id=?`).get(existing.id).c || 0);
@@ -457,9 +386,6 @@ app.get('/receipt/:publicId', (req, res) => {
   const row = db.prepare(`SELECT public_id,type,title,submitted_by,payload_json,created_at,updated_at FROM submissions WHERE public_id=?`).get(req.params.publicId);
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
 
-  // Važeći privatni link je pristupni ključ za ovaj unos.
-  // Nakon provjere public_id postavljamo standardni cookie za pristup formi,
-  // pa korisnik može otvoriti i uređivanje bez ponovnog unošenja zajedničke šifre.
   grantFormAccess(req, res);
   const payload = JSON.parse(row.payload_json);
   const files = db.prepare(`SELECT original_name,size FROM attachments WHERE submission_id=(SELECT id FROM submissions WHERE public_id=?) ORDER BY id`).all(req.params.publicId);
@@ -490,10 +416,7 @@ app.get('/api/receipt/:publicId', formAccessRequired, (req, res) => {
   res.json({ ...row, payload: JSON.parse(row.payload_json), payload_json: undefined, files });
 });
 
-
-
 app.get('/admin/user-mode', adminAuth, (req, res) => {
-  // Admin može direktno u korisnički prikaz bez ponovnog unošenja porodične šifre.
   if (FORM_ACCESS_PASSWORD) {
     const token = signFormAccess();
     const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
@@ -695,7 +618,6 @@ app.get('/admin', adminAuth, (req, res) => {
   `));
 });
 
-
 app.get('/admin/submissions/:id/download.txt', adminAuth, (req, res) => {
   const row = db.prepare(`SELECT * FROM submissions WHERE id=?`).get(req.params.id);
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
@@ -723,8 +645,6 @@ app.get('/admin/submissions/:id/download.txt', adminAuth, (req, res) => {
 
 app.get('/admin/submissions/:id', adminAuth, (req, res) => {
   const row = db.prepare(`SELECT * FROM submissions WHERE id=?`).get(req.params.id);
-
-
   if (!row) return res.status(404).send('Odgovor nije pronađen.');
   const historyRows = db.prepare(`
     SELECT id,payload_json,title,submitted_by,changed_by,changed_via,saved_at
@@ -742,7 +662,6 @@ app.get('/admin/submissions/:id', adminAuth, (req, res) => {
   const archived = row.status === 'arhivirano';
   res.send(adminShell(`#${row.id} – ${esc(row.title)}`, `
     <div class="toolbar"><div><a href="/admin${archived?'?view=archived':''}">← ${archived?'Arhiva':'Aktivni odgovori'}</a><h1>${esc(row.title)}</h1></div>
-      
       ${historyRows.length ? `
       <section class="admin-change-panel">
         <div class="change-title-row">
@@ -1074,14 +993,12 @@ function renderPayload(d={}) {
 function publicShell(title, body) {
   return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
   body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#1f2937;margin:0}.wrap{max-width:900px;margin:auto;padding:16px}.card,.report section{background:#fff;border:1px solid #dfe5ee;border-radius:14px;padding:15px;margin:12px 0}.muted{color:#667085}.report h2{margin-top:24px}.report h3{margin-top:0}.r{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #eef1f5}.r:last-child{border-bottom:0}.r i{color:#98a2b3}.receipt-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.btn{border:0;background:#245ec7;color:#fff;padding:10px 13px;border-radius:9px;font-weight:700;cursor:pointer}.btn.secondary{background:#eef2f6;color:#1f2937}@media(max-width:700px){.r{grid-template-columns:1fr;gap:2px}.wrap{padding:10px}}@media print{body{background:#fff}.wrap{max-width:none;padding:0}.no-print{display:none!important}.card,.report section{box-shadow:none;break-inside:avoid;border-color:#bbb}.report section{page-break-inside:avoid}}
-  
-.login-wrap{min-height:70vh;display:grid;place-items:center;padding:28px 16px}
-.login-card{width:min(440px,100%);background:#fff;border:1px solid #dde5ee;border-radius:18px;padding:24px;box-shadow:0 12px 36px rgba(15,23,42,.08)}
-.login-card h1{margin-top:0}
-.login-card label{display:block;font-weight:700;margin:14px 0 6px}
-.login-card input{width:100%;box-sizing:border-box;padding:12px 13px;border:1px solid #cfd8e3;border-radius:10px;font-size:16px}
-.login-card .btn{margin-top:18px;width:100%}
-
+  .login-wrap{min-height:70vh;display:grid;place-items:center;padding:28px 16px}
+  .login-card{width:min(440px,100%);background:#fff;border:1px solid #dde5ee;border-radius:18px;padding:24px;box-shadow:0 12px 36px rgba(15,23,42,.08)}
+  .login-card h1{margin-top:0}
+  .login-card label{display:block;font-weight:700;margin:14px 0 6px}
+  .login-card input{width:100%;box-sizing:border-box;padding:12px 13px;border:1px solid #cfd8e3;border-radius:10px;font-size:16px}
+  .login-card .btn{margin-top:18px;width:100%}
 </style></head><body><div class="wrap">${body}</div>
 </body></html>`;
 }
@@ -1168,7 +1085,6 @@ function renderHistoryDiff(changes) {
 function adminShell(title, body) {
   return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
   body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#1f2937;margin:0}.wrap{max-width:1100px;margin:auto;padding:20px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}a{color:#245ec7}.btn{display:inline-block;border:0;background:#245ec7;color:#fff;text-decoration:none;padding:10px 13px;border-radius:9px;font-weight:700;cursor:pointer}.btn.secondary{background:#eef2f6;color:#1f2937}.btn.danger{background:#b42318}.admin-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-actions form{margin:0}.admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}.tab{display:inline-block;padding:8px 11px;border-radius:999px;background:#eef2f6;text-decoration:none;color:#344054;font-weight:700}.tab.active{background:#245ec7;color:#fff}.muted{color:#667085}.tablewrap{overflow:auto;background:#fff;border:1px solid #dfe5ee;border-radius:14px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #eef1f5}th{background:#f8fafc}.status{padding:4px 8px;border-radius:999px;background:#eef2f6}.status.obradjeno{background:#dcfae6;color:#067647}.status.arhivirano{background:#f2f4f7;color:#475467}.report section{background:#fff;border:1px solid #dfe5ee;border-radius:13px;padding:14px;margin:12px 0}.report h2{margin-top:24px}.report h3{margin-top:0}.r{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #eef1f5}.r:last-child{border-bottom:0}.r i{color:#98a2b3}@media(max-width:700px){.r{grid-template-columns:1fr;gap:2px}.wrap{padding:12px}}
-  
     .edited-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;background:#fff3cd;color:#7a5a00;border:1px solid #f0d98a;vertical-align:middle}
     .admin-change-panel{margin:18px 0;padding:16px;border:1px solid #dbe4ef;border-radius:14px;background:#f8fbff}
     .change-title-row{display:flex;gap:10px;align-items:center;justify-content:space-between}
@@ -1183,7 +1099,6 @@ function adminShell(title, body) {
     .change-values{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:#475467}
     .change-arrow{font-weight:800;color:#98a2b3}
     .change-empty{margin-top:10px;color:#667085}
-
     .admin-search{display:flex;gap:8px;align-items:center;margin:12px 0 14px}
     .admin-search input[type="search"]{min-width:280px;max-width:520px;flex:1;padding:10px 12px;border:1px solid #d0d7e2;border-radius:10px;background:#fff;color:#1f2937}
     .admin-search input[type="search"]:focus{outline:2px solid #9cc5ff;outline-offset:1px;border-color:#6aa7ef}
