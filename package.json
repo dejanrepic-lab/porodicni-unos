@@ -5,7 +5,7 @@
   "description": "Jednostavan javni unos porodicnih podataka za naknadni unos u Gramps.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node scripts/start.js",
     "test": "node --test",
     "data:check": "node scripts/check-data.js",
     "data:backup": "node scripts/backup-data.js"
