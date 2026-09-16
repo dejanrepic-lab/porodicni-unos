@@ -81,3 +81,51 @@ test('database bootstrap upgrades a legacy schema without losing rows', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('database bootstrap refuses an existing database with foreign-key corruption', () => {
+  const dir = tempDir();
+  const dbPath = path.join(dir, 'porodicni-unos.db');
+  try {
+    const broken = new Database(dbPath);
+    broken.exec(`
+      PRAGMA foreign_keys = OFF;
+      CREATE TABLE submissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        public_id TEXT NOT NULL UNIQUE,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        submitted_by TEXT,
+        payload_json TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'novo',
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        submission_id INTEGER NOT NULL,
+        original_name TEXT NOT NULL,
+        stored_name TEXT NOT NULL,
+        mime_type TEXT,
+        size INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(submission_id) REFERENCES submissions(id) ON DELETE CASCADE
+      );
+    `);
+    broken.prepare(`INSERT INTO attachments
+      (submission_id,original_name,stored_name,mime_type,size,created_at)
+      VALUES (?,?,?,?,?,?)`)
+      .run(999, 'orphan.pdf', 'orphan.pdf', 'application/pdf', 10, new Date().toISOString());
+    broken.close();
+
+    assert.throws(
+      () => initializeDatabase(dir),
+      /foreign-key grešaka/,
+    );
+
+    const inspect = new Database(dbPath, { readonly: true });
+    assert.equal(inspect.prepare('SELECT COUNT(*) AS count FROM attachments').get().count, 1);
+    assert.equal(columnNames(inspect, 'submissions').includes('updated_at'), false);
+    inspect.close();
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
