@@ -15,15 +15,21 @@ function columnNames(db, table) {
   return db.prepare(`PRAGMA table_info(${table})`).all().map((row) => row.name);
 }
 
+function indexNames(db, table) {
+  return db.prepare(`PRAGMA index_list(${table})`).all().map((row) => row.name);
+}
+
 test('database bootstrap creates the current schema and is idempotent', () => {
   const dir = tempDir();
   try {
     let db = initializeDatabase(dir);
     assert.equal(db.pragma('journal_mode', { simple: true }), 'wal');
     assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
+    assert.equal(db.pragma('busy_timeout', { simple: true }), 10000);
     assert.ok(columnNames(db, 'submissions').includes('updated_at'));
     assert.ok(columnNames(db, 'submission_history').includes('changed_by'));
     assert.ok(columnNames(db, 'submission_history').includes('changed_via'));
+    assert.ok(indexNames(db, 'submissions').includes('idx_submissions_status_activity'));
 
     db.prepare(`INSERT INTO submissions
       (public_id,type,title,submitted_by,payload_json,status,created_at)
@@ -33,6 +39,8 @@ test('database bootstrap creates the current schema and is idempotent', () => {
 
     db = initializeDatabase(dir);
     assert.equal(db.prepare('SELECT title FROM submissions WHERE public_id=?').get('keep-me').title, 'Test porodica');
+    assert.equal(db.pragma('busy_timeout', { simple: true }), 10000);
+    assert.ok(indexNames(db, 'submissions').includes('idx_submissions_status_activity'));
     db.close();
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -75,6 +83,7 @@ test('database bootstrap upgrades a legacy schema without losing rows', () => {
     assert.ok(columnNames(db, 'submissions').includes('updated_at'));
     assert.ok(columnNames(db, 'submission_history').includes('changed_by'));
     assert.ok(columnNames(db, 'submission_history').includes('changed_via'));
+    assert.ok(indexNames(db, 'submissions').includes('idx_submissions_status_activity'));
     assert.equal(db.prepare('SELECT title FROM submissions WHERE public_id=?').get('legacy-row').title, 'Stari unos');
     db.close();
   } finally {
