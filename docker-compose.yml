@@ -4,12 +4,20 @@ services:
     container_name: porodicni-unos
     restart: unless-stopped
     ports:
-      - "8787:8787"
+      - "${PORT:-8787}:8787"
     environment:
       PORT: "8787"
       DATA_DIR: "/app/data"
-      ADMIN_USER: "admin"
-      ADMIN_PASSWORD: "PROMIJENI-OVU-LOZINKU"
-      MAX_UPLOAD_MB: "15"
+      TZ: "${TZ:-Europe/Vienna}"
+      ADMIN_USER: "${ADMIN_USER:-admin}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}"
+      ADMIN_SESSION_SECRET: "${ADMIN_SESSION_SECRET:-}"
+      ADMIN_SESSION_HOURS: "${ADMIN_SESSION_HOURS:-12}"
+      FORM_ACCESS_PASSWORD: "${FORM_ACCESS_PASSWORD:-}"
+      FORM_ACCESS_DAYS: "${FORM_ACCESS_DAYS:-7}"
+      FORM_COOKIE_SECRET: "${FORM_COOKIE_SECRET:-}"
+      MAX_UPLOAD_MB: "${MAX_UPLOAD_MB:-15}"
+      SUBMIT_RATE_LIMIT: "${SUBMIT_RATE_LIMIT:-5}"
+      NEXTCLOUD_ACCESS_TOKEN: "${NEXTCLOUD_ACCESS_TOKEN:-}"
     volumes:
-      - ./data:/app/data
+      - "${DATA_PATH:-./data}:/app/data"
