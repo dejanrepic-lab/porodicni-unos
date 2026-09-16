@@ -6,7 +6,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "data:check": "node scripts/check-data.js",
+    "data:backup": "node scripts/backup-data.js"
   },
   "engines": {
     "node": ">=20"
