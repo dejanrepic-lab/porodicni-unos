@@ -8,7 +8,8 @@
     "start": "node scripts/start.js",
     "test": "node --test",
     "data:check": "node scripts/check-data.js",
-    "data:backup": "node scripts/backup-data.js"
+    "data:backup": "node scripts/backup-data.js",
+    "data:restore": "node scripts/restore-data.js"
   },
   "engines": {
     "node": ">=20"
