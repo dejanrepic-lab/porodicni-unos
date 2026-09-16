@@ -18,6 +18,7 @@ COPY package*.json ./
 RUN npm install --omit=dev
 
 COPY server.js ./
+COPY lib ./lib
 COPY public ./public
 COPY scripts ./scripts
 COPY --from=icon-builder /icons/icon-192.png ./public/icons/icon-192.png
