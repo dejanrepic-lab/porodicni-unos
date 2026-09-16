@@ -60,6 +60,24 @@ jobs:
           docker logs porodicni-unos-ci
           exit 1
 
+      - name: Verify container healthcheck
+        run: |
+          for attempt in {1..20}; do
+            status="$(docker inspect --format '{{.State.Health.Status}}' porodicni-unos-ci)"
+            if [ "$status" = "healthy" ]; then
+              exit 0
+            fi
+            if [ "$status" = "unhealthy" ]; then
+              docker inspect --format '{{json .State.Health}}' porodicni-unos-ci
+              docker logs porodicni-unos-ci
+              exit 1
+            fi
+            sleep 1
+          done
+          docker inspect --format '{{json .State.Health}}' porodicni-unos-ci
+          docker logs porodicni-unos-ci
+          exit 1
+
       - name: Show container logs on failure
         if: failure()
         run: docker logs porodicni-unos-ci || true
