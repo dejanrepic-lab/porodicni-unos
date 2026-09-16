@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
+const Database = require('better-sqlite3');
 
 async function waitForHealth(baseUrl) {
   let lastError;
@@ -92,6 +93,21 @@ test('submission flow and admin authentication work through the real HTTP server
   const updatedReceipt = await updatedReceiptResponse.json();
   assert.equal(updatedReceipt.title, 'Test Osoba izmjena');
   assert.ok(updatedReceipt.updated_at);
+
+  const database = new Database(path.join(dataDir, 'porodicni-unos.db'), { readonly: true });
+  const history = database.prepare(`
+    SELECT payload_json,title,submitted_by,changed_by,changed_via
+    FROM submission_history
+    WHERE public_id=?
+    ORDER BY id
+  `).all(created.publicId);
+  database.close();
+  assert.equal(history.length, 1);
+  assert.equal(history[0].title, 'Test Osoba');
+  assert.equal(history[0].submitted_by, 'CI');
+  assert.equal(history[0].changed_by, 'CI');
+  assert.equal(history[0].changed_via, 'private_link');
+  assert.equal(JSON.parse(history[0].payload_json).title, 'Test Osoba');
 
   const anonymousAdmin = await fetch(`${baseUrl}/admin`, { redirect: 'manual' });
   assert.equal(anonymousAdmin.status, 302);
