@@ -857,6 +857,21 @@ button:active{
   }
 }
 
+
+/* Additional branch actions participate in the card layout, including when collapsed. */
+.branch-child-notes{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.branch-child-notes summary{cursor:pointer;line-height:1.45;font-weight:700}
+.branch-child-notes .field{margin-top:10px}
+.child-card > .branch-child-actions{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px}
+.child-card > .branch-child-actions > .child-collapse,
+.child-card > .branch-child-actions > .branch-continue{flex:1 1 230px;min-width:0;max-width:100%;margin:0;white-space:normal;overflow-wrap:anywhere;line-height:1.4;text-align:center}
+.branch-child-actions .branch-continue{display:flex;align-items:center;justify-content:center;text-decoration:none}
+.child-card.user-collapsed > .branch-child-actions{display:flex !important}
+@media(max-width:700px){
+ .child-card > .branch-child-actions{flex-direction:column}
+ .child-card > .branch-child-actions > .child-collapse,
+ .child-card > .branch-child-actions > .branch-continue{flex:auto;width:100%}
+}
 </style>
 </head>
 <body>
