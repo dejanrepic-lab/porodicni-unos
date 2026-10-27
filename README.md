@@ -461,3 +461,7 @@ Rođak može na svojoj stranici označiti da je završio obradu; administrator z
 Na listi i u detalju linka prikazuje se početna porodica i dostupni Gramps ID-ovi. Detalji najprije izdvajaju posljednju stvarnu promjenu, a zatim sve promjene od pripreme. Uz osobu se prikazuje put od početne porodice i roditelji, kada su poznati; naziv osobe otvara njene podatke.
 
 U admin pregledu porodično stablo označava izmijenjene osobe, nove osobe i grane sa promjenama. Oznake blago pulsiraju; kretanje se isključuje ako korisnik ima podešenu opciju smanjenog kretanja. Prečice i dugmad „Prethodna” / „Sljedeća” vode kroz promijenjene osobe i porodice; odabirom se otvaraju konkretni podaci, odnosno članovi porodice. Tekstualni izvještaj ostaje dostupan u sklopljenom dijelu.
+
+Kada administrator označi obradu pregledanom, oznake prestaju i sljedeći pregled ističe samo promjene nakon te tačke. Potpuni izvještaj prema podacima iz Grampsa i istorija ostaju dostupni.
+
+Osoba dodana putem linka može se ukloniti na njenom obrascu uz potvrdu; njene veze iz linka se uklanjaju. Podaci iz Grampsa ostaju nepromijenjeni i osobe iz izvornog uvoza ne mogu se obrisati. Uklanjanje je zaustavljeno ako bi djeca ostala bez jedinog upisanog roditelja.
