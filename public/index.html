@@ -1065,7 +1065,9 @@ button:active{
   <p class="footer-note">Porodični unos v2.12.1 – usklađeni dinamički nazivi para u karticama djece.</p>
 </div>
 <div id="toast" class="toast"></div>
+<!-- BRANCH_FORM_BOOT -->
 <script>
+const branchFormMode = Boolean(document.getElementById('branch-boot'));
 let childCounter = 0;
 const children = document.getElementById('children');
 const editPublicId = new URLSearchParams(location.search).get('edit') || '';
@@ -1104,7 +1106,7 @@ function updateSenderLabelForEditMode(isEditing){
     el.textContent = isEditing ? 'Podatke šalje / doradu vrši' : 'Ko šalje podatke?';
   });
 }
-let editMode = false;
+let editMode = branchFormMode;
 let existingFiles = [];
 const DRAFT_KEY = 'porodicni_unos_draft_v26';
 let draftTimer = null;
@@ -1705,7 +1707,7 @@ function familyReport(d){
   let h=`<h3>Porodica: ${shown(d.title && !d.title.startsWith('—') ? d.title : '')}</h3>`;
   h+=row('Podatke šalje',d.submittedBy);
   h+=`<h3>Osnovna porodica${d.primaryRelationship ? ' · '+esc(d.primaryRelationship) : ''}</h3>`;
-  h+=personBlock('Otac',d.father,false)+personBlock('Majka',d.mother,true);
+  h+=personBlock(branchFormMode?'Prva osoba':'Otac',d.father,false)+personBlock(branchFormMode?'Partner / supružnik':'Majka',d.mother,true);
 
   // Prvo čist spisak sve djece osnovnog para — praktično za unos u Gramps.
   h+=`<h3>Spisak djece osnovne porodice (${d.children.length})</h3>`;
@@ -1833,8 +1835,10 @@ document.getElementById('newEntryBtn').onclick=()=>{
 };
 setupSectionCollapsing();
 bindDraftAutosave();
-offerSavedDraft();
-loadEditSubmission();
+if(!branchFormMode){
+  offerSavedDraft();
+  loadEditSubmission();
+}
 
 updateSenderLabelForEditMode(new URLSearchParams(location.search).has('edit'));
 
