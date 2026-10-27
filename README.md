@@ -457,3 +457,5 @@ pripremljenim linkovima bez ponovnog uvoza i bez promjene sačuvanih podataka.
 U admin pregledu linkova vide se otvorenost linka, status obrade, broj novih i izmijenjenih osoba i porodica, zadnje čuvanje i ime koje je uneseno uz izmjenu. Detalji linka prikazuju trenutne razlike u odnosu na podatke pripremljene iz Grampsa te istoriju čuvanja.
 
 Rođak može na svojoj stranici označiti da je završio obradu; administrator zatim može označiti prijedloge kao pregledane. Nova izmjena nakon završetka ili pregleda vraća status na „U toku”. Oznaka pregledano ne prenosi podatke u Gramps. Podaci i statusi čuvaju se u postojećoj bazi; tabela za statuse stvara se automatski pri pokretanju. Imena unosilaca su upisana ručno i nisu potvrđeni nalozi.
+
+Na listi i u detalju linka prikazuje se početna porodica i dostupni Gramps ID-ovi. Detalji najprije izdvajaju posljednju stvarnu promjenu, a zatim sve promjene od pripreme. Uz osobu se prikazuje put od početne porodice i roditelji, kada su poznati; naziv osobe otvara njene podatke.
