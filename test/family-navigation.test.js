@@ -20,3 +20,15 @@ test('finds the route from the selected root to descendants and partners without
  assert.deepEqual(personPath(branch,'s').map(p=>p.id),['p','c','s']);
  assert.deepEqual(personPath(branch,'missing'),[]);
 });
+
+test('marks changed people and multiple family branches, without changing the relative view',()=>{
+ const people=[{id:'root',name:'Početak'},...Array.from({length:5},(_,i)=>({id:`p${i}`,name:`Osoba ${i}`}))];
+ const families=[{id:'rootFamily',parents:['root'],children:people.slice(1).map(p=>p.id)},...people.slice(1).map((p,i)=>({id:`f${i}`,parents:[p.id],children:[]}))];
+ const branch={people,families,rootFamily:'rootFamily'};
+ const review={people:new Map([['p0','changed'],['p4','new']]),families:new Map([['f1','new'],['f3','children']]),selectedFamily:'f3'};
+ const admin=navigation(branch,'/admin/family-links/1','','',review);
+ assert.match(admin,/Izmjene u grani/);assert.match(admin,/Nova osoba/);assert.match(admin,/Izmijenjeno/);
+ assert.match(admin,/family=f1#family-review/);assert.match(admin,/family=f3#family-review/);
+ assert.match(admin,/<details class="family-node branch-changed" open><summary>Osoba 3/);
+ const publicView=navigation(branch,'/branch/token');assert.doesNotMatch(publicView,/change-badge/);
+});

@@ -94,6 +94,13 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   detail=await (await fetch(detailUrl,{headers:{cookie}})).text();
   assert.match(detail,/Ana Dopunjeno/);assert.match(detail,/Novo dijete/);assert.match(detail,/Test izvor/);
   assert.match(detail,/Početna porodica:<\/b> Test, Ana \(I001\)/);
+  assert.match(detail,/id="change-navigation"/);assert.match(detail,/Izmjene u grani/);assert.match(detail,/Nova osoba/);
+  assert.match(detail,/Dodana djeca – pregledaj/);assert.match(detail,/Nova porodica – pregledaj/);
+  const familyView=await (await fetch(detailUrl+'?family='+encodeURIComponent(familyId),{headers:{cookie}})).text();
+  const familyFocus=familyView.split('id="family-review"')[1].split('</section>')[0];
+  assert.match(familyFocus,/Novi partner/);assert.match(familyFocus,/Prvo dijete/);assert.match(familyFocus,/Drugo dijete/);assert.match(familyFocus,/Promjena \d+ od \d+/);assert.match(familyFocus,/Prethodna|Sljedeća/);
+  const personView=await (await fetch(detailUrl+'?person=a',{headers:{cookie}})).text();
+  const personFocus=personView.split('id="person-editor"')[1].split('</section>')[0];assert.match(personFocus,/Prije: Test, Ana/);assert.match(personFocus,/Sada: Ana Dopunjeno/);assert.match(personFocus,/Sljedeća/);
   const latest=detail.split('id="latest-changes"')[1].split('id="all-changes"')[0];
   assert.match(latest,/Još jedno dijete/);assert.match(latest,/Ana Dopunjeno \(I001\) → Još jedno dijete/);assert.match(latest,/person=[^"#]+#person-editor/);
   assert.match(detail,/Nove osobe \(5\)/);assert.match(detail,/Nove porodice \(2\)/);assert.match(detail,/Djeca dodana u postojeće porodice \(1\)/);
