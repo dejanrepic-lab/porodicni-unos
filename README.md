@@ -481,3 +481,11 @@ Za druge porodice iste osobe služe veze u vrhu obrasca; **Nova porodica ove oso
 Uklanjanjem kartice djeteta uklanja se veza s otvorenim parom, dok osoba i njene druge porodice ostaju sačuvane. Odvojene porodice i osobe dostupne su u stablu i pretrazi. Nova porodica i nova osoba mogu se ukloniti uz potvrdu; uvezene osobe i porodice ostaju zaštićene.
 
 Prilozi se u porodičnom linku još ne dodaju. Izmjene ostaju u kopiji linka za administratorski pregled; ništa se automatski ne šalje u Gramps.
+
+### Potomci kroz proizvoljan broj koljena
+
+Svaka kartica djeteta sada ima iste mogućnosti: podatke osobe, partnera, vlastitu djecu i njihove naredne porodice. To važi i za običan unos i za kopiju iz Grampsa. Nema unaprijed zadanog posljednjeg koljena.
+
+**Otvori ovu porodicu** izdvaja odabranu porodicu za rad bez sužavanja obrasca kroz sve prethodne generacije. **Prikaži cijelu porodicu** vraća puni prikaz, bez gubitka unosa. Dublje kartice su po početku sklopljene.
+
+Pregled, trajni odgovor, administratorski prikaz i TXT izvoz prate sve unesene generacije. Stari sačuvani zapisi unučadi s jednim poljem za ime ostaju čitljivi. Zaštite obima podataka i sukoba čuvanja i dalje važe.

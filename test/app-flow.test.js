@@ -49,6 +49,7 @@ test('submission flow and admin authentication work through the real HTTP server
 
   await waitForHealth(baseUrl);
 
+  const descendant={firstName:'Generacija 1',spouse:{},children:[]};let next=descendant;for(let n=2;n<=7;n++){const node={firstName:'Generacija '+n,spouse:{firstName:'Partner '+n},children:[]};next.children.push(node);next=node;}
   const createForm = new FormData();
   createForm.append('payload', JSON.stringify({
     type: 'pojedinac',
@@ -56,6 +57,7 @@ test('submission flow and admin authentication work through the real HTTP server
     lastName: 'Osoba',
     title: 'Test Osoba',
     submittedBy: 'CI',
+    children: [descendant],
   }));
   const createResponse = await fetch(`${baseUrl}/api/submissions`, {
     method: 'POST',
@@ -79,6 +81,7 @@ test('submission flow and admin authentication work through the real HTTP server
     lastName: 'Osoba',
     title: 'Test Osoba izmjena',
     submittedBy: 'CI',
+    children: [descendant],
   }));
   const updateResponse = await fetch(`${baseUrl}/api/submissions/${created.publicId}/update`, {
     method: 'POST',
@@ -153,4 +156,9 @@ test('submission flow and admin authentication work through the real HTTP server
   const adminPage = await authenticatedAdmin.text();
   assert.match(adminPage, /Primljeni odgovori/);
   assert.match(adminPage, /Test Osoba izmjena/);
+  const publicReport=await (await fetch(`${baseUrl}/receipt/${created.publicId}`)).text();assert.match(publicReport,/Generacija 7/);assert.match(publicReport,/Partner 7/);
+  const txt=await (await fetch(`${baseUrl}/admin/submissions/${created.id}/download.txt`,{headers:{cookie:sessionCookie}})).text();assert.match(txt,/Generacija 7/);assert.match(txt,/Partner 7/);
+  const familyForm=new FormData();familyForm.append('payload',JSON.stringify({type:'porodica',title:'Duboka porodica',father:{firstName:'Otac'},mother:{firstName:'Majka'},children:[descendant]}));const familyCreated=await (await fetch(`${baseUrl}/api/submissions`,{method:'POST',body:familyForm})).json();
+  const familyReport=await (await fetch(`${baseUrl}/receipt/${familyCreated.publicId}`)).text();assert.match(familyReport,/Generacija 7/);const familyTxt=await (await fetch(`${baseUrl}/admin/submissions/${familyCreated.id}/download.txt`,{headers:{cookie:sessionCookie}})).text();assert.match(familyTxt,/Generacija 7/);
+
 });
