@@ -465,3 +465,5 @@ U admin pregledu porodično stablo označava izmijenjene osobe, nove osobe i gra
 Kada administrator označi obradu pregledanom, oznake prestaju i sljedeći pregled ističe samo promjene nakon te tačke. Potpuni izvještaj prema podacima iz Grampsa i istorija ostaju dostupni.
 
 Osoba dodana putem linka može se ukloniti na njenom obrascu uz potvrdu; njene veze iz linka se uklanjaju. Podaci iz Grampsa ostaju nepromijenjeni i osobe iz izvornog uvoza ne mogu se obrisati. Uklanjanje je zaustavljeno ako bi djeca ostala bez jedinog upisanog roditelja.
+
+Za slanje aktivnog porodičnog linka, u **Admin → Porodični linkovi** odaberi **Kopiraj link** i pošalji adresu rođaku. Dugme i polje nalaze se i u detaljima linka. Puna adresa koristi domenu kojom je administrator otvorio aplikaciju, zato pristupi aplikaciji adresom koju rođak također može otvoriti. Ako kopiranje nije dostupno, označi i ručno kopiraj prikazanu adresu. Isključen link se ne može koristiti dok se ponovo ne aktivira.

@@ -50,11 +50,20 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   const detailUrl = base + create.headers.get('location');
   let detail = await (await fetch(detailUrl,{headers:{cookie}})).text();
   assert.match(detail,/Nacrt/);
-  assert.doesNotMatch(detail,/Otvori link za rođaka/);
+  assert.doesNotMatch(detail,/Otvori link za rođaka/);assert.match(detail,/Link je isključen/);assert.doesNotMatch(detail,/class="share-url"/);
   const toggle = await fetch(detailUrl+'/toggle',{method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf})});
   assert.equal(toggle.status,302);
   detail = await (await fetch(detailUrl,{headers:{cookie}})).text();
   const branchPath=detail.match(/href="(\/branch\/[a-f0-9]+)"/)[1];
+  assert.match(detail,/Link za slanje rođaku/);assert.match(detail,/Kopiraj link/);assert.match(detail,/class="share-url" readonly/);
+  const shareList=await (await fetch(base+'/admin/family-links',{headers:{cookie}})).text();assert.match(shareList,/Link za slanje rođaku/);assert.ok(shareList.includes(branchPath));
+  const vm=require('node:vm'),script=detail.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const events={},field={value:'',select(){this.selected=true;},focus(){this.focused=true;},addEventListener(name,fn){events[name]=fn;}},button={hidden:true,addEventListener(name,fn){events['button_'+name]=fn;}},feedback={textContent:''};
+  const box={dataset:{sharePath:branchPath},querySelector(sel){return {'.share-url':field,'.copy-share':button,'.share-feedback':feedback}[sel];}};
+  let copied;const context={URL,window:{location:{origin:'https://porodica.example'}},document:{querySelectorAll(){return [box];}},navigator:{clipboard:{async writeText(text){copied=text;}}}};
+  vm.runInNewContext(script,context);assert.equal(field.value,'https://porodica.example'+branchPath);assert.equal(button.hidden,false);
+  await events.button_click();assert.equal(copied,field.value);assert.match(feedback.textContent,/kopiran/);
+  context.navigator.clipboard.writeText=async()=>{throw Error('denied');};await events.button_click();assert.equal(field.focused,true);assert.equal(field.selected,true);assert.match(feedback.textContent,/ručno/);
   const publicHtml = await (await fetch(base+branchPath)).text();
   assert.match(publicHtml,/Test, Ana/);
   assert.doesNotMatch(publicHtml,/id="person-editor"/);
@@ -138,6 +147,7 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
 
   const staleCompletion=await fetch(base+branchPath+'/completion',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'5',editor:'Rođak'})});assert.equal(staleCompletion.status,409);
   await fetch(detailUrl+'/toggle',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf})});
+  const inactiveDetail=await (await fetch(detailUrl,{headers:{cookie}})).text();assert.match(inactiveDetail,/Link je isključen/);assert.doesNotMatch(inactiveDetail,/class="share-url"/);
   assert.equal((await fetch(base+branchPath)).status,404);
   assert.equal((await fetch(base+branchPath+'/person',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body})).status,404);
 
