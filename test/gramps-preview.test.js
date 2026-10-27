@@ -85,7 +85,7 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   const add=await fetch(base+branchPath+'/add',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'1',editor:'Rođak',family:'family1',role:'child',name:'Novo dijete'})});
   assert.equal(add.status,302);
   const selectedChild=await (await fetch(base+branchPath+'?person=b')).text();
-  assert.match(selectedChild,/Napravi novu porodicu/);
+  assert.match(selectedChild,/Dodaj partnera \/ novu porodicu/);
   const newFamily=await fetch(base+branchPath+'/family',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'2',editor:'Rođak',person:'b',partnerName:'Novi partner',childName:'Prvo dijete'})});
   assert.equal(newFamily.status,302);
   let familyPage=await (await fetch(base+branchPath+'?person=b')).text();
@@ -147,8 +147,15 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   const afterRemoval=await (await fetch(base+branchPath+'?person=b')).text();assert.doesNotMatch(afterRemoval,/Drugo dijete/);assert.match(afterRemoval,/Prvo dijete/);
   const firstChildId=decodeURIComponent(afterRemoval.match(/person=([^"#]+)#person-editor">Prvo dijete/)[1]);
   const parentFamily=await fetch(base+branchPath+'/family',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'7',editor:'Rođak',person:firstChildId,childName:'Unuk'})});assert.equal(parentFamily.status,302);
+  const familyRemoveDenied=await fetch(base+branchPath+'/remove-family',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'8',editor:'Rođak',person:'a',family:'family1',confirm:'yes'})});assert.equal(familyRemoveDenied.status,400);
   const orphanAttempt=await fetch(base+branchPath+'/remove-person',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'8',editor:'Rođak',id:firstChildId,confirm:'yes'})});assert.equal(orphanAttempt.status,400);assert.match(await orphanAttempt.text(),/jedini roditelj/);
   const afterOrphanAttempt=await (await fetch(base+branchPath+'?person='+encodeURIComponent(firstChildId))).text();assert.match(afterOrphanAttempt,/Unuk/);
+  const createdFamilyId=decodeURIComponent(parentFamily.headers.get('location').match(/family=([^#]+)/)[1]);
+  assert.match(afterOrphanAttempt,/Ukloni porodicu/);
+  const noFamilyConfirm=await fetch(base+branchPath+'/remove-family',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'8',editor:'Rođak',person:firstChildId,family:createdFamilyId})});assert.equal(noFamilyConfirm.status,400);
+  const removeFamily=await fetch(base+branchPath+'/remove-family',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'8',editor:'Rođak',person:firstChildId,family:createdFamilyId,confirm:'yes'})});assert.equal(removeFamily.status,302);
+  const afterFamilyRemoval=await (await fetch(base+branchPath)).text();assert.match(afterFamilyRemoval,/Osobe bez porodične veze/);assert.match(afterFamilyRemoval,/Unuk/);
+
 
 
   const staleCompletion=await fetch(base+branchPath+'/completion',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'5',editor:'Rođak'})});assert.equal(staleCompletion.status,409);
@@ -165,12 +172,12 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   assert.ok(dbCheck.prepare('SELECT COUNT(*) n FROM family_link_history WHERE link_id=?').get(firstId).n>0);
   assert.equal(dbCheck.prepare('SELECT COUNT(*) n FROM family_link_review_snapshots WHERE link_id=?').get(firstId).n,1);
   const confirmPage=await (await fetch(detailUrl+'/delete',{headers:{cookie}})).text();assert.match(confirmPage,/traj|Traj/i);assert.match(confirmPage,/Gramps podaci/);assert.match(confirmPage,/name="confirm"/);
-  const anonymousDelete=await fetch(detailUrl+'/delete',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf,revision:'8',confirm:'yes'})});assert.equal(anonymousDelete.status,302);
-  const rejectedCsrf=await fetch(detailUrl+'/delete',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf:'invalid',revision:'8',confirm:'yes'})});assert.equal(rejectedCsrf.status,403);
-  const noConfirmDelete=await fetch(detailUrl+'/delete',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'8'})});assert.equal(noConfirmDelete.status,400);
+  const anonymousDelete=await fetch(detailUrl+'/delete',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf,revision:'9',confirm:'yes'})});assert.equal(anonymousDelete.status,302);
+  const rejectedCsrf=await fetch(detailUrl+'/delete',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf:'invalid',revision:'9',confirm:'yes'})});assert.equal(rejectedCsrf.status,403);
+  const noConfirmDelete=await fetch(detailUrl+'/delete',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'9'})});assert.equal(noConfirmDelete.status,400);
   const staleDelete=await fetch(detailUrl+'/delete',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'7',confirm:'yes'})});assert.equal(staleDelete.status,409);
   assert.equal((await fetch(detailUrl,{headers:{cookie}})).status,200);
-  const deleted=await fetch(detailUrl+'/delete',{method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'8',confirm:'yes'})});assert.equal(deleted.status,302);assert.equal(deleted.headers.get('location'),'/admin/family-links?deleted=1');
+  const deleted=await fetch(detailUrl+'/delete',{method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'9',confirm:'yes'})});assert.equal(deleted.status,302);assert.equal(deleted.headers.get('location'),'/admin/family-links?deleted=1');
   assert.equal((await fetch(detailUrl,{headers:{cookie}})).status,404);assert.equal((await fetch(base+secondPath)).status,200);
   for(const table of ['family_link_history','family_link_progress','family_link_review_snapshots'])assert.equal(dbCheck.prepare(`SELECT COUNT(*) n FROM ${table} WHERE link_id=?`).get(firstId).n,0);
   assert.equal(dbCheck.prepare('SELECT COUNT(*) n FROM family_links WHERE id=?').get(secondId).n,1);
