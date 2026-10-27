@@ -12,7 +12,7 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
     if (req.url === '/api/token/' && req.method === 'POST') return res.end(JSON.stringify({ access_token: 'token' }));
     if (req.headers.authorization !== 'Bearer token') { res.statusCode = 401; return res.end('{}'); }
     const data = {
-      '/api/people/': [{handle:'a', primary_name:{first_name:'Ana', surname_list:[{surname:'Test'}]}}, {handle:'b', primary_name:{first_name:'Marko'}}],
+      '/api/people/': [{handle:'a', gramps_id:'I001', primary_name:{first_name:'Ana', surname_list:[{surname:'Test'}]}}, {handle:'b', primary_name:{first_name:'Marko'}}],
       '/api/families/': [{handle:'family1', father_handle:'a', child_ref_list:[{ref:'b'}]}],
       '/api/events/': [], '/api/places/': [], '/api/notes/': [],
     };
@@ -60,6 +60,7 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   assert.doesNotMatch(publicHtml,/id="person-editor"/);
   const editorHtml=await (await fetch(base+branchPath+'?person=a')).text();
   assert.match(editorHtml,/id="person-editor"/);
+  assert.ok(editorHtml.indexOf('id="person-editor"')<editorHtml.indexOf('class="family-tree"'));
   assert.equal((editorHtml.match(/action="[^"]+\/person"/g)||[]).length,1);
   const publicCsrf=csrfFrom(editorHtml);
   const body = new URLSearchParams({csrf:publicCsrf,revision:'0',editor:'Rođak',id:'a',name:'Ana Dopunjeno',birth:'oko 1900',notes:'Test izvor'});
@@ -92,9 +93,13 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   const tree=await (await fetch(base+branchPath)).text();assert.match(tree,/Još jedno dijete/);
   detail=await (await fetch(detailUrl,{headers:{cookie}})).text();
   assert.match(detail,/Ana Dopunjeno/);assert.match(detail,/Novo dijete/);assert.match(detail,/Test izvor/);
+  assert.match(detail,/Početna porodica:<\/b> Test, Ana \(I001\)/);
+  const latest=detail.split('id="latest-changes"')[1].split('id="all-changes"')[0];
+  assert.match(latest,/Još jedno dijete/);assert.match(latest,/Ana Dopunjeno \(I001\) → Još jedno dijete/);assert.match(latest,/person=[^"#]+#person-editor/);
   assert.match(detail,/Nove osobe \(5\)/);assert.match(detail,/Nove porodice \(2\)/);assert.match(detail,/Djeca dodana u postojeće porodice \(1\)/);
   assert.match(detail,/Prije: Test, Ana/);assert.match(detail,/Sada: Ana Dopunjeno/);
   let listHtml=await (await fetch(base+'/admin/family-links',{headers:{cookie}})).text();
+  assert.match(listHtml,/Početna porodica:<\/b> Test, Ana \(I001\)/);
   assert.match(listHtml,/Obrada:<\/b> U toku/);
   const completed=await fetch(base+branchPath+'/completion',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'5',editor:'Rođak'})});
   assert.equal(completed.status,302);
