@@ -84,6 +84,7 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   assert.match(secondChild.headers.get('location'),/person=b#person-families/);
   familyPage=await (await fetch(base+branchPath+'?person=b')).text();
   assert.match(familyPage,/Drugo dijete/);
+  const childId=decodeURIComponent(familyPage.match(/person=([^"#]+)#person-editor">Drugo dijete/)[1]);
   const badContext=await fetch(base+branchPath+'/add',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'4',editor:'Rođak',family:familyId,context:'a',role:'child',name:'Pogrešno'})});
   assert.equal(badContext.status,400);
   const staleFamily=await fetch(base+branchPath+'/family',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'3',editor:'Rođak',person:'b'})});
@@ -114,8 +115,27 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   const staleReview=await fetch(detailUrl+'/review',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'4'})});assert.equal(staleReview.status,409);
   const review=await fetch(detailUrl+'/review',{method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'5'})});assert.equal(review.status,302);
   listHtml=await (await fetch(base+'/admin/family-links',{headers:{cookie}})).text();assert.match(listHtml,/Obrada:<\/b> Pregledano/);
+  detail=await (await fetch(detailUrl,{headers:{cookie}})).text();assert.match(detail,/Nema nepregledanih promjena/);assert.doesNotMatch(detail,/<span class="change-badge">/);assert.match(detail,/Nove osobe \(5\)/);
   const afterReview=await fetch(base+branchPath+'/person',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'5',editor:'Rođak',id:'a',name:'Ana Ponovo'})});assert.equal(afterReview.status,302);
   detail=await (await fetch(detailUrl,{headers:{cookie}})).text();assert.match(detail,/Obrada:<\/b> U toku/);
+  let quick=detail.split('id="change-navigation"')[1].split('</section>')[0];assert.match(quick,/Ana Ponovo/);assert.doesNotMatch(quick,/Novi partner|Prvo dijete/);
+  const updatedPerson=await (await fetch(detailUrl+'?person=a',{headers:{cookie}})).text();assert.match(updatedPerson,/Prije: Ana Dopunjeno/);assert.match(updatedPerson,/Sada: Ana Ponovo/);
+  const Database=require('better-sqlite3');const upgradeDb=new Database(path.join(dataDir,'porodicni-unos.db'));upgradeDb.prepare('DELETE FROM family_link_review_snapshots').run();upgradeDb.close();
+  detail=await (await fetch(detailUrl,{headers:{cookie}})).text();quick=detail.split('id="change-navigation"')[1].split('</section>')[0];assert.match(quick,/Ana Ponovo/);assert.doesNotMatch(quick,/Novi partner/);
+  const rereview=await fetch(detailUrl+'/review',{method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'6'})});assert.equal(rereview.status,302);
+  const imported=await fetch(base+branchPath+'/remove-person',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'6',editor:'Rođak',id:'a',confirm:'yes'})});assert.equal(imported.status,400);
+  const newPersonPage=await (await fetch(base+branchPath+'?person='+encodeURIComponent(childId))).text();assert.match(newPersonPage,/Ukloni ovu osobu/);
+  const noConfirm=await fetch(base+branchPath+'/remove-person',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'6',editor:'Rođak',id:childId})});assert.equal(noConfirm.status,400);
+  const removed=await fetch(base+branchPath+'/remove-person',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'6',editor:'Rođak',id:childId,confirm:'yes'})});assert.equal(removed.status,302);
+  detail=await (await fetch(detailUrl,{headers:{cookie}})).text();quick=detail.split('id="change-navigation"')[1].split('</section>')[0];assert.match(quick,/Uklonjena osoba: Drugo dijete/);assert.match(quick,/Izmijenjena porodica/);
+  const removedDetail=await (await fetch(detailUrl+'?removed='+encodeURIComponent(childId),{headers:{cookie}})).text();assert.match(removedDetail,/Uklonjena osoba: Drugo dijete/);
+  const afterRemoval=await (await fetch(base+branchPath+'?person=b')).text();assert.doesNotMatch(afterRemoval,/Drugo dijete/);assert.match(afterRemoval,/Prvo dijete/);
+  const firstChildId=decodeURIComponent(afterRemoval.match(/person=([^"#]+)#person-editor">Prvo dijete/)[1]);
+  const parentFamily=await fetch(base+branchPath+'/family',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'7',editor:'Rođak',person:firstChildId,childName:'Unuk'})});assert.equal(parentFamily.status,302);
+  const orphanAttempt=await fetch(base+branchPath+'/remove-person',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'8',editor:'Rođak',id:firstChildId,confirm:'yes'})});assert.equal(orphanAttempt.status,400);assert.match(await orphanAttempt.text(),/jedini roditelj/);
+  const afterOrphanAttempt=await (await fetch(base+branchPath+'?person='+encodeURIComponent(firstChildId))).text();assert.match(afterOrphanAttempt,/Unuk/);
+
+
   const staleCompletion=await fetch(base+branchPath+'/completion',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'5',editor:'Rođak'})});assert.equal(staleCompletion.status,409);
   await fetch(detailUrl+'/toggle',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf})});
   assert.equal((await fetch(base+branchPath)).status,404);
