@@ -104,8 +104,8 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   const singleParent=await fetch(base+branchPath+'/family',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'4',editor:'Rođak',person:'a',childName:'Još jedno dijete'})});
   assert.equal(singleParent.status,302);
   const tree=await (await fetch(base+branchPath)).text();assert.match(tree,/Još jedno dijete/);
-  const multiple=await (await fetch(base+branchPath+'?person=a')).text();const familyArea=multiple.split('id="person-families"')[1].split('</section>')[0];assert.doesNotMatch(familyArea,/<details open><summary>/);
-  const reopened=await (await fetch(base+branchPath+'?person=a&family=family1')).text();const openedArea=reopened.split('id="person-families"')[1].split('</section>')[0];assert.match(openedArea,/<details open><summary>/);
+  const multiple=await (await fetch(base+branchPath+'?person=a')).text();const familyArea=multiple.split('id="person-families"')[1].split('</section>')[0];assert.doesNotMatch(familyArea,/<details data-family-id="[^"]+" open><summary>/);
+  const reopened=await (await fetch(base+branchPath+'?person=a&family=family1')).text();const openedArea=reopened.split('id="person-families"')[1].split('</section>')[0];assert.match(openedArea,/<details data-family-id="[^"]+" open><summary>/);
 
   detail=await (await fetch(detailUrl,{headers:{cookie}})).text();
   assert.match(detail,/Ana Dopunjeno/);assert.match(detail,/Novo dijete/);assert.match(detail,/Test izvor/);
