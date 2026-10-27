@@ -410,3 +410,37 @@ Najnovije izmjene su prikazane prve.
 
 ### v1.2
 - Detaljni korisnički i trajni pregled sada prikazuje sve podatke djeteta osnovne porodice prije podataka supružnika/partnera.
+
+## Porodični linkovi iz Gramps Weba (prva verzija)
+
+U postojećem adminu otvori **Porodični linkovi → Napravi link iz Grampsa**.
+Odaberi početnu porodicu i naziv primaoca. Aplikacija priprema zasebnu kopiju
+te porodice, svih potomaka i njihovih partnera. Druge grane partnera ne prati.
+Priprema je neaktivan nacrt: prvo pregledaj sadržaj, zatim aktiviraj link.
+Rođak preko istog privatnog linka dopunjava osobe i dodaje djecu ili partnere.
+Svaku osobu treba zasebno sačuvati. Izmjene ostaju sačuvane za nastavak.
+
+Admin vidi poređenje s originalom i istoriju čuvanja, posljednju posjetu i
+može isključiti ili ponovo aktivirati link. Original se ne osvježava preko
+postojećih dorada. Nijedna dorada se automatski ne šalje u Gramps.
+
+Podesi ove varijable u environmentu kontejnera i ponovo ga kreiraj:
+
+```env
+GRAMPS_URL=http://ADRESA_TVOG_SERVERA:5014
+GRAMPS_USER=korisnik-za-citanje
+GRAMPS_PASSWORD=njegova-lozinka
+```
+
+Koristi poseban Gramps nalog s pravom čitanja podataka koje želiš podijeliti.
+Adresa mora biti dostupna iz kontejnera (localhost u kontejneru nije host).
+Lozinka i pristupni token nikada se ne šalju rođaku niti se čuvaju u linku.
+Za pristup rođaka koristi HTTPS. Ko ima link može čitati i uređivati tu granu.
+Postojeći javni obrasci i odgovori ostaju nepromijenjeni.
+
+Prva verzija priprema imena, rođenje i smrt s mjestima, bilješke, pregled
+ostalih događaja i porodične veze. Osnovni podaci i bilješke se uređuju;
+ostali događaji se prikazuju kao kontekst, a ispravke im se mogu opisati u
+napomenama. Izmjene veza/brisanjem postojećih osoba i prenos medijskih fajlova
+nisu uključeni. Nije riječ o potpunom Gramps editoru ili sinhronizaciji.
+Podaci i istorija linkova čuvaju se u istoj SQLite bazi i uključeni su u backup.

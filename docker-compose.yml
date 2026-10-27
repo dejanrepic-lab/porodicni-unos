@@ -19,5 +19,8 @@ services:
       MAX_UPLOAD_MB: "${MAX_UPLOAD_MB:-15}"
       SUBMIT_RATE_LIMIT: "${SUBMIT_RATE_LIMIT:-5}"
       NEXTCLOUD_ACCESS_TOKEN: "${NEXTCLOUD_ACCESS_TOKEN:-}"
+      GRAMPS_URL: "${GRAMPS_URL:-}"
+      GRAMPS_USER: "${GRAMPS_USER:-}"
+      GRAMPS_PASSWORD: "${GRAMPS_PASSWORD:-}"
     volumes:
       - "${DATA_PATH:-./data}:/app/data"

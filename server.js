@@ -4,6 +4,8 @@ const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 const { initializeDatabase } = require('./lib/database');
+const { createGrampsClient } = require('./lib/gramps-client');
+const { selectDescendantBranch } = require('./lib/gramps-branch');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -507,6 +509,48 @@ app.post('/admin/logout', adminAuth, express.urlencoded({extended:false}), (req,
   res.redirect('/admin/login');
 });
 
+function grampsClient() {
+  if (!process.env.GRAMPS_URL || !process.env.GRAMPS_USER || !process.env.GRAMPS_PASSWORD) {
+    throw new Error('Podesi GRAMPS_URL, GRAMPS_USER i GRAMPS_PASSWORD za pristup Gramps Webu.');
+  }
+  return createGrampsClient({ baseUrl: process.env.GRAMPS_URL, username: process.env.GRAMPS_USER, password: process.env.GRAMPS_PASSWORD });
+}
+
+function grampsPersonName(person) {
+  if (!person) return 'Nepoznato';
+  const name = person.primary_name || {};
+  const surname = (name.surname_list || []).map(item => item.surname || '').filter(Boolean).join(' ');
+  return [name.first_name, surname].filter(Boolean).join(' ') || person.gramps_id || 'Bez imena';
+}
+
+require('./lib/family-links').mountFamilyLinks(app, { db, adminAuth, client: grampsClient });
+
+app.get('/admin/gramps', adminAuth, async (req, res) => {
+  try {
+    const data = await grampsClient().snapshot();
+    const people = new Map(data.people.map(person => [person.handle, person]));
+    const families = data.families.map(family => ({
+      handle: family.handle,
+      name: [family.father_handle, family.mother_handle].filter(Boolean).map(handle => grampsPersonName(people.get(handle))).join(' & ') || family.gramps_id || 'Porodica bez roditelja',
+    })).sort((a, b) => a.name.localeCompare(b.name));
+    const options = families.map(family => `<option value="${esc(family.handle)}">${esc(family.name)}</option>`).join('');
+    res.send(adminShell('Gramps porodice', `<h1>Gramps porodice</h1><p>Odaberi početnu porodicu za pregled potomaka.</p><form action="/admin/gramps/preview" method="post"><label>Porodica</label><select name="family" required><option value="">Odaberi porodicu</option>${options}</select><button class="btn primary">Pregledaj granu</button></form><p><a href="/admin">Nazad na admin</a></p>`));
+  } catch (error) {
+    res.status(503).send(adminShell('Gramps', `<h1>Gramps nije dostupan</h1><p>${esc(error.message)}</p><a href="/admin">Nazad</a>`));
+  }
+});
+
+app.post('/admin/gramps/preview', adminAuth, express.urlencoded({extended:false}), async (req, res) => {
+  try {
+    const data = await grampsClient().snapshot();
+    const branch = selectDescendantBranch(String(req.body.family || ''), data.people, data.families);
+    const names = branch.people.map(person => `<li>${esc(grampsPersonName(person))} (${esc(person.gramps_id || '')})</li>`).join('');
+    res.send(adminShell('Pregled grane', `<h1>Pregled grane</h1><p>${branch.people.length} osoba · ${branch.families.length} porodica</p><p>Ovo je samo pregled. Link za dijeljenje i uređivanje još nije dostupan.</p><ul>${names}</ul><a href="/admin/gramps">Nazad</a>`));
+  } catch (error) {
+    res.status(503).send(adminShell('Gramps', `<h1>Pregled nije uspio</h1><p>${esc(error.message)}</p><a href="/admin/gramps">Nazad</a>`));
+  }
+});
+
 app.get('/admin', adminAuth, (req, res) => {
   const view = ['active','archived','all'].includes(req.query.view) ? req.query.view : 'active';
   const q = String(req.query.q || '').trim().slice(0,120);
@@ -551,6 +595,7 @@ app.get('/admin', adminAuth, (req, res) => {
     <div class="toolbar">
       <h1>Primljeni odgovori</h1>
       <div class="admin-actions">
+        <a class="btn" href="/admin/family-links">Porodični linkovi</a>
         <a class="btn secondary" href="/admin/user-mode">Korisnički prikaz</a>
         <a class="btn" href="/admin/export.csv">Izvezi CSV pregled</a>
         <form method="post" action="/admin/logout" style="margin:0">
