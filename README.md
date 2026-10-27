@@ -471,3 +471,13 @@ Za slanje aktivnog porodičnog linka, u **Admin → Porodični linkovi** odaberi
 Za trajno brisanje napravljene grane izaberi **Admin → Porodični linkovi → Obriši link** i potvrdi brisanje. Time se brišu i sve dorade i istorija tog linka; drugi linkovi i Gramps nisu pogođeni. Ako želiš sačuvati dorade, umjesto toga isključi link. Ako su izmjene sačuvane nakon otvaranja potvrde, pregledaj ih prije ponovnog pokušaja.
 
 Prilikom izrade nove porodice u porodičnom linku može se unijeti partner i više djece s osnovnim podacima. Nakon čuvanja odaberi dijete u porodici da dopuniš njegove podatke ili nastaviš njegovu granu. U pregledniku s uključenim JavaScriptom otvorene grane i položaj se nakon čuvanja pokušavaju vratiti u istoj kartici preglednika.
+
+### Isti obrazac za dopunu porodične grane
+
+Odabirom osobe u privatnom linku otvara se postojeći porodični obrazac, unaprijed popunjen podacima te porodice. Koriste se iste kartice djece, partnera i unučadi, završavanje sekcija i pregled prije čuvanja. Dugme **Sačuvaj izmjene u linku** čuva kopiju bez ponovnog učitavanja stranice.
+
+Za druge porodice iste osobe služe veze u vrhu obrasca; **Nova porodica ove osobe** otvara prazan obrazac vezan za tu osobu. Poslije čuvanja veza u kartici djeteta otvara njegovu porodicu radi nastavka kroz naredne generacije.
+
+Uklanjanjem kartice djeteta uklanja se veza s otvorenim parom, dok osoba i njene druge porodice ostaju sačuvane. Odvojene porodice i osobe dostupne su u stablu i pretrazi. Nova porodica i nova osoba mogu se ukloniti uz potvrdu; uvezene osobe i porodice ostaju zaštićene.
+
+Prilozi se u porodičnom linku još ne dodaju. Izmjene ostaju u kopiji linka za administratorski pregled; ništa se automatski ne šalje u Gramps.
