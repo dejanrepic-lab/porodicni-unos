@@ -872,6 +872,13 @@ button:active{
  .child-card > .branch-child-actions > .child-collapse,
  .child-card > .branch-child-actions > .branch-continue{flex:auto;width:100%}
 }
+
+/* Every descendant uses the same card; focus removes accumulated indentation. */
+.descendant-focus-mode > .section:not(.focus-section):not(.sender-section){display:none !important}
+.focus-hidden{display:none !important}
+.child-card.focus-ancestor,.focus-ancestor > .descendant-family,.focus-ancestor > .descendant-family > .nested-list{display:contents !important}
+.child-card.focus-ancestor > :not(.descendant-family),.focus-ancestor > .descendant-family > :not(.nested-list){display:none !important}
+.descendant-focus-toolbar{align-items:center;margin-bottom:14px}
 </style>
 </head>
 <body>
@@ -1080,6 +1087,7 @@ button:active{
   <p class="footer-note">Porodični unos v2.12.1 – usklađeni dinamički nazivi para u karticama djece.</p>
 </div>
 <div id="toast" class="toast"></div>
+<script src="/descendant-data.js"></script>
 <!-- BRANCH_FORM_BOOT -->
 <script>
 const branchFormMode = Boolean(document.getElementById('branch-boot'));
@@ -1339,169 +1347,44 @@ document.querySelectorAll('.title-watch').forEach(e=>e.addEventListener('input',
 updateTitle();
 
 
-function addPersonChild(data={}){
-  personChildCounter++;
-  const row=document.createElement('div');
-  row.className='grandchild';
-  row.innerHTML=`
-    <div class="field"><label>Ime i prezime</label><input data-pc="name"></div>
-    <div class="field"><label>Datum rođenja</label><input data-pc="birthDate"></div>
-    <div class="field"><label>Mjesto rođenja</label><input data-pc="birthPlace"></div>
-    <button type="button" class="remove">Ukloni</button>`;
-  row.querySelectorAll('[data-pc]').forEach(e=>{ e.value=data[e.dataset.pc]||''; });
-  row.querySelector('.remove').onclick=()=>row.remove();
-  personChildren.appendChild(row);
-}
+function addPersonChild(data={}){return addChild(data,personChildren,1);}
 document.getElementById('addPersonChild').onclick=()=>addPersonChild();
-
-function addGrandchild(card, data={}){
-  const list=card.querySelector('.nested-list');
-  const row=document.createElement('div'); row.className='grandchild';
-  row.innerHTML=`<div class="field"><label>Ime i prezime</label><input data-g="name"></div><div class="field"><label>Datum rođenja</label><input data-g="birthDate"></div><div class="field"><label>Mjesto rođenja</label><input data-g="birthPlace"></div><button type="button" class="remove">Ukloni</button>`;
-  row.querySelectorAll('[data-g]').forEach(e=>{ e.value=data[e.dataset.g]||''; });
-  row.querySelector('.remove').onclick=()=>row.remove(); list.appendChild(row);
+function ownFields(prefix,card){const value={};card.querySelectorAll('[data-'+prefix+']').forEach(e=>{if(e.closest('.child-card')===card)value[e.dataset[prefix]]=e.value.trim();});return value;}
+function descendantList(card){return card.querySelector(':scope > .descendant-family > .nested-list');}
+function readDescendant(card){const p=ownFields('c',card);p.name=[p.firstName,p.lastName].filter(Boolean).join(' ');p.spouse=ownFields('s',card);p.children=card._pendingDescendants?structuredClone(card._pendingDescendants):Array.from(descendantList(card).children).map(readDescendant);if(card.dataset.branchId)p._id=card.dataset.branchId;if(card.dataset.branchPartner)p.spouse._id=card.dataset.branchPartner;if(card.dataset.branchFamily)p._family=card.dataset.branchFamily;if(card.dataset.reference==='true')p._reference=true;return p;}
+function readDescendants(container){return Array.from(container.children).map(readDescendant);}
+function ensureDescendantChildren(card){if(!card._pendingDescendants)return;const pending=card._pendingDescendants;card._pendingDescendants=null;for(const child of pending)addChild(child,descendantList(card),Number(card.dataset.depth||1)+1);}
+function addGrandchild(card,data={}){ensureDescendantChildren(card);return addChild(data,descendantList(card),Number(card.dataset.depth||1)+1);}
+function clearDescendantFocus(form){form.classList.remove('descendant-focus-mode');form.querySelectorAll('.focus-ancestor,.focus-hidden,.focus-section').forEach(e=>e.classList.remove('focus-ancestor','focus-hidden','focus-section'));const toolbar=form.querySelector('.descendant-focus-toolbar');if(toolbar)toolbar.remove();}
+function focusDescendant(card){ensureDescendantChildren(card);const form=card.closest('form');clearDescendantFocus(form);form.classList.add('descendant-focus-mode');const section=card.closest('.section');section.classList.add('focus-section');const path=new Set();let p=card;while(p&&p.classList.contains('child-card')){path.add(p);p.classList.remove('user-collapsed');if(p!==card)p.classList.add('focus-ancestor');p=p.parentElement.closest('.child-card');}form.querySelectorAll('.child-card').forEach(node=>{if(!path.has(node)&&!card.contains(node))node.classList.add('focus-hidden');});card.classList.remove('user-collapsed');refreshPairContext(card);const toolbar=document.createElement('div');toolbar.className='descendant-focus-toolbar actions';const back=document.createElement('button');back.type='button';back.className='btn soft';back.textContent='← Prikaži cijelu porodicu';back.onclick=()=>clearDescendantFocus(form);const title=document.createElement('strong');title.textContent='Porodica: '+pairDisplayName(card,1);toolbar.append(back,title);section.insertBefore(toolbar,section.children[1]);card.scrollIntoView({behavior:'smooth',block:'start'});}
+function addChild(data={},container=children,depth=1){
+ childCounter++;const card=document.createElement('div');card.className='child-card';card.dataset.index=childCounter;card.dataset.depth=depth;
+ if(data._id)card.dataset.branchId=data._id;if(data.spouse?._id)card.dataset.branchPartner=data.spouse._id;if(data._family)card.dataset.branchFamily=data._family;if(data._reference)card.dataset.reference='true';
+ const person={...data};if(!person.firstName&&!person.lastName&&person.name)person.firstName=person.name;
+ const field=(label,key,prefix='c')=>`<div class="field"><label>${label}<input data-${prefix}="${key}"></label></div>`;
+ const personFields=field('Ime','firstName')+field('Prezime','lastName')+field('Djevojačko prezime','maidenName')+field('Nadimak','nickname')+field('Datum rođenja','birthDate')+field('Mjesto rođenja','birthPlace')+field('Datum smrti','deathDate')+field('Mjesto smrti','deathPlace');
+ const spouseFields=['firstName','lastName','maidenName','nickname','birthDate','birthPlace','deathDate','deathPlace'].map((k,i)=>field(['Ime','Prezime','Djevojačko prezime','Nadimak','Datum rođenja','Mjesto rođenja','Datum smrti','Mjesto smrti'][i],k,'s')).join('');
+ card.innerHTML=`<div class="child-head"><strong>Dijete</strong><button type="button" class="remove child-remove">Ukloni dijete</button></div><div class="grid">${personFields}</div><div class="nested descendant-partner"><h3>Supružnik / partner</h3><div class="grid">${spouseFields}<div class="field"><label>Vrsta veze<select data-s="relationship"><option></option><option>Brak</option><option>Vanbračna zajednica</option><option>Partnerstvo</option><option>Nepoznato</option></select></label></div></div></div><div class="nested descendant-family"><h3 class="pair-children-title">Djeca ovog para</h3><div class="nested-list"></div><div class="actions"><button type="button" class="pair-add-child btn soft add-grandchild">＋ Dodaj dijete ovog para</button></div></div><div class="field full"><label>Napomena za ovu porodicu<textarea data-c="notes"></textarea></label></div><details class="branch-child-notes"><summary>Napomene o osobi</summary><div class="field"><label>Napomene osobe<textarea data-c="personNotes"></textarea></label></div></details><div class="actions branch-child-actions"><button type="button" class="child-collapse">Završi unos</button><button type="button" class="btn soft descendant-focus">Otvori ovu porodicu</button></div>`;
+ card.querySelectorAll('[data-c]').forEach(e=>e.value=person[e.dataset.c]||'');card.querySelectorAll('[data-s]').forEach(e=>e.value=data.spouse?.[e.dataset.s]||'');
+ container.appendChild(card);if(depth>1&&(data.children||[]).length)card._pendingDescendants=structuredClone(data.children);else for(const child of data.children||[])addGrandchild(card,child);
+ const refresh=()=>{card.querySelector(':scope > .child-head strong').textContent=childDisplayName(card,Array.from(container.children).indexOf(card)+1);refreshPairContext(card);};
+ card.addEventListener('input',event=>{if(event.target.closest('.child-card')===card)refresh();});
+ card.querySelector(':scope > .child-head > .child-remove').onclick=()=>{if(card.classList.contains('focus-ancestor')||card.closest('form').classList.contains('descendant-focus-mode'))clearDescendantFocus(card.closest('form'));card.remove();renumberChildren();};
+ card.querySelector(':scope > .descendant-family > .actions > .add-grandchild').onclick=()=>{const child=addGrandchild(card);child.scrollIntoView({behavior:'smooth',block:'start'});};
+ card.querySelector(':scope > .actions > .descendant-focus').onclick=()=>focusDescendant(card);
+ card.querySelector(':scope > .actions > .child-collapse').onclick=()=>{const collapsed=card.classList.toggle('user-collapsed');if(!collapsed)ensureDescendantChildren(card);refreshPairContext(card);card.querySelector(':scope > .actions > .child-collapse').textContent=collapsed?'Otvori ponovo':'Završi unos za '+pairDisplayName(card,1);const next=card.nextElementSibling;if(collapsed&&next)next.scrollIntoView({behavior:'smooth',block:'start'});};
+ if(data._reference){card.querySelector('.descendant-family').hidden=true;card.querySelector('.descendant-partner').hidden=true;const p=document.createElement('p');p.textContent='Ova porodica je već prikazana na drugom mjestu u grani. Njene veze ostaju sačuvane.';card.insertBefore(p,card.querySelector(':scope > .actions'));}
+ if(depth>1)card.classList.add('user-collapsed');refresh();if(depth>1)card.querySelector(':scope > .actions > .child-collapse').textContent='Otvori ponovo';return card;
 }
-function addChild(data={}){
-  childCounter++;
-  const card=document.createElement('div'); card.className='child-card'; card.dataset.index=childCounter;
-  card.innerHTML=`
-    <div class="child-head"><strong>Dijete ${childCounter}</strong><button type="button" class="remove child-remove">Ukloni dijete</button></div>
-    <div class="grid">
-      <div class="field"><label>Ime</label><input data-c="firstName"></div><div class="field"><label>Prezime</label><input data-c="lastName"></div>
-      <div class="field"><label>Nadimak</label><input data-c="nickname"></div><div class="field"><label>Datum rođenja</label><input data-c="birthDate"></div>
-      <div class="field"><label>Mjesto rođenja</label><input data-c="birthPlace"></div><div class="field"><label>Datum smrti</label><input data-c="deathDate"></div>
-      <div class="field"><label>Mjesto smrti</label><input data-c="deathPlace"></div>
-    </div>
-    <div class="nested"><h3>Supružnik / partner</h3><div class="grid">
-      <div class="field"><label>Ime</label><input data-s="firstName"></div><div class="field"><label>Prezime</label><input data-s="lastName"></div>
-      <div class="field"><label>Djevojačko prezime</label><input data-s="maidenName"></div><div class="field"><label>Nadimak</label><input data-s="nickname"></div>
-      <div class="field"><label>Datum rođenja</label><input data-s="birthDate"></div><div class="field"><label>Mjesto rođenja</label><input data-s="birthPlace"></div>
-      <div class="field"><label>Datum smrti</label><input data-s="deathDate"></div><div class="field"><label>Mjesto smrti</label><input data-s="deathPlace"></div>
-      <div class="field"><label>Vrsta veze</label><select data-s="relationship"><option value=""></option><option>Brak</option><option>Vanbračna zajednica</option><option>Partnerstvo</option><option>Nepoznato</option></select></div>
-    </div></div>
-    <div class="nested"><h3 class="pair-children-title">Djeca ovog para</h3><div class="nested-list"></div><div class="actions"><button type="button" class="pair-add-child btn soft add-grandchild">＋ Dodaj dijete ovog para</button></div></div>
-    <div class="field full" style="margin-top:14px"><label>Napomena za ovu porodicu</label><textarea data-c="notes"></textarea></div>
-    <div class="actions"><button type="button" class="child-collapse">Dalje</button></div>`;
-  card.querySelectorAll('[data-c]').forEach(e=>{ e.value=data[e.dataset.c]||''; });
-  const spouse=data.spouse||{};
-  card.querySelectorAll('[data-s]').forEach(e=>{ e.value=spouse[e.dataset.s]||''; });
-  (Array.isArray(data.children)?data.children:[]).forEach(g=>addGrandchild(card,g));
-
-  const collapseBtn=card.querySelector('.child-collapse');
-  const nameInputs=[card.querySelector('[data-c="firstName"]'),card.querySelector('[data-c="lastName"]')].filter(Boolean);
-
-  const childFinishLabel=()=>{
-    const cards=[...children.children];
-    const index=Math.max(1,cards.indexOf(card)+1);
-    return `Završi unos za ${pairDisplayName(card,index)}`;
-  };
-
-  const refreshChildButton=()=>{
-    if(!card.classList.contains('user-collapsed')){
-      collapseBtn.textContent=childFinishLabel();
-    }
-  };
-
-  nameInputs.forEach(inp=>inp.addEventListener('input',()=>{
-    refreshChildTitles();
-    refreshPairContext(card);
-  }));
-
-  const pairInputs=[
-    ...card.querySelectorAll('[data-s="firstName"],[data-s="lastName"],[data-p="firstName"],[data-p="lastName"]')
-  ];
-  pairInputs.forEach(inp=>inp.addEventListener('input',()=>refreshPairContext(card)));
-  collapseBtn.onclick=()=>{
-    const collapsed=card.classList.toggle('user-collapsed');
-
-    if(collapsed){
-      collapseBtn.textContent='Otvori ponovo';
-      const nextCard=card.nextElementSibling;
-      let target=null;
-      if(nextCard && nextCard.classList.contains('child-card')){
-        target=nextCard;
-      }else{
-        const childrenSection=card.closest('.section');
-        let next=childrenSection ? childrenSection.nextElementSibling : null;
-        while(next && (!next.classList || !next.classList.contains('section'))){
-          next=next.nextElementSibling;
-        }
-        target=next;
-      }
-      if(target){
-        requestAnimationFrame(()=>{
-          const y=target.getBoundingClientRect().top + window.scrollY - 90;
-          window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
-        });
-      }
-    }else{
-      collapseBtn.textContent=childFinishLabel();
-      requestAnimationFrame(()=>{
-        const y=card.getBoundingClientRect().top + window.scrollY - 80;
-        window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
-      });
-    }
-  };
-  card.querySelector('.child-remove').onclick=()=>{card.remove(); renumberChildren();};
-  card.querySelector('.add-grandchild').onclick=()=>addGrandchild(card);
-  children.appendChild(card);
-  refreshChildTitles();
-  refreshPairContext(card);
-}
-
-function childDisplayName(card, index){
-  const first=(card.querySelector('[data-c="firstName"]')?.value || '').trim();
-  const last=(card.querySelector('[data-c="lastName"]')?.value || '').trim();
-  const full=[first,last].filter(Boolean).join(' ');
-  return full || `Dijete ${index}`;
-}
-
-function pairPersonName(card){
-  const first=(card.querySelector('[data-c="firstName"]')?.value || '').trim();
-  const last=(card.querySelector('[data-c="lastName"]')?.value || '').trim();
-  return [first,last].filter(Boolean).join(' ');
-}
-
-function pairPartnerName(card){
-  const first=(card.querySelector('[data-s="firstName"]')?.value || card.querySelector('[data-p="firstName"]')?.value || '').trim();
-  const last=(card.querySelector('[data-s="lastName"]')?.value || card.querySelector('[data-p="lastName"]')?.value || '').trim();
-  return [first,last].filter(Boolean).join(' ');
-}
-
-function pairDisplayName(card, fallbackIndex){
-  const person=pairPersonName(card) || `Dijete ${fallbackIndex}`;
-  const partner=pairPartnerName(card);
-  return partner ? `${person} & ${partner}` : person;
-}
-
-function refreshPairContext(card){
-  if(!card) return;
-  const cards=[...children.children];
-  const index=Math.max(1,cards.indexOf(card)+1);
-  const pairName=pairDisplayName(card,index);
-
-  const title=card.querySelector('.pair-children-title');
-  if(title) title.textContent=`Djeca od ${pairName}`;
-
-  const addBtn=card.querySelector('.pair-add-child, .add-grandchild');
-  if(addBtn) addBtn.textContent=`＋ Dodaj dijete za ${pairName}`;
-
-  const collapseBtn=card.querySelector('.child-collapse');
-  if(collapseBtn && !card.classList.contains('user-collapsed')){
-    collapseBtn.textContent=`Završi unos za ${pairName}`;
-  }
-}
-
-function refreshChildTitles(){
-  [...children.children].forEach((card,i)=>{
-    const strong=card.querySelector('.child-head strong');
-    if(strong) strong.textContent=childDisplayName(card, i+1);
-  });
-}
-function renumberChildren(){refreshChildTitles()}
+function childDisplayName(card,index){return DescendantData.name(ownFields('c',card))||'Dijete '+index;}
+function pairPersonName(card){return DescendantData.name(ownFields('c',card));}
+function pairPartnerName(card){return DescendantData.name(ownFields('s',card));}
+function pairDisplayName(card,index){return [pairPersonName(card)||'Dijete '+index,pairPartnerName(card)].filter(Boolean).join(' & ');}
+function refreshPairContext(card){const title=card.querySelector(':scope > .descendant-family > h3'),button=card.querySelector(':scope > .descendant-family > .actions > button'),finish=card.querySelector(':scope > .actions > .child-collapse'),pair=pairDisplayName(card,1);if(title)title.textContent='Djeca od '+pair;if(button)button.textContent='＋ Dodaj dijete za '+pair;if(finish&&!card.classList.contains('user-collapsed'))finish.textContent='Završi unos za '+pair;}
+function refreshChildTitles(){document.querySelectorAll('.child-card').forEach((card,i)=>{card.querySelector(':scope > .child-head strong').textContent=childDisplayName(card,i+1);});}
+function renumberChildren(){refreshChildTitles();}
 document.getElementById('addChild').onclick=()=>addChild();
-
-if(!editPublicId) addChild();
+if(!editPublicId)addChild();
 
 function objFrom(prefix, scope=document){const o={};scope.querySelectorAll(`[data-${prefix}]`).forEach(e=>o[e.dataset[prefix]]=e.value.trim());return o;}
 
@@ -1519,6 +1402,7 @@ function renderExistingFiles(mode){
   box.innerHTML=`<b>Već sačuvani prilozi (${existingFiles.length})</b><ul>${existingFiles.map(f=>`<li>${esc(f.original_name||f.name||'Fajl')} ${f.size?`<span class="subtle">(${formatFileSize(f.size)})</span>`:''}</li>`).join('')}</ul><div class="subtle">Novi fajlovi koje dodate biće pridruženi postojećima. Ukupno može biti najviše 10.</div>`;
 }
 function fillFamily(d){
+  clearDescendantFocus(document.getElementById('familyForm'));
   switchMode('family');
   const form=document.getElementById('familyForm');
   setNamed(form,'submittedBy',d.submittedBy);
@@ -1534,6 +1418,7 @@ function fillFamily(d){
   updateTitle();
 }
 function fillPerson(d){
+  clearDescendantFocus(document.getElementById('personForm'));
   switchMode('person');
   const form=document.getElementById('personForm');
   for(const [k,v] of Object.entries(d)){
@@ -1680,7 +1565,7 @@ function familyData(){
   const d={type:'porodica',title:document.getElementById('generatedTitle').textContent,submittedBy:val('submittedBy'),primaryRelationship:val('primaryRelationship'),father:{},mother:{},children:[],source:val('source'),notes:val('notes')};
   ['firstName','lastName','nickname','birthDate','birthPlace','deathDate','deathPlace'].forEach(k=>d.father[k]=val('father_'+k));
   ['firstName','lastName','maidenName','nickname','birthDate','birthPlace','deathDate','deathPlace'].forEach(k=>d.mother[k]=val('mother_'+k));
-  [...children.children].forEach(card=>{const c=objFrom('c',card), s=objFrom('s',card);c.spouse=s;c.children=[];card.querySelectorAll('.grandchild').forEach(r=>{const g={};r.querySelectorAll('[data-g]').forEach(e=>g[e.dataset.g]=e.value.trim());c.children.push(g)});d.children.push(c)});return d;
+  d.children=readDescendants(children);return d;
 }
 function formToObject(form){
   const fd=new FormData(form),o={type:'pojedinac'};
@@ -1700,12 +1585,7 @@ function formToObject(form){
   delete o.partner_firstName; delete o.partner_lastName; delete o.partner_maidenName; delete o.partner_nickname;
   delete o.partner_birthDate; delete o.partner_birthPlace; delete o.partner_deathDate; delete o.partner_deathPlace; delete o.partner_relationship;
 
-  o.children=[];
-  [...personChildren.children].forEach(r=>{
-    const g={};
-    r.querySelectorAll('[data-pc]').forEach(e=>g[e.dataset.pc]=e.value.trim());
-    o.children.push(g);
-  });
+  o.children=readDescendants(personChildren);
   return o;
 }
 function esc(v){return String(v??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]));}
@@ -1736,19 +1616,7 @@ function familyReport(d){
     h+='</ol>';
   }
 
-  // Zatim svako dijete posebno, sa njegovim partnerom i djecom.
-  if(d.children.length) h+=`<h3>Porodice djece osnovne porodice</h3>`;
-  d.children.forEach((c,i)=>{
-    const punoIme=[c.firstName,c.lastName].filter(Boolean).join(' ');
-    h+=`<div class="report-card"><h4>${i+1}. ${punoIme ? esc(punoIme) : 'Dijete '+(i+1)}</h4>`;
-    h+=`<h4>Podaci o osobi</h4>`+row('Ime',c.firstName)+row('Prezime',c.lastName)+row('Nadimak',c.nickname)+row('Datum rođenja',c.birthDate)+row('Mjesto rođenja',c.birthPlace)+row('Datum smrti',c.deathDate)+row('Mjesto smrti',c.deathPlace);
-    const s=c.spouse||{};
-    h+=`<h4>Supružnik / partner</h4>`+row('Ime',s.firstName)+row('Prezime',s.lastName)+row('Djevojačko prezime',s.maidenName)+row('Nadimak',s.nickname)+row('Datum rođenja',s.birthDate)+row('Mjesto rođenja',s.birthPlace)+row('Datum smrti',s.deathDate)+row('Mjesto smrti',s.deathPlace)+row('Vrsta veze',s.relationship);
-    h+=`<h4>Djeca ovog para (${(c.children||[]).length})</h4>`;
-    if(!(c.children||[]).length) h+='<p class="empty">Nisu navedena djeca ovog para.</p>';
-    (c.children||[]).forEach((g,j)=>{h+=`<div class="report-card"><strong>Dijete ${j+1}</strong>`+row('Ime i prezime',g.name)+row('Datum rođenja',g.birthDate)+row('Mjesto rođenja',g.birthPlace)+'</div>';});
-    h+=row('Napomena za ovu porodicu',c.notes)+'</div>';
-  });
+  h+='<h3>Potomci i njihove porodice</h3>'+DescendantData.html(d.children,{esc,row});
   h+=`<h3>Izvor i napomene</h3>`+row('Odakle su poznati podaci',d.source)+row('Napomena',d.notes);
   h+=filesReport('family');
   return h;
@@ -1775,7 +1643,7 @@ function personReport(d){
   const kids=Array.isArray(d.children)?d.children:[];
   h+=`<h3>Djeca ovog para (${kids.length})</h3>`;
   if(!kids.length) h+='<p class="empty">Nisu navedena djeca ovog para.</p>';
-  kids.forEach((g,j)=>{h+=`<div class="report-card"><strong>Dijete ${j+1}</strong>`+row('Ime i prezime',g.name)+row('Datum rođenja',g.birthDate)+row('Mjesto rođenja',g.birthPlace)+'</div>';});
+  h+=DescendantData.html(kids,{esc,row});
 
   h+='<h3>Dopuna i izvor</h3>';
   h+=row('Šta se dodaje ili ispravlja',d.correction)+row('Odakle je poznat podatak',d.source);

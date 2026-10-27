@@ -16,20 +16,11 @@
  document.querySelectorAll('input[type=file]').forEach(input=>{const section=input.closest('.section');if(section){section.hidden=true;section.style.display='none';}input.disabled=true;});
  document.getElementById('draftStatus').hidden=true;
  form.querySelector('[name=submittedBy]').required=true;
- const originalAddChild=addChild;
- addChild=(data={})=>{
-  originalAddChild(data);
-  const card=children.lastElementChild,actions=card.querySelector(':scope > .actions');
-  actions.classList.add('branch-child-actions');
-  const details=document.createElement('details'),summary=document.createElement('summary'),field=document.createElement('div'),label=document.createElement('label'),input=document.createElement('textarea');
-  details.className='branch-child-notes';field.className='field';summary.textContent='Napomene o djetetu';label.textContent='Napomene osobe';input.id='branch-person-notes-'+card.dataset.index;label.htmlFor=input.id;input.dataset.c='personNotes';input.value=data.personNotes||'';
-  field.append(label,input);details.append(summary,field);card.insertBefore(details,actions);
- };
  const initial={...boot.payload,submittedBy:''};fillFamily(initial);updateSenderLabelForEditMode(true);
  for(const [prefix,title] of [['father','Prva osoba'],['mother','Partner / supružnik']]){const section=form.querySelector('[data-prefix='+prefix+']').closest('.section');section.dataset.baseTitle=title;section.querySelector('h2').textContent=title;const button=section.querySelector('.section-toggle');if(button)button.textContent='Završi unos';}
  for(const prefix of ['father','mother']){const grid=form.querySelector('[data-prefix='+prefix+']');for(const [key,label] of [['maidenName','Djevojačko prezime'],['notes','Napomene osobe']]){if(form.querySelector('[name='+prefix+'_'+key+']'))continue;const wrap=document.createElement('div');wrap.className='field';const title=document.createElement('label');title.textContent=label;const input=document.createElement(key==='notes'?'textarea':'input');input.name=prefix+'_'+key;input.value=initial[prefix]?.[key]||'';wrap.append(title,input);grid.appendChild(wrap);}}
  filesReport=()=>'';
- const originalReport=familyReport;familyReport=payload=>{const notes=[['Prva osoba',payload.father],['Partner / supružnik',payload.mother],...payload.children.map(c=>[[c.firstName,c.lastName].filter(Boolean).join(' ')||'Dijete',{notes:c.personNotes}])].filter(([,p])=>p?.notes);return originalReport(payload)+(notes.length?'<h3>Napomene o osobama</h3>'+notes.map(([label,p])=>row(label,p.notes)).join(''):'')+(payload.father?.maidenName?row('Djevojačko prezime prve osobe',payload.father.maidenName):'');};
+ const originalReport=familyReport;familyReport=payload=>{const notes=[['Prva osoba',payload.father],['Partner / supružnik',payload.mother]].filter(([,p])=>p?.notes);return originalReport(payload)+(notes.length?'<h3>Napomene o osobama</h3>'+notes.map(([label,p])=>row(label,p.notes)).join(''):'')+(payload.father?.maidenName?row('Djevojačko prezime prve osobe',payload.father.maidenName):'');};
  const removal=document.createElement('details');removal.className='section';const removalSummary=document.createElement('summary');removalSummary.textContent='Ukloni porodicu iz ove kopije';removal.appendChild(removalSummary);
  const removalText=document.createElement('p');removalText.textContent='Uklanjaju se veze ove porodice. Osobe ostaju dostupne u porodičnom linku.';removal.appendChild(removalText);
  const removalForm=document.createElement('form');removalForm.method='post';removalForm.action=boot.base+'/remove-family';
@@ -46,15 +37,15 @@
  function updateRemoval(){removal.hidden=!familyId||familyId==='new'||boot.originalFamilies.includes(familyId);removalFields.family.value=familyId;removalFields.revision.value=revision;personFields.revision.value=revision;}
  updateRemoval();
  const ownFamilyData=familyData;
- function stamp(payload){
-  rootIds={father:payload.father?._id||'',mother:payload.mother?._id||''};
-  Array.from(children.children).forEach((card,i)=>{const c=payload.children[i]||{};card.dataset.branchId=c._id||'';card.dataset.branchPartner=c.spouse?._id||'';card.dataset.branchFamily=c._family||'';
-   Array.from(card.querySelectorAll('.grandchild')).forEach((row,j)=>row.dataset.branchId=c.children?.[j]?._id||'');
-   let link=card.querySelector('.branch-continue');if(!link){link=document.createElement('a');link.className='branch-continue btn soft';card.querySelector('.branch-child-actions').appendChild(link);}link.textContent='Otvori porodicu ovog djeteta';link.hidden=!c._id;link.style.display=c._id?'':'none';link.href=boot.base+'/form?person='+encodeURIComponent(c._id||'');
-  });
+ function stampNode(card,c){
+  card.dataset.branchId=c._id||'';card.dataset.branchPartner=c.spouse?._id||'';card.dataset.branchFamily=c._family||'';card.dataset.reference=c._reference?'true':'false';
+  let link=card.querySelector(':scope > .actions > .branch-continue');if(!link){link=document.createElement('a');link.className='branch-continue btn soft';card.querySelector(':scope > .actions').appendChild(link);}link.textContent='Otvori ovu granu zasebno';link.hidden=!c._id;link.style.display=c._id?'':'none';link.href=boot.base+'/form?person='+encodeURIComponent(c._id||'');
+  if(card._pendingDescendants){card._pendingDescendants=structuredClone(c.children||[]);return;}
+  Array.from(descendantList(card).children).forEach((child,i)=>stampNode(child,c.children?.[i]||{}));
  }
+ function stamp(payload){rootIds={father:payload.father?._id||'',mother:payload.mother?._id||''};Array.from(children.children).forEach((card,i)=>stampNode(card,payload.children[i]||{}));}
  stamp(initial);
- familyData=()=>{const payload=ownFamilyData();payload.father._id=rootIds.father;payload.mother._id=rootIds.mother;for(const prefix of ['father','mother'])for(const key of ['maidenName','notes'])payload[prefix][key]=form.querySelector('[name='+prefix+'_'+key+']').value.trim();Array.from(children.children).forEach((card,i)=>{const c=payload.children[i];c._id=card.dataset.branchId||'';c.spouse._id=card.dataset.branchPartner||'';c._family=card.dataset.branchFamily||'';Array.from(card.querySelectorAll('.grandchild')).forEach((row,j)=>c.children[j]._id=row.dataset.branchId||'');});return payload;};
+ familyData=()=>{const payload=ownFamilyData();payload.father._id=rootIds.father;payload.mother._id=rootIds.mother;for(const prefix of ['father','mother'])for(const key of ['maidenName','notes'])payload[prefix][key]=form.querySelector('[name='+prefix+'_'+key+']').value.trim();return payload;};
  form.onsubmit=e=>{e.preventDefault();returnY=window.scrollY;show(familyData());};
  document.getElementById('backBtn').onclick=()=>{document.getElementById('previewBox').style.display='none';window.scrollTo(0,returnY);};
  document.getElementById('sendBtn').textContent='Sačuvaj izmjene u linku';

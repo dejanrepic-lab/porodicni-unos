@@ -1,3 +1,4 @@
+const DescendantData = require('./public/descendant-data');
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -274,7 +275,7 @@ function submitRateLimit(req, res, next) {
 
 app.post('/api/submissions', formAccessRequired, submitRateLimit, upload.array('files', 10), (req, res) => {
   let payload;
-  try { payload = JSON.parse(req.body.payload || '{}'); }
+  try { payload = JSON.parse(req.body.payload || '{}'); DescendantData.flatten(payload.children||[]); }
   catch { cleanupFiles(req.files); return res.status(400).json({ error: 'Neispravan sadržaj obrasca.' }); }
 
   const type = payload.type === 'pojedinac' ? 'pojedinac' : 'porodica';
@@ -316,7 +317,7 @@ app.post('/api/submissions/:publicId/update', formAccessRequired, submitRateLimi
   }
 
   let payload;
-  try { payload = JSON.parse(req.body.payload || '{}'); }
+  try { payload = JSON.parse(req.body.payload || '{}'); DescendantData.flatten(payload.children||[]); }
   catch {
     cleanupFiles(req.files);
     return res.status(400).json({ error: 'Neispravan sadržaj obrasca.' });
@@ -893,16 +894,7 @@ function renderPayloadTxt(d={}, files=[]) {
     const personKids = Array.isArray(d.children) ? d.children : [];
     lines.push(`DJECA OVOG PARA (${personKids.length})`);
     lines.push('----------------');
-    if (personKids.length) {
-      personKids.forEach((g, i) => {
-        let item = `${i+1}. ${txtValue(g.name) || `Dijete ${i+1}`}`;
-        if (txtValue(g.birthDate)) item += ` — ${txtValue(g.birthDate)}`;
-        if (txtValue(g.birthPlace)) item += ` (${txtValue(g.birthPlace)})`;
-        lines.push(item);
-      });
-    } else {
-      lines.push('Nisu navedena djeca ovog para.');
-    }
+    lines.push(personKids.length?DescendantData.txt(personKids):'Nisu navedena djeca ovog para.');
     lines.push('');
 
     txtLine(lines, 'Šta se dodaje ili ispravlja', d.correction);
@@ -939,53 +931,7 @@ function renderPayloadTxt(d={}, files=[]) {
       lines.push('===============================');
       lines.push('');
 
-      kids.forEach((c, i) => {
-        const name = [c.firstName, c.lastName].filter(Boolean).join(' ') || `Dijete ${i+1}`;
-        lines.push(`${i+1}. ${name}`);
-        lines.push('~'.repeat(Math.max(8, `${i+1}. ${name}`.length)));
-        txtLine(lines, 'Ime', c.firstName);
-        txtLine(lines, 'Prezime', c.lastName);
-        txtLine(lines, 'Nadimak', c.nickname);
-        txtLine(lines, 'Datum rođenja', c.birthDate);
-        txtLine(lines, 'Mjesto rođenja', c.birthPlace);
-        txtLine(lines, 'Datum smrti', c.deathDate);
-        txtLine(lines, 'Mjesto smrti', c.deathPlace);
-        lines.push('');
-
-        const s = c.spouse || {};
-        const hasSpouse = Object.values(s).some(v => txtValue(v));
-        if (hasSpouse) {
-          lines.push('SUPRUŽNIK / PARTNER');
-          lines.push('-------------------');
-          txtLine(lines, 'Ime', s.firstName);
-          txtLine(lines, 'Prezime', s.lastName);
-          txtLine(lines, 'Djevojačko prezime', s.maidenName);
-          txtLine(lines, 'Nadimak', s.nickname);
-          txtLine(lines, 'Datum rođenja', s.birthDate);
-          txtLine(lines, 'Mjesto rođenja', s.birthPlace);
-          txtLine(lines, 'Datum smrti', s.deathDate);
-          txtLine(lines, 'Mjesto smrti', s.deathPlace);
-          txtLine(lines, 'Vrsta veze', s.relationship);
-          lines.push('');
-        }
-
-        const gc = Array.isArray(c.children) ? c.children : [];
-        lines.push(`DJECA OVOG PARA (${gc.length})`);
-        lines.push('----------------');
-        if (gc.length) {
-          gc.forEach((g, j) => {
-            let line = `${j+1}. ${txtValue(g.name) || `Dijete ${j+1}`}`;
-            if (txtValue(g.birthDate)) line += ` — ${txtValue(g.birthDate)}`;
-            if (txtValue(g.birthPlace)) line += ` (${txtValue(g.birthPlace)})`;
-            lines.push(line);
-          });
-        } else {
-          lines.push('Nema unesene djece.');
-        }
-        lines.push('');
-        txtLine(lines, 'Napomena za ovu porodicu', c.notes);
-        if (txtValue(c.notes)) lines.push('');
-      });
+      lines.push(DescendantData.txt(kids));
     }
 
     lines.push('IZVOR I NAPOMENE');
@@ -1017,7 +963,7 @@ function renderPayload(d={}) {
       <h2>Partner / supružnik</h2>
       ${row('Ime',p.firstName)}${row('Prezime',p.lastName)}${row('Djevojačko prezime',p.maidenName)}${row('Nadimak',p.nickname)}${row('Datum rođenja',p.birthDate)}${row('Mjesto rođenja',p.birthPlace)}${row('Datum smrti',p.deathDate)}${row('Mjesto smrti',p.deathPlace)}${row('Vrsta veze',p.relationship)}
       <h2>Djeca ovog para (${kids.length})</h2>
-      ${kids.length ? `<ol>${kids.map((g,i)=>`<li>${esc(g.name||`Dijete ${i+1}`)}${g.birthDate?` — ${esc(g.birthDate)}`:''}${g.birthPlace?` (${esc(g.birthPlace)})`:''}</li>`).join('')}</ol>` : '<p class="muted">Nisu navedena djeca ovog para.</p>'}
+      ${kids.length ? DescendantData.html(kids,{esc,row}) : '<p class="muted">Nisu navedena djeca ovog para.</p>'}
       <h2>Dopuna i izvor</h2>
       ${row('Šta se dodaje ili ispravlja',d.correction)}${row('Odakle je poznat podatak',d.source)}${row('Podatke šalje',d.submittedBy)}
     </div>`;
@@ -1027,11 +973,7 @@ function renderPayload(d={}) {
   let h=`<div class="report"><h2>Porodica: ${esc(d.title || 'Bez naslova')}</h2>${row('Podatke šalje',d.submittedBy)}<h2>Osnovna porodica${primaryLabel}</h2>${person('Otac',d.father)}${person('Majka',d.mother,true)}`;
   h += `<h2>Spisak djece osnovne porodice (${kids.length})</h2><ol>${kids.map((c,i)=>`<li>${esc([c.firstName,c.lastName].filter(Boolean).join(' ') || `Dijete ${i+1}`)}</li>`).join('')}</ol>`;
   if (kids.length) h += '<h2>Porodice djece osnovne porodice</h2>';
-  kids.forEach((c,i)=>{
-    const name=[c.firstName,c.lastName].filter(Boolean).join(' ') || `Dijete ${i+1}`;
-    const s=c.spouse||{}; const gc=Array.isArray(c.children)?c.children:[];
-    h += `<section><h3>${i+1}. ${esc(name)}</h3><h4>Podaci o osobi</h4>${row('Ime',c.firstName)}${row('Prezime',c.lastName)}${row('Nadimak',c.nickname)}${row('Datum rođenja',c.birthDate)}${row('Mjesto rođenja',c.birthPlace)}${row('Datum smrti',c.deathDate)}${row('Mjesto smrti',c.deathPlace)}<h4>Supružnik / partner</h4>${row('Ime',s.firstName)}${row('Prezime',s.lastName)}${row('Djevojačko prezime',s.maidenName)}${row('Nadimak',s.nickname)}${row('Datum rođenja',s.birthDate)}${row('Mjesto rođenja',s.birthPlace)}${row('Datum smrti',s.deathDate)}${row('Mjesto smrti',s.deathPlace)}${row('Vrsta veze',s.relationship)}<h4>Djeca ovog para (${gc.length})</h4><ol>${gc.map((g,j)=>`<li>${esc(g.name || `Dijete ${j+1}`)}${g.birthDate?` — ${esc(g.birthDate)}`:''}${g.birthPlace?` (${esc(g.birthPlace)})`:''}</li>`).join('')}</ol>${row('Napomena za ovu porodicu',c.notes)}</section>`;
-  });
+  h += DescendantData.html(kids,{esc,row});
   h += `<h2>Izvor i napomene</h2>${row('Odakle su poznati podaci',d.source)}${row('Napomena',d.notes)}</div>`;
   return h;
 }
