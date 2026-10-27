@@ -29,6 +29,6 @@ test('marks changed people and multiple family branches, without changing the re
  const admin=navigation(branch,'/admin/family-links/1','','',review);
  assert.match(admin,/Izmjene u grani/);assert.match(admin,/Nova osoba/);assert.match(admin,/Izmijenjeno/);
  assert.match(admin,/family=f1#family-review/);assert.match(admin,/family=f3#family-review/);
- assert.match(admin,/<details class="family-node branch-changed" open><summary>Osoba 3/);
+ assert.match(admin,/<details data-family-id="f3" class="family-node branch-changed" open><summary>Osoba 3/);
  const publicView=navigation(branch,'/branch/token');assert.doesNotMatch(publicView,/change-badge/);
 });
