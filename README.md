@@ -451,3 +451,9 @@ Link otvara hijerarhiju porodica i potomaka, sa prezimenom ispred imena.
 Grane se otvaraju strelicom; klik na osobu otvara samo njen obrazac.
 Pretraga obuhvata osobe unutar tog linka. Isti pregled radi na ranije
 pripremljenim linkovima bez ponovnog uvoza i bez promjene sačuvanih podataka.
+
+### Praćenje obrade porodičnih linkova
+
+U admin pregledu linkova vide se otvorenost linka, status obrade, broj novih i izmijenjenih osoba i porodica, zadnje čuvanje i ime koje je uneseno uz izmjenu. Detalji linka prikazuju trenutne razlike u odnosu na podatke pripremljene iz Grampsa te istoriju čuvanja.
+
+Rođak može na svojoj stranici označiti da je završio obradu; administrator zatim može označiti prijedloge kao pregledane. Nova izmjena nakon završetka ili pregleda vraća status na „U toku”. Oznaka pregledano ne prenosi podatke u Gramps. Podaci i statusi čuvaju se u postojećoj bazi; tabela za statuse stvara se automatski pri pokretanju. Imena unosilaca su upisana ručno i nisu potvrđeni nalozi.
