@@ -156,5 +156,26 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   const inactiveDetail=await (await fetch(detailUrl,{headers:{cookie}})).text();assert.match(inactiveDetail,/Link je isključen/);assert.doesNotMatch(inactiveDetail,/class="share-url"/);
   assert.equal((await fetch(base+branchPath)).status,404);
   assert.equal((await fetch(base+branchPath+'/person',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body})).status,404);
+  const firstId=Number(detailUrl.match(/\d+$/)[0]);
+  const nextCreate=await fetch(`${base}/admin/family-links/prepare`,{method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf,label:'Drugi link',family:'family1'})});assert.equal(nextCreate.status,302);
+  const secondUrl=base+nextCreate.headers.get('location'),secondId=Number(secondUrl.match(/\d+$/)[0]);
+  await fetch(secondUrl+'/toggle',{method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf})});
+  const secondDetail=await (await fetch(secondUrl,{headers:{cookie}})).text(),secondPath=secondDetail.match(/href="(\/branch\/[a-f0-9]+)"/)[1];
+  const dbCheck=new Database(path.join(dataDir,'porodicni-unos.db'));
+  assert.ok(dbCheck.prepare('SELECT COUNT(*) n FROM family_link_history WHERE link_id=?').get(firstId).n>0);
+  assert.equal(dbCheck.prepare('SELECT COUNT(*) n FROM family_link_review_snapshots WHERE link_id=?').get(firstId).n,1);
+  const confirmPage=await (await fetch(detailUrl+'/delete',{headers:{cookie}})).text();assert.match(confirmPage,/traj|Traj/i);assert.match(confirmPage,/Gramps podaci/);assert.match(confirmPage,/name="confirm"/);
+  const anonymousDelete=await fetch(detailUrl+'/delete',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf,revision:'8',confirm:'yes'})});assert.equal(anonymousDelete.status,302);
+  const rejectedCsrf=await fetch(detailUrl+'/delete',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf:'invalid',revision:'8',confirm:'yes'})});assert.equal(rejectedCsrf.status,403);
+  const noConfirmDelete=await fetch(detailUrl+'/delete',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'8'})});assert.equal(noConfirmDelete.status,400);
+  const staleDelete=await fetch(detailUrl+'/delete',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'7',confirm:'yes'})});assert.equal(staleDelete.status,409);
+  assert.equal((await fetch(detailUrl,{headers:{cookie}})).status,200);
+  const deleted=await fetch(detailUrl+'/delete',{method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'8',confirm:'yes'})});assert.equal(deleted.status,302);assert.equal(deleted.headers.get('location'),'/admin/family-links?deleted=1');
+  assert.equal((await fetch(detailUrl,{headers:{cookie}})).status,404);assert.equal((await fetch(base+secondPath)).status,200);
+  for(const table of ['family_link_history','family_link_progress','family_link_review_snapshots'])assert.equal(dbCheck.prepare(`SELECT COUNT(*) n FROM ${table} WHERE link_id=?`).get(firstId).n,0);
+  assert.equal(dbCheck.prepare('SELECT COUNT(*) n FROM family_links WHERE id=?').get(secondId).n,1);
+  const activeDelete=await fetch(secondUrl+'/delete',{method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'0',confirm:'yes'})});assert.equal(activeDelete.status,302);assert.equal((await fetch(base+secondPath)).status,404);
+  dbCheck.close();
+
 
 });
