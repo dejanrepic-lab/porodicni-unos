@@ -444,3 +444,10 @@ ostali događaji se prikazuju kao kontekst, a ispravke im se mogu opisati u
 napomenama. Izmjene veza/brisanjem postojećih osoba i prenos medijskih fajlova
 nisu uključeni. Nije riječ o potpunom Gramps editoru ili sinhronizaciji.
 Podaci i istorija linkova čuvaju se u istoj SQLite bazi i uključeni su u backup.
+
+### Kretanje kroz porodičnu granu
+
+Link otvara hijerarhiju porodica i potomaka, sa prezimenom ispred imena.
+Grane se otvaraju strelicom; klik na osobu otvara samo njen obrazac.
+Pretraga obuhvata osobe unutar tog linka. Isti pregled radi na ranije
+pripremljenim linkovima bez ponovnog uvoza i bez promjene sačuvanih podataka.
