@@ -9,8 +9,8 @@ test('authenticates and retrieves the complete read-only snapshot', async () => 
     return { ok: true, json: async () => String(url).endsWith('/token/') ? {access_token:'secret'} : [] };
   };
   const result = await createGrampsClient({baseUrl:'http://gramps:5014/', username:'reader', password:'pw', fetchImpl}).snapshot();
-  assert.deepEqual(result, {people:[], families:[], events:[], places:[]});
-  assert.equal(calls.length, 5);
+  assert.deepEqual(result, {people:[], families:[], events:[], places:[], notes:[]});
+  assert.equal(calls.length, 6);
   assert.equal(calls[0].options.method, 'POST');
   for (const call of calls.slice(1)) {
     assert.equal(call.options.method, undefined);

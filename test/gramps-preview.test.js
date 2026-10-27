@@ -14,7 +14,7 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
     const data = {
       '/api/people/': [{handle:'a', primary_name:{first_name:'Ana', surname_list:[{surname:'Test'}]}}, {handle:'b', primary_name:{first_name:'Marko'}}],
       '/api/families/': [{handle:'family1', father_handle:'a', child_ref_list:[{ref:'b'}]}],
-      '/api/events/': [], '/api/places/': [],
+      '/api/events/': [], '/api/places/': [], '/api/notes/': [],
     };
     if (!(req.url in data)) { res.statusCode = 404; return res.end('{}'); }
     return res.end(JSON.stringify(data[req.url]));
@@ -41,4 +41,36 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   const preview = await fetch(`${base}/admin/gramps/preview`, {method:'POST', headers:{cookie,'Content-Type':'application/x-www-form-urlencoded'}, body:'family=family1'});
   assert.equal(preview.status,200);
   assert.match(await preview.text(), /2 osoba · 1 porodica/);
+  const adminHeaders = {cookie, 'Content-Type':'application/x-www-form-urlencoded'};
+  const csrfFrom = html => html.match(/name="csrf" value="([^"]+)"/)[1];
+  const newPage = await (await fetch(`${base}/admin/family-links/new`, {headers:{cookie}})).text();
+  const csrf = csrfFrom(newPage);
+  const create = await fetch(`${base}/admin/family-links/prepare`, {method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf,label:'Za rođaka',family:'family1'})});
+  assert.equal(create.status,302);
+  const detailUrl = base + create.headers.get('location');
+  let detail = await (await fetch(detailUrl,{headers:{cookie}})).text();
+  assert.match(detail,/Nacrt/);
+  assert.doesNotMatch(detail,/Otvori link za rođaka/);
+  const toggle = await fetch(detailUrl+'/toggle',{method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf})});
+  assert.equal(toggle.status,302);
+  detail = await (await fetch(detailUrl,{headers:{cookie}})).text();
+  const branchPath=detail.match(/href="(\/branch\/[a-f0-9]+)"/)[1];
+  const publicHtml = await (await fetch(base+branchPath)).text();
+  assert.match(publicHtml,/Ana Test/);
+  const publicCsrf=csrfFrom(publicHtml);
+  const body = new URLSearchParams({csrf:publicCsrf,revision:'0',editor:'Rođak',id:'a',name:'Ana Dopunjeno',birth:'oko 1900',notes:'Test izvor'});
+  const saved=await fetch(base+branchPath+'/person',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+  assert.equal(saved.status,302);
+  const conflict=await fetch(base+branchPath+'/person',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+  assert.equal(conflict.status,409);
+  const wrongCsrf=await fetch(base+branchPath+'/person',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:'wrong',revision:'1'})});
+  assert.equal(wrongCsrf.status,403);
+  const add=await fetch(base+branchPath+'/add',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'1',editor:'Rođak',family:'family1',role:'child',name:'Novo dijete'})});
+  assert.equal(add.status,302);
+  detail=await (await fetch(detailUrl,{headers:{cookie}})).text();
+  assert.match(detail,/Ana Dopunjeno/);assert.match(detail,/Novo dijete/);assert.match(detail,/Test izvor/);
+  await fetch(detailUrl+'/toggle',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf})});
+  assert.equal((await fetch(base+branchPath)).status,404);
+  assert.equal((await fetch(base+branchPath+'/person',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body})).status,404);
+
 });

@@ -523,6 +523,8 @@ function grampsPersonName(person) {
   return [name.first_name, surname].filter(Boolean).join(' ') || person.gramps_id || 'Bez imena';
 }
 
+require('./lib/family-links').mountFamilyLinks(app, { db, adminAuth, client: grampsClient });
+
 app.get('/admin/gramps', adminAuth, async (req, res) => {
   try {
     const data = await grampsClient().snapshot();
@@ -593,7 +595,7 @@ app.get('/admin', adminAuth, (req, res) => {
     <div class="toolbar">
       <h1>Primljeni odgovori</h1>
       <div class="admin-actions">
-        <a class="btn" href="/admin/gramps">Gramps porodice</a>
+        <a class="btn" href="/admin/family-links">Porodični linkovi</a>
         <a class="btn secondary" href="/admin/user-mode">Korisnički prikaz</a>
         <a class="btn" href="/admin/export.csv">Izvezi CSV pregled</a>
         <form method="post" action="/admin/logout" style="margin:0">
