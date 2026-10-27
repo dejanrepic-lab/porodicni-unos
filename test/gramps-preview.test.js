@@ -56,7 +56,11 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   detail = await (await fetch(detailUrl,{headers:{cookie}})).text();
   const branchPath=detail.match(/href="(\/branch\/[a-f0-9]+)"/)[1];
   const publicHtml = await (await fetch(base+branchPath)).text();
-  assert.match(publicHtml,/Ana Test/);
+  assert.match(publicHtml,/Test, Ana/);
+  assert.doesNotMatch(publicHtml,/id="person-editor"/);
+  const editorHtml=await (await fetch(base+branchPath+'?person=a')).text();
+  assert.match(editorHtml,/id="person-editor"/);
+  assert.equal((editorHtml.match(/action="[^"]+\/person"/g)||[]).length,1);
   const publicCsrf=csrfFrom(publicHtml);
   const body = new URLSearchParams({csrf:publicCsrf,revision:'0',editor:'Rođak',id:'a',name:'Ana Dopunjeno',birth:'oko 1900',notes:'Test izvor'});
   const saved=await fetch(base+branchPath+'/person',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
