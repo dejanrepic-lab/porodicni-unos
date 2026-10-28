@@ -941,7 +941,7 @@ button:active{
       <h2>Majka</h2>
       <div class="grid person-fields" data-prefix="mother">
         <div class="field"><label>Ime</label><input name="mother_firstName" class="title-watch" placeholder="Mara"></div>
-        <div class="field"><label>Prezime</label><input name="mother_lastName" placeholder="Marić"></div>
+        <div class="field"><label>Prezime</label><input name="mother_lastName" class="title-watch" placeholder="Marić"></div>
         <div class="field"><label>Djevojačko prezime</label><input name="mother_maidenName" class="title-watch" placeholder="Jovanović"></div>
         <div class="field"><label>Nadimak</label><input name="mother_nickname"></div>
         <div class="field"><label>Datum rođenja</label><input name="mother_birthDate"></div>
@@ -955,7 +955,7 @@ button:active{
       <h2 id="familyChildrenHeading">Djeca ove porodice</h2>
       <p class="subtle">Dodajte samo onoliko djece koliko porodica ima.</p>
       <div id="children"></div>
-      <div class="actions"><button type="button" class="btn soft" id="addChild">＋ Dodaj dijete osnovne porodice</button></div>
+      <div class="actions"><button type="button" class="btn soft" id="addChild">＋ Dodaj dijete ove porodice</button></div>
     </div>
 
     <div class="section">
@@ -1326,6 +1326,7 @@ function updateTitle(){
   const generated=(father||mother) ? [father,mother].filter(Boolean).join(' & ') : '— naslov će se napraviti automatski —';
 
   document.getElementById('generatedTitle').textContent = generated;
+  document.getElementById('addChild').textContent = (father||mother) ? `＋ Dodaj dijete za ${generated}` : '＋ Dodaj dijete ove porodice';
 
   const childrenHeading=document.getElementById('familyChildrenHeading');
   if(childrenHeading){
