@@ -7,8 +7,7 @@
  banner.style.display='block';banner.textContent='Uređuješ kopiju porodične grane. Prvo pregledaj unos, zatim sačuvaj izmjene u ovom linku.';
  const nav=document.createElement('nav');nav.className='actions';
  const tree=document.createElement('a');tree.className='btn soft';tree.href=boot.base+'?focus='+encodeURIComponent(boot.personId)+'#'+encodeURIComponent('tree-person-'+boot.personId);tree.textContent='← Stablo kod ove osobe';nav.appendChild(tree);
- for(const f of boot.families){const a=document.createElement('a');a.className='btn soft';a.href=boot.base+'/form?person='+encodeURIComponent(boot.personId)+'&family='+encodeURIComponent(f.id);a.textContent=f.label;nav.appendChild(a);}
- const newFamily=document.createElement('a');newFamily.className='btn soft';newFamily.href=boot.base+'/form?person='+encodeURIComponent(boot.personId)+'&family=new';newFamily.textContent='＋ Nova porodica ove osobe';nav.appendChild(newFamily);
+ for(const f of boot.families){if(f.id===familyId)continue;const a=document.createElement('a');a.className='btn soft';a.href=boot.base+'/form?person='+encodeURIComponent(boot.personId)+'&family='+encodeURIComponent(f.id);a.textContent='Druga porodica: '+f.label;nav.appendChild(a);}
  document.querySelector('.hero').appendChild(nav);
  document.querySelector('.hero h1').textContent='Porodica – pregled i dopuna';
  document.querySelector('.choice').hidden=true;document.querySelector('.choice').style.display='none';
@@ -19,6 +18,13 @@
  const initial={...boot.payload,submittedBy:''};fillFamily(initial);updateSenderLabelForEditMode(true);
  for(const [prefix,title] of [['father','Prva osoba'],['mother','Partner / supružnik']]){const section=form.querySelector('[data-prefix='+prefix+']').closest('.section');section.dataset.baseTitle=title;section.querySelector('h2').textContent=title;const button=section.querySelector('.section-toggle');if(button)button.textContent='Završi unos';}
  for(const prefix of ['father','mother']){const grid=form.querySelector('[data-prefix='+prefix+']');for(const [key,label] of [['maidenName','Djevojačko prezime'],['notes','Napomene osobe']]){if(form.querySelector('[name='+prefix+'_'+key+']'))continue;const wrap=document.createElement('div');wrap.className='field';const title=document.createElement('label');title.textContent=label;const input=document.createElement(key==='notes'?'textarea':'input');input.name=prefix+'_'+key;input.value=initial[prefix]?.[key]||'';wrap.append(title,input);grid.appendChild(wrap);}}
+ const partnerAction=document.createElement('details');partnerAction.className='branch-other-partner';
+ const partnerSummary=document.createElement('summary');partnerSummary.textContent='Drugi partner / druga veza';partnerAction.appendChild(partnerSummary);
+ const partnerHint=document.createElement('p');partnerHint.textContent='Koristi samo ako ova osoba ima još jednog partnera. Otvara se zaseban unos za tu vezu i njihovu djecu.';partnerAction.appendChild(partnerHint);
+ const partnerActions=document.createElement('div');partnerActions.className='actions';const newPartner=document.createElement('a');newPartner.className='btn soft';newPartner.href=boot.base+'/form?person='+encodeURIComponent(boot.personId)+'&family=new';newPartner.textContent='＋ Dodaj drugog partnera';partnerActions.appendChild(newPartner);partnerAction.appendChild(partnerActions);
+ const firstPersonSection=form.querySelector('[data-prefix=father]').closest('.section');firstPersonSection.insertBefore(partnerAction,firstPersonSection.querySelector(':scope > .section-toggle'));
+ function updatePartnerAction(payload){partnerAction.hidden=!familyId||familyId==='new'||!payload.mother?._id;}
+ updatePartnerAction(initial);
  filesReport=()=>'';
  const originalReport=familyReport;familyReport=payload=>{const notes=[['Prva osoba',payload.father],['Partner / supružnik',payload.mother]].filter(([,p])=>p?.notes);return originalReport(payload)+(notes.length?'<h3>Napomene o osobama</h3>'+notes.map(([label,p])=>row(label,p.notes)).join(''):'')+(payload.father?.maidenName?row('Djevojačko prezime prve osobe',payload.father.maidenName):'');};
  const removal=document.createElement('details');removal.className='section';const removalSummary=document.createElement('summary');removalSummary.textContent='Ukloni porodicu iz ove kopije';removal.appendChild(removalSummary);
@@ -53,7 +59,7 @@
   if(!currentPreview)return;const button=document.getElementById('sendBtn'),status=document.getElementById('sendStatus');button.disabled=true;status.textContent='Čuvam izmjene…';
   try{
    const response=await fetch(boot.base+'/form-save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csrf:boot.csrf,revision,personId:boot.personId,familyId,payload:currentPreview})});
-   const result=await response.json().catch(()=>({error:'Link više nije dostupan ili sesija nije važeća. Sačuvaj svoj unos prije osvježavanja.'}));if(!response.ok)throw Error(result.error||'Čuvanje nije uspjelo.');revision=result.revision;familyId=result.familyId;stamp(result.payload);updateRemoval();
+   const result=await response.json().catch(()=>({error:'Link više nije dostupan ili sesija nije važeća. Sačuvaj svoj unos prije osvježavanja.'}));if(!response.ok)throw Error(result.error||'Čuvanje nije uspjelo.');revision=result.revision;familyId=result.familyId;stamp(result.payload);updateRemoval();updatePartnerAction(result.payload);
    document.getElementById('previewBox').style.display='none';status.textContent='';showToast('Izmjene su sačuvane. Nastavi tamo gdje si stao.');banner.textContent='Sačuvano. Možeš nastaviti unos u ovoj porodici.';window.scrollTo(0,returnY);
   }catch(e){status.textContent=e.message;}finally{button.disabled=false;}
  };
