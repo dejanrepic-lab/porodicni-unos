@@ -11,6 +11,8 @@
  document.querySelector('.hero').appendChild(nav);
  document.querySelector('.hero h1').textContent='Porodica – pregled i dopuna';
  document.querySelector('.choice').hidden=true;document.querySelector('.choice').style.display='none';
+ // Example names and dates can be mistaken for imported data in a prefilled branch.
+ form.querySelectorAll('[placeholder]').forEach(field=>field.removeAttribute('placeholder'));
  // Attachments use a separate storage flow and are not silently accepted here.
  document.querySelectorAll('input[type=file]').forEach(input=>{const section=input.closest('.section');if(section){section.hidden=true;section.style.display='none';}input.disabled=true;});
  document.getElementById('draftStatus').hidden=true;
