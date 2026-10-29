@@ -536,3 +536,7 @@ Provjeren je tok otvaranje linka → osoba i porodica → dopuna → pregled izm
 - Ponovni zahtjev za završetak iste revizije čuva postojeći status administratorskog pregleda.
 
 Daljnje poboljšanje: upozorenje na moguće duplikate prije dodavanja nove osobe i izbor odgovarajuće postojeće osobe. Jednako ime samo po sebi nije dovoljan razlog za automatsko spajanje.
+
+### Završetak unosa djeteta
+
+„Gotovo — dodaj u porodicu” zatvara mali obrazac tek kad osoba ima ime. Novi član ostaje označen „Novo · nije sačuvano” do pregleda i čuvanja. Pregled prikazuje jednu karticu za dodavanje djeteta, sa porodicom kojoj pripada i opcijama „Ispravi” i „Odustani od dodavanja”. Uklanjanje je neposredno na kartici osobe; „Vrati” ostaje dostupan prije čuvanja.

@@ -170,3 +170,12 @@ test('save preview shows just the changes and correction returns to the exact pe
  const child=d.querySelector('#children > .child-card');child.querySelector('.review-actions button:nth-child(2)').click();put(child.querySelector('[data-c=birthDate]'),'1990');await preview();d.querySelector('.preview-correct').click();assert.ok(child.classList.contains('review-family-open'));assert.equal(d.activeElement.dataset.c,'birthDate');put(child.querySelector('[data-c=birthDate]'),'');
  const grandchild=child.querySelector(':scope > .descendant-family > .nested-list > .child-card');put(grandchild.querySelector('[data-c=birthPlace]'),'Novo mjesto');await preview();assert.equal(d.querySelectorAll('.preview-item').length,1);d.querySelector('.preview-correct').click();assert.equal(d.activeElement.dataset.c,'birthPlace');assert.ok(grandchild.classList.contains('review-editing'));assert.ok(child.classList.contains('review-family-open'));assert.deepEqual(errors,[]);
 });
+
+test('adding a child has a clear local finish and a single cancellable preview card',async t=>{
+ const {db,w,d,put,errors}=await fixture(t,family());d.querySelector('#addChild').click();const child=d.querySelector('#children').lastElementChild,done=child.querySelector(':scope > .actions > .child-collapse');
+ assert.equal(done.textContent,'Gotovo — dodaj u porodicu');done.click();assert.ok(child.classList.contains('review-editing'));
+ put(child.querySelector('[data-c=firstName]'),'Probno dijete');put(child.querySelector('[data-c=birthDate]'),'2026');done.click();assert.equal(child.classList.contains('review-editing'),false);assert.match(child.querySelector('.review-state').textContent,/Novo · nije sačuvano/);
+ put(d.querySelector('[name=submittedBy]'),'Rođak');await d.querySelector('#familyForm').onsubmit(new w.Event('submit',{cancelable:true}));
+ assert.equal(d.querySelectorAll('.preview-item').length,1);assert.match(d.querySelector('#result').textContent,/Dodaješ dijete u porodicu/);d.querySelector('.preview-cancel').click();await Promise.resolve();
+ assert.equal(child.isConnected,false);assert.equal(d.body.classList.contains('branch-preview-open'),false);assert.equal(d.querySelector('.review-savebar button').disabled,true);assert.equal(db.prepare('SELECT revision FROM family_links').get().revision,0);d.querySelector('.branch-undo button').click();assert.equal(child.isConnected,true);assert.equal(child.querySelector('[data-c=birthDate]').value,'2026');assert.deepEqual(errors,[]);
+});
