@@ -515,3 +515,7 @@ Svaka kartica djeteta sada ima iste mogućnosti: podatke osobe, partnera, vlasti
 **Otvori ovu porodicu** izdvaja odabranu porodicu za rad bez sužavanja obrasca kroz sve prethodne generacije. **Prikaži cijelu porodicu** vraća puni prikaz, bez gubitka unosa. Dublje kartice su po početku sklopljene.
 
 Pregled, trajni odgovor, administratorski prikaz i TXT izvoz prate sve unesene generacije. Stari sačuvani zapisi unučadi s jednim poljem za ime ostaju čitljivi. Zaštite obima podataka i sukoba čuvanja i dalje važe.
+
+### Dopuna veze i porodičnih napomena
+
+U porodičnom linku vrsta veze je odmah uz kartice partnera, dostupna u kratkom izboru bez otvaranja osobe. Izvor i napomena prikazuju sažetak, a klik otvara samo pripadajuće polje na istom mjestu. Isti raspored važi i za otvorenu porodicu potomka. Izmjene i dalje prolaze kroz pregled prije čuvanja u kopiji grane.
