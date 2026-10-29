@@ -13,6 +13,7 @@ async function fixture(t,data,query='person=a'){
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
  t.after(()=>{server.close();db.close();});const origin=`http://127.0.0.1:${server.address().port}`,url=origin+'/branch/compact/form?'+query;
  let page=await (await fetch(url)).text();
+ page=page.replace('<link rel="stylesheet" href="/app.css">',()=>'<style>'+asset('app.css')+'</style>');
  assert.match(page,/branch-review.css/);assert.match(page,/branch-review.js/);
  for(const file of ['descendant-data.js','branch-form.js','branch-preview.js','branch-review.js'])page=page.replace(`<script src="/${file}"></script>`,()=>'<script>'+asset(file)+'</script>');
  page=page.replace('<link rel="stylesheet" href="/branch-review.css">',()=>'<style>'+asset('branch-review.css')+'</style>');
@@ -25,6 +26,14 @@ async function fixture(t,data,query='person=a'){
  return {db,w,d,put,save,errors,json};
 }
 function family(){return {rootFamily:'f',people:[{id:'a',name:'Test, Ana',birth:'oko 1970',notes:'Originalna napomena'},{id:'b',name:'Test, Marko'},{id:'c',name:'Test, Dijete'},{id:'p',name:'Drugi, Partner'},{id:'g',name:'Test, Unuče',death:'2020'}],families:[{id:'f',parents:['a','b'],children:['c'],notes:'Napomena porodice'},{id:'fc',parents:['c','p'],children:['g']}],original:{people:[]}};}
+test('readable date presentation leaves stored dates and editable values unchanged',async t=>{
+ const data=family();data.people[0].birth='1956-02-15';data.people[0].death='2015-03-07';
+ const {db,w,d,put,save}=await fixture(t,data);const parent=d.querySelector('[data-prefix=father]').closest('.section');
+ assert.match(parent.querySelector('.review-facts').textContent,/Rođ\. 15\.02\.1956.*Preminuo\/la 07\.03\.2015/);
+ assert.equal(d.querySelector('[name=father_birthDate]').value,'1956-02-15');assert.equal(w.getComputedStyle(d.querySelector('[name=father_firstName]')).fontSize,'16px');
+ put(d.querySelector('[name=father_birthPlace]'),'Novo mjesto');put(d.querySelector('[name=submittedBy]'),'Rođak');await save();
+ const saved=JSON.parse(db.prepare('SELECT working FROM family_links').get().working).people.find(p=>p.id==='a');assert.equal(saved.birth,'1956-02-15');assert.equal(saved.death,'2015-03-07');
+});
 test('compact review opens one editor and one family while preserving and saving the shared form',async t=>{
  const {db,w,d,put,save,errors,json}=await fixture(t,family());
  const form=d.querySelector('#familyForm'),parent=d.querySelector('[data-prefix=father]').closest('.section'),child=d.querySelector('#children > .child-card');

@@ -1,0 +1,238 @@
+/* Porodični unos – jedinstven stylesheet (v2.13)
+   Zamjenjuje slojeve v1.6 / v1.9 / v2.5 / v2.5.1 / v2.6 koji su se međusobno
+   poništavali kroz !important. Nazivi klasa su ostali isti jer ih koristi JS.
+   Redoslijed: tokeni → osnova → forma → kartice → dugmad → stanja → mobilni → desktop. */
+
+/* ───────── Tokeni ───────── */
+:root{
+  --bg:#f2f5f9;--card:#fff;--surface:#fff;--surface-soft:#f7f9fc;--soft-card:#f7f9fc;
+  --line:#dbe3ee;--line-strong:#c4d0df;
+  --text:#172033;--muted:#566277;
+  --accent:#245ec7;--accent-ink:#173f8f;--accent-soft:#eaf1ff;--accent2:#eaf1ff;--soft-accent:#eaf1ff;
+  --success:#1f7a45;--success-soft:#e8f5ed;
+  --warn-ink:#6b4208;--warn-soft:#fff6e0;--warn-line:#ecd08a;
+  --danger:#b42318;--danger-soft:#fff1ef;
+  --ink:#101828;
+  --r-sm:10px;--r-md:14px;--r-lg:18px;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 6px 20px rgba(16,24,40,.05);
+  --ring:0 0 0 3px rgba(36,94,199,.28);
+  --gutter:18px;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+
+/* ───────── Osnova ───────── */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;font-family:var(--sans);font-size:16px;line-height:1.5;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font-family:inherit}
+button,.btn,summary{touch-action:manipulation}
+.wrap{max-width:940px;margin:0 auto;padding:var(--gutter) var(--gutter) max(32px,env(safe-area-inset-bottom))}
+h1,h2,h3,h4{line-height:1.2;letter-spacing:-.01em}
+h1{font-family:var(--serif);font-size:clamp(26px,4.6vw,36px);font-weight:700;margin:0 0 8px}
+.lead{margin:0;color:var(--muted);font-size:16px;line-height:1.5}
+.subtle,.muted{color:var(--muted);font-size:14px;line-height:1.45}
+.footer-note{color:var(--muted);font-size:13px;margin:12px 2px 30px}
+:where(a,button,summary,input,select,textarea):focus-visible{outline:none;box-shadow:var(--ring)}
+a{color:var(--accent)}
+
+/* ───────── Hero i izbor načina unosa ───────── */
+.hero{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px;margin-bottom:16px;box-shadow:var(--shadow)}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:18px;padding:5px;background:var(--surface-soft);border:1px solid var(--line);border-radius:var(--r-md)}
+.choice button{min-height:48px;padding:10px 12px;border:1px solid transparent;border-radius:var(--r-sm);background:transparent;color:var(--text);font-weight:700;font-size:15px;line-height:1.25;cursor:pointer}
+.choice button.active{background:#fff;border-color:var(--accent);color:var(--accent-ink);box-shadow:0 1px 3px rgba(16,24,40,.08)}
+.hero .actions{margin-top:14px}
+
+/* ───────── Sekcije ───────── */
+.section{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;margin:14px 0;box-shadow:var(--shadow)}
+.section h2,.section h3{margin:0 0 14px}
+.section h2{font-family:var(--serif);font-size:22px;font-weight:700;position:relative;padding-left:14px}
+.section h3{font-size:17px}
+.section > h2::before{content:"";position:absolute;left:0;top:.2em;bottom:.2em;width:4px;border-radius:99px;background:var(--accent)}
+.sender-section{padding-bottom:16px}
+.sender-section h2{margin-bottom:12px}
+.compact-section{padding-top:16px;padding-bottom:16px}
+.relationship-section .grid{gap:12px}
+
+/* Naslov porodice (ranije bijel tekst na svijetloj podlozi – nečitljivo) */
+.family-title{margin:14px 0;padding:14px 16px;border:1px solid #cfe0fb;border-radius:var(--r-md);background:var(--accent-soft);color:var(--accent-ink);font-size:18px;font-weight:800;line-height:1.3}
+.family-title span{color:var(--ink);font-weight:700}
+
+/* ───────── Polja ───────── */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 16px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field.full{grid-column:1/-1}
+.field label,label{font-size:15px;font-weight:650;color:#2b3648;line-height:1.3}
+.field input,.field textarea,.field select,
+.section input:not([type=checkbox]):not([type=radio]):not([type=file]),.section select,.section textarea{
+  width:100%;min-height:48px;padding:11px 13px;font:inherit;font-size:16px;line-height:1.3;color:var(--text);
+  background:#fff;border:1.5px solid var(--line-strong);border-radius:var(--r-sm);
+  transition:border-color .15s ease,box-shadow .15s ease}
+.field textarea,.section textarea{min-height:96px;resize:vertical;line-height:1.45}
+.field select,.section select{appearance:auto}
+.field input::placeholder,.field textarea::placeholder{color:#8a94a6}
+.field input:hover,.field select:hover,.field textarea:hover{border-color:#9fb0c7}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring)}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;accent-color:var(--accent);vertical-align:-5px;margin-right:6px}
+
+/* ───────── Dugmad ───────── */
+.btn,button.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:46px;padding:10px 16px;border:1px solid transparent;border-radius:var(--r-sm);font-size:15px;font-weight:750;line-height:1.25;text-decoration:none;cursor:pointer;transition:background .15s ease,transform .08s ease,opacity .15s ease}
+.btn:active,button:active{transform:translateY(1px)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.primary:hover{background:#1d4fa8}
+.btn.soft{background:var(--accent-soft);color:var(--accent-ink);border-color:#d3e2fb}
+.btn.soft:hover{background:#dde9fd}
+.btn.dark{background:var(--ink);color:#fff}
+.btn.dark:hover{background:#1d2939}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+.remove,.file-remove{border:1px solid #f6cfca;background:var(--danger-soft);color:var(--danger);min-height:40px;padding:8px 12px;border-radius:var(--r-sm);font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+.remove:hover,.file-remove:hover{background:#ffe4e0}
+.section-toggle,.child-collapse{border:1px solid #d3e2fb;background:var(--accent-soft);color:var(--accent-ink);border-radius:var(--r-sm);min-height:42px;padding:8px 14px;font-size:14px;font-weight:750;cursor:pointer}
+.section-toggle{display:block;width:auto;margin:16px 0 0 auto}
+.section-toggle:hover,.child-collapse:hover{background:#dde9fd}
+
+/* ───────── Kartice djece i potomaka ───────── */
+.child-card{border:1px solid var(--line-strong);border-radius:var(--r-lg);padding:18px;margin:16px 0;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.child-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #edf0f4}
+.child-head strong{min-width:0;overflow-wrap:anywhere;font-family:var(--serif);font-size:20px;font-weight:700;line-height:1.25}
+.nested{margin-top:16px;padding:16px;background:var(--surface-soft);border:1px solid #e3e9f1;border-radius:var(--r-md)}
+.nested h3{margin:0 0 12px;font-size:17px}
+.nested-list{display:grid;gap:12px}
+.grandchild{display:grid;grid-template-columns:1.2fr 1fr 1fr auto;gap:10px;align-items:end;padding:12px;margin:0;background:#fff;border:1px solid #e3e9f1;border-radius:var(--r-sm)}
+.grandchild .remove{height:48px}
+.children-summary{margin:8px 0 20px 24px;padding:0}
+.children-summary li{padding:5px 0;font-weight:600}
+
+/* Skupljeno stanje: potvrđeni dio ostaje kratak, sa kvačicom */
+.section.user-collapsed{padding-top:12px;padding-bottom:12px;border-color:#b9d1f6;background:#fbfdff;box-shadow:none}
+.section.user-collapsed > :not(h2):not(.section-toggle){display:none !important}
+.section.user-collapsed > .section-toggle{display:block !important;margin-top:10px}
+.section.user-collapsed h2{display:flex;align-items:center;gap:8px;margin-bottom:0;font-size:20px;line-height:1.25;padding-left:0}
+.section.user-collapsed > h2::before{position:static;width:auto;height:auto;background:none;content:"✓";color:var(--success);font-weight:900;font-family:var(--sans)}
+.child-card.user-collapsed{padding-top:12px;padding-bottom:12px;background:#fbfdff;border-color:#b9d1f6;box-shadow:none}
+.child-card.user-collapsed > :not(.child-head):not(.actions){display:none !important}
+.child-card.user-collapsed > .actions{display:block !important}
+.child-card.user-collapsed .child-head{margin-bottom:0;padding-bottom:0;border-bottom:0}
+.child-card.user-collapsed .child-head strong::before{content:"✓ ";color:var(--success)}
+
+/* Dodatne radnje grane */
+.branch-child-notes{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.branch-child-notes summary{cursor:pointer;line-height:1.45;font-weight:700}
+.branch-child-notes .field{margin-top:10px}
+.child-card > .branch-child-actions{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px}
+.child-card > .branch-child-actions > .child-collapse,
+.child-card > .branch-child-actions > .branch-continue{flex:1 1 230px;min-width:0;max-width:100%;margin:0;white-space:normal;overflow-wrap:anywhere;line-height:1.4;text-align:center}
+.branch-child-actions .branch-continue{display:flex;align-items:center;justify-content:center;text-decoration:none}
+.child-card.user-collapsed > .branch-child-actions{display:flex !important}
+
+/* Fokus na jednog potomka bez nagomilanih uvlaka */
+.descendant-focus-mode > .section:not(.focus-section):not(.sender-section){display:none !important}
+.focus-hidden{display:none !important}
+.child-card.focus-ancestor,.focus-ancestor > .descendant-family,.focus-ancestor > .descendant-family > .nested-list{display:contents !important}
+.child-card.focus-ancestor > :not(.descendant-family),.focus-ancestor > .descendant-family > :not(.nested-list){display:none !important}
+.descendant-focus-toolbar{align-items:center;margin-bottom:14px}
+
+/* ───────── Obavijesti ───────── */
+.edit-banner{display:none;background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:var(--r-md);padding:13px 16px;margin:0 0 16px;color:var(--warn-ink);font-size:15px;line-height:1.45}
+.edit-banner strong{display:block;margin-bottom:3px}
+.draft-status{display:none;margin:0 0 14px;padding:12px 14px;border:1px solid #d3deec;border-radius:var(--r-md);background:var(--surface-soft);color:#44536a;font-size:15px}
+.draft-status.show{display:block}
+.draft-status strong{color:#1f2d42}
+.draft-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.draft-actions button{min-height:42px;padding:8px 12px;font-size:14px}
+.toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;z-index:9999;max-width:calc(100vw - 24px);background:var(--ink);color:#fff;padding:12px 16px;border-radius:var(--r-md);box-shadow:0 10px 30px rgba(0,0,0,.2);font-size:15px;line-height:1.35;transition:opacity .18s ease,transform .18s ease}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ───────── Prilozi ───────── */
+.file-input-hidden{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.file-picker{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-top:4px}
+.file-list{display:grid;gap:8px;margin-top:12px}
+.file-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;background:var(--surface-soft)}
+.file-meta{min-width:0}
+.file-name{font-weight:700;overflow-wrap:anywhere}
+.file-size{color:var(--muted);font-size:13px;margin-top:2px}
+.file-remove{flex:0 0 auto}
+.file-status{font-size:14px;color:var(--muted);margin-top:8px}
+.file-status.warn{color:#9a4a07;font-weight:700}
+.existing-files{margin:10px 0 6px;padding:12px 14px;border-radius:var(--r-sm);background:var(--surface-soft);border:1px solid #e1e7ef}
+.existing-files ul{margin:7px 0 0;padding-left:20px}
+.report-files{margin:8px 0 0 20px;padding:0}
+.report-files li{padding:4px 0}
+
+/* ───────── Pregled unosa (report) ───────── */
+#result{background:#fff;border:1px solid var(--line);padding:16px;border-radius:var(--r-md);overflow:auto;max-height:700px}
+.report h3{margin:20px 0 8px;font-size:18px}
+.report h4{margin:14px 0 6px;font-size:16px}
+.report .report-card,.report-card{border:1px solid #e1e7ef;border-radius:var(--r-md);padding:14px;margin:12px 0;background:var(--surface-soft)}
+.report .row,.report-row{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:10px;padding:7px 0;border-bottom:1px solid #eaeef4}
+.report .row:last-child{border-bottom:0}
+.report .label{font-weight:700;color:#2b3648}
+.report .empty{color:#8a94a6;font-style:italic}
+
+/* ───────── Tablet i manji ekrani ───────── */
+@media (max-width:900px){
+  /* Glavna radnja ostaje dostupna dok se lista dugačka forma */
+  form > .actions:last-child:not(.review-savebar){
+    position:sticky;bottom:0;z-index:30;
+    margin:18px calc(-1 * var(--gutter)) 0;
+    padding:12px var(--gutter) max(12px,env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    border-top:1px solid var(--line)}
+  form > .actions:last-child:not(.review-savebar) .btn{flex:1 1 100%}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
+}
+
+/* ───────── Mobilni ───────── */
+@media (max-width:700px){
+  :root{--gutter:12px}
+  .hero{padding:18px 16px;margin-bottom:12px;border-radius:var(--r-md)}
+  .hero .lead{font-size:15px}
+  .choice{margin-top:14px}
+  .choice button{min-height:52px;font-size:14px;padding:8px 6px}
+  .section{padding:16px 14px;margin:12px 0;border-radius:var(--r-md);box-shadow:none}
+  .section h2{font-size:21px;margin-bottom:14px}
+  .family-title{padding:12px 14px;font-size:17px;border-radius:var(--r-md)}
+  .grid{grid-template-columns:1fr;gap:14px}
+  .field,.field.full{grid-column:1/-1}
+  .child-card{padding:14px;margin:14px 0;border-radius:var(--r-md);box-shadow:none}
+  .child-head{align-items:flex-start}
+  .child-head strong{font-size:19px}
+  .nested{padding:12px;margin-top:14px}
+  .grandchild{grid-template-columns:1fr}
+  .grandchild .remove{height:auto}
+  .actions .btn{flex:1 1 100%}
+  .section-toggle,.child-collapse{width:100%;text-align:center}
+  #addChild,#addPersonChild{width:100%}
+  .report .row,.report-row{grid-template-columns:1fr;gap:2px;padding:9px 0}
+  .report .row > :first-child,.report-row > :first-child{font-size:14px}
+  .remove{min-height:40px;padding:6px 10px;font-size:13px}
+  .child-card > .branch-child-actions{flex-direction:column}
+  .child-card > .branch-child-actions > .child-collapse,
+  .child-card > .branch-child-actions > .branch-continue{flex:auto;width:100%}
+  .section.user-collapsed h2{font-size:18px}
+  table{font-size:14px}
+}
+@media (max-width:420px){
+  h1{font-size:25px}
+  .section h2{font-size:20px}
+  .child-head strong{font-size:18px}
+}
+
+/* ───────── Desktop ───────── */
+@media (min-width:901px){
+  .wrap{padding-top:28px}
+  .hero{padding:28px 30px}
+  .section{padding:24px 26px}
+  .child-card{padding:20px 22px}
+}
+
+/* ───────── Pristupačnost i štampa ───────── */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none !important;animation:none !important;scroll-behavior:auto !important}
+}
+@media print{
+  body{background:#fff}
+  .choice,.actions,.toast,.draft-status,.section-toggle,.child-collapse{display:none !important}
+  .section,.hero,.child-card{box-shadow:none;break-inside:avoid}
+}
