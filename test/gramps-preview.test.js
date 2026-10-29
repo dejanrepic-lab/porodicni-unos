@@ -127,13 +127,13 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   assert.match(listHtml,/Obrada:<\/b> U toku/);
   const completed=await fetch(base+branchPath+'/completion',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'5',editor:'Rođak'})});
   assert.equal(completed.status,302);
-  detail=await (await fetch(detailUrl,{headers:{cookie}})).text();assert.match(detail,/Završeno — čeka pregled/);assert.match(detail,/Obradu označio\/la završenom: Rođak/);
+  detail=await (await fetch(detailUrl,{headers:{cookie}})).text();assert.match(detail,/Završeno — čeka pregled/);assert.match(detail,/Dopunu završio\/la: Rođak/);
   const staleReview=await fetch(detailUrl+'/review',{method:'POST',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'4'})});assert.equal(staleReview.status,409);
   const review=await fetch(detailUrl+'/review',{method:'POST',redirect:'manual',headers:adminHeaders,body:new URLSearchParams({csrf,revision:'5'})});assert.equal(review.status,302);
   listHtml=await (await fetch(base+'/admin/family-links',{headers:{cookie}})).text();assert.match(listHtml,/Obrada:<\/b> Pregledano/);
   detail=await (await fetch(detailUrl,{headers:{cookie}})).text();assert.match(detail,/Nema nepregledanih promjena/);assert.doesNotMatch(detail,/<span class="change-badge">/);assert.match(detail,/Nove osobe \(5\)/);
   const afterReview=await fetch(base+branchPath+'/person',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'5',editor:'Rođak',id:'a',name:'Ana Ponovo'})});assert.equal(afterReview.status,302);
-  detail=await (await fetch(detailUrl,{headers:{cookie}})).text();assert.match(detail,/Obrada:<\/b> U toku/);
+  detail=await (await fetch(detailUrl,{headers:{cookie}})).text();assert.match(detail,/<span>U toku<\/span>/);
   let quick=detail.split('id="change-navigation"')[1].split('</section>')[0];assert.match(quick,/Ana Ponovo/);assert.doesNotMatch(quick,/Novi partner|Prvo dijete/);
   const updatedPerson=await (await fetch(detailUrl+'?legacy=1&person=a',{headers:{cookie}})).text();assert.match(updatedPerson,/Prije: Ana Dopunjeno/);assert.match(updatedPerson,/Sada: Ana Ponovo/);
   const Database=require('better-sqlite3');const upgradeDb=new Database(path.join(dataDir,'porodicni-unos.db'));upgradeDb.prepare('DELETE FROM family_link_review_snapshots').run();upgradeDb.close();

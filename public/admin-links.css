@@ -1,0 +1,41 @@
+/* Compact administration of one shared family link. */
+.link-dashboard{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin:16px 0}
+.link-dashboard>section{margin:0;padding:18px;min-width:0}
+.link-dashboard h2{font-size:18px;margin:0 0 12px}
+.link-dashboard p{line-height:1.5;margin:8px 0}
+.link-root{font-size:18px;font-weight:700;overflow-wrap:anywhere}
+.link-badges{display:flex;flex-wrap:wrap;gap:6px}
+.link-badges span{font-size:13px;font-weight:650;border-radius:7px;padding:4px 8px;background:#edf3ff;color:#244f88}
+.link-meta,.link-dashboard small{font-size:13px;color:#667085}
+.link-dashboard button,.link-dashboard .btn{font-size:14px;min-height:44px;padding:10px 12px;margin:6px 6px 6px 0;white-space:normal;max-width:100%}
+.link-dashboard .secondary{background:#edf3ff;color:#244f88}
+.link-dashboard button:disabled{opacity:.5;cursor:default}
+.link-dashboard details{margin:12px 0 0;padding:10px 0 0;border:0;border-top:1px solid #e4e9f0;border-radius:0;box-shadow:none}
+.link-dashboard summary{font-size:14px;min-height:36px;line-height:1.5}
+.link-dashboard .share-control{margin:12px 0}
+.link-dashboard .share-control label{font-size:13px;margin:0}
+.link-dashboard .share-control input{font-size:13px;margin-top:6px;padding:10px;min-width:0}
+.link-dashboard .share-control>a{font-size:13px;display:inline-block}
+.link-dashboard .share-control p{font-size:12px;margin:4px 0}
+.link-dashboard .share-feedback:empty{display:none}
+.link-review-action{border-top:1px solid #e4e9f0;padding-top:8px}
+.link-review-action form{display:inline-block}
+.link-review-action small{display:block}
+.link-dashboard .delete-link{color:#a22b21;font-size:14px}
+.transfer-steps{counter-reset:transfer;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;list-style:none;margin:0 0 16px;padding:0}
+.transfer-steps li{counter-increment:transfer;font-size:12px;line-height:1.4;color:#526279;overflow-wrap:anywhere}
+.transfer-steps li:before{content:counter(transfer);display:block;width:24px;line-height:24px;text-align:center;border-radius:50%;background:#edf3ff;color:#244f88;font-weight:700;margin-bottom:5px}
+.transfer-current{font-size:15px}
+.transfer-actions{margin:12px 0}
+@media(max-width:700px){.link-dashboard{grid-template-columns:minmax(0,1fr);gap:10px}.link-dashboard>section{padding:14px}.link-dashboard .btn,.link-dashboard button{min-height:44px}}
+
+.link-root-label{display:block;font-size:12px;font-weight:500;color:#667085;margin-bottom:3px}
+.link-dashboard~.section{padding:14px}
+.link-dashboard~.section h2{font-size:18px;margin:0 0 8px}
+.link-dashboard~.section form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.link-dashboard~.section label{flex:1 1 220px;margin:0;font-size:13px}
+.link-dashboard~.section input{font-size:14px;padding:10px;margin-top:5px}
+.link-dashboard~.section .actions{flex:0 1 auto}
+.link-dashboard~.section button{font-size:14px;min-height:44px;padding:10px 14px;margin:0 8px 0 0}
+.link-dashboard~.family-tree h2{font-size:20px;margin:0 0 10px}
+.link-dashboard~.family-tree>p{font-size:14px;margin:8px 0}
