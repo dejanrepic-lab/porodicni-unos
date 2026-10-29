@@ -546,3 +546,19 @@ Dodavanje drugog partnera otvara jasno označenu novu porodicu i odmah polje nov
 Brisanje na kartici djeteta namijenjeno je samo naknadno dodanoj osobi: nesačuvani unos se otkazuje, a sačuvano dodano dijete briše se iz kopije linka sa svojim vezama. Uvezena djeca nemaju tu akciju. Brisanje traži potvrdu i čuvanje ostalih izmjena; postojeća zaštita jedinog roditelja sa djecom ostaje aktivna.
 
 U otvorenom unosu djeteta bez partnera postoji samo jedna opcija za početak unosa partnera. Vrsta veze i prazan blok porodičnih napomena pojavljuju se tek kad se otvori unos partnera ili već postoje partner, djeca ili odgovarajući podaci. Sačuvane vrijednosti ostaju očuvane.
+
+### Novi krug dopuna preko istog linka
+
+U admin pregledu linka nalazi se „Usklađivanje s Grampsom”:
+
+1. Izaberi **Zaključaj za prenos u Gramps**. Ranije otvoreni obrasci više ne mogu čuvati promjene.
+2. Pregledaj dopune i ručno ih prenesi u Gramps. Ova aplikacija ne piše u Gramps.
+3. Izaberi **Pripremi zamjenu iz Grampsa**, provjeri početnu porodicu i uvezi za pregled. Ako se identitet početne porodice promijenio, izaberi novu odgovarajuću porodicu.
+4. Pregledaj broj osoba i porodica i njihove veze. Potvrdi da su potrebne dopune prenesene, pa izaberi **Arhiviraj staro i zamijeni iz Grampsa**. Odustajanje zadržava postojeće podatke i zaključavanje.
+5. Izaberi **Otključaj za nove dopune**. Rođak nastavlja preko iste adrese i treba ponovo otvoriti stranicu.
+
+Zamjena prepisuje početnu i radnu kopiju novim uvozom. Stare dopune se ne spajaju nazad s uvozom. Istorija, statusi i oznake prethodnog kruga premještaju se u arhivu i brišu iz aktivnog pregleda. Arhivu prethodnog stanja možeš preuzeti kao JSON u adminu. Revizije ostaju rastuće kako stari obrasci ne bi prepisali novi uvoz.
+
+Priprema uvoza ne mijenja aktivne podatke. Greška u Grampsu, nepotpuna grana ili promjena zaključavanja/revizije tokom pripreme blokiraju zamjenu. Potvrda je jednokratna; arhiviranje i zamjena izvršavaju se u jednoj SQLite transakciji. Link ostaje zaključan do posebnog otključavanja, a postojeće uključeno/isključeno stanje i token se čuvaju.
+
+Nove kolone i tabele uvode se idempotentno pri pokretanju aplikacije. Arhive i pripreme nalaze se u istoj SQLite bazi u trajnom direktoriju podataka, pa ulaze u postojeći backup baze. Trajno brisanje linka briše i njegove arhive.
