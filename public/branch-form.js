@@ -6,7 +6,9 @@
  const banner=document.getElementById('editBanner');
  banner.style.display='block';banner.textContent='Uređuješ kopiju porodične grane. Prvo pregledaj unos, zatim sačuvaj izmjene u ovom linku.';
  const nav=document.createElement('nav');nav.className='actions';
- const tree=document.createElement('a');tree.className='btn soft';tree.href=boot.base+'?focus='+encodeURIComponent(boot.personId)+'#'+encodeURIComponent('tree-person-'+boot.personId);tree.textContent='← Stablo kod ove osobe';nav.appendChild(tree);
+ const tree=document.createElement('a');tree.className='btn soft branch-map-link';tree.href=boot.base+'?map=1&focus='+encodeURIComponent(boot.personId)+'#'+encodeURIComponent('tree-person-'+boot.personId);tree.textContent='Mapa cijele grane';nav.appendChild(tree);
+ if(boot.isStartFamily===false){const home=document.createElement('a');home.className='btn soft';home.href=boot.base;home.textContent='Početna porodica';nav.prepend(home);}
+ if(boot.parentFamily){const parent=document.createElement('a');parent.className='btn soft';parent.href=boot.parentFamily.url;parent.textContent='Roditeljska porodica: '+boot.parentFamily.label;nav.appendChild(parent);}
  for(const f of boot.families){if(f.id===familyId)continue;const a=document.createElement('a');a.className='btn soft';a.href=boot.base+'/form?person='+encodeURIComponent(boot.personId)+'&family='+encodeURIComponent(f.id);a.textContent='Druga porodica: '+f.label;nav.appendChild(a);}
  document.querySelector('.hero').appendChild(nav);
  document.querySelector('.hero h1').textContent='Porodica – pregled i dopuna';
@@ -42,7 +44,15 @@
  const personRemovalForm=document.createElement('form');personRemovalForm.method='post';personRemovalForm.action=boot.base+'/remove-person';const personFields={};for(const [name,value] of Object.entries({csrf:boot.csrf,revision,id:boot.personId,editor:''})){const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;personRemovalForm.appendChild(input);personFields[name]=input;}
  const personLabel=document.createElement('label'),personConfirm=document.createElement('input');personConfirm.type='checkbox';personConfirm.name='confirm';personConfirm.value='yes';personConfirm.required=true;personLabel.append(personConfirm,document.createTextNode(' Potvrđujem uklanjanje osobe i njenih veza.'));personRemovalForm.appendChild(personLabel);const personButton=document.createElement('button');personButton.type='submit';personButton.className='btn dark';personButton.textContent='Ukloni osobu';personButton.style.background='#b42318';personRemovalForm.appendChild(personButton);personRemoval.appendChild(personRemovalForm);removal.after(personRemoval);
  personRemovalForm.addEventListener('submit',event=>{const editor=form.querySelector('[name=submittedBy]');if(!editor.value.trim()){event.preventDefault();editor.reportValidity();editor.focus();return;}personFields.editor.value=editor.value.trim();});
- function updateRemoval(){form.dataset.revision=revision;form.dataset.familyId=familyId;removal.hidden=!familyId||familyId==='new'||boot.originalFamilies.includes(familyId);removalFields.family.value=familyId;removalFields.revision.value=revision;personFields.revision.value=revision;}
+ const completion=document.createElement('details');completion.className='section branch-completion';const completionTitle=document.createElement('summary');completionTitle.textContent='Status obrade: '+(boot.progress||'U toku');completion.appendChild(completionTitle);
+ const completionHint=document.createElement('p');completionHint.className='subtle';completionHint.textContent='Kada završiš dopunu, ovdje obavijesti administratora da može pregledati sačuvane podatke.';completion.appendChild(completionHint);
+ const completionForm=document.createElement('form');completionForm.method='post';completionForm.action=boot.base+'/completion';const completionFields={};for(const [name,value] of Object.entries({csrf:boot.csrf,revision,context:boot.personId,family:familyId})){const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;completionForm.appendChild(input);completionFields[name]=input;}
+ const completionLabel=document.createElement('label');completionLabel.className='field';completionLabel.textContent='Tvoje ime';const completionEditor=document.createElement('input');completionEditor.name='editor';completionEditor.required=true;completionEditor.maxLength=160;completionEditor.autocomplete='name';completionLabel.appendChild(completionEditor);completionForm.appendChild(completionLabel);
+ const completionButton=document.createElement('button');completionButton.type='submit';completionButton.className='btn soft';completionButton.textContent='Završio/la sam obradu';const completionActions=document.createElement('div');completionActions.className='actions';completionActions.appendChild(completionButton);completionForm.appendChild(completionActions);completion.appendChild(completionForm);form.before(completion);
+ completionForm.addEventListener('submit',event=>{if(dirty){event.preventDefault();showToast('Prvo sačuvaj izmjene, pa označi obradu završenom.');}});
+ form.querySelector('[name=submittedBy]').addEventListener('input',event=>completionEditor.value=event.target.value);
+ document.addEventListener('branch:saved',()=>{completionTitle.textContent='Status obrade: U toku';completion.open=false;});
+ function updateRemoval(){form.dataset.revision=revision;form.dataset.familyId=familyId;completionFields.revision.value=revision;completionFields.family.value=familyId;removal.hidden=!familyId||familyId==='new'||boot.originalFamilies.includes(familyId);removalFields.family.value=familyId;removalFields.revision.value=revision;personFields.revision.value=revision;}
  updateRemoval();
  const ownFamilyData=familyData;
  function stampNode(card,c){
@@ -66,7 +76,8 @@
   }catch(e){status.textContent=e.message;}finally{button.disabled=false;}
  };
  // Warn before abandoning unsaved edits while changing families or returning to the tree.
- let dirty=false;form.addEventListener('input',()=>dirty=true);form.addEventListener('change',()=>dirty=true);
+ let dirty=false;form.addEventListener('input',event=>{if(event.target.name!=='submittedBy')dirty=true;});form.addEventListener('change',event=>{if(event.target.name!=='submittedBy')dirty=true;});
+ document.addEventListener('branch:dirty',event=>{dirty=Boolean(event.detail);});
  form.addEventListener('click',event=>{if(event.target.closest('#addChild,.add-grandchild,.remove,.child-remove'))dirty=true;});
  const send=document.getElementById('sendBtn'),saveHandler=send.onclick;send.onclick=async()=>{const before=revision;await saveHandler();if(revision!==before)dirty=false;};
  window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});

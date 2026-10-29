@@ -16,7 +16,7 @@ async function fixture(t,data,query='person=a'){
  page=page.replace('<link rel="stylesheet" href="/app.css?v=2.13.1">',()=>'<style>'+asset('app.css')+'</style>');
  assert.match(page,/branch-review.css/);assert.match(page,/branch-review.js/);
  for(const file of ['descendant-data.js','branch-form.js','branch-preview.js','branch-review.js'])page=page.replace(`<script src="/${file}"></script>`,()=>'<script>'+asset(file)+'</script>');
- page=page.replace('<link rel="stylesheet" href="/branch-review.css?v=2.13.1">',()=>'<style>'+asset('branch-review.css')+'</style>');
+ page=page.replace('<link rel="stylesheet" href="/branch-review.css?v=2.13.2">',()=>'<style>'+asset('branch-review.css')+'</style>');
  const errors=[],console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
  const dom=new JSDOM(page,{url,runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,beforeParse(w){w.structuredClone=structuredClone;w.fetch=(u,o)=>fetch(new URL(u,origin),o);w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=(x,y)=>Object.defineProperty(w,'scrollY',{value:typeof x==='object'?x.top:y,writable:true,configurable:true});}});
  t.after(()=>dom.window.close());assert.deepEqual(errors,[]);
@@ -26,6 +26,13 @@ async function fixture(t,data,query='person=a'){
  return {db,w,d,put,save,errors,json};
 }
 function family(){return {rootFamily:'f',people:[{id:'a',name:'Test, Ana',birth:'oko 1970',notes:'Originalna napomena'},{id:'b',name:'Test, Marko'},{id:'c',name:'Test, Dijete'},{id:'p',name:'Drugi, Partner'},{id:'g',name:'Test, Unuče',death:'2020'}],families:[{id:'f',parents:['a','b'],children:['c'],notes:'Napomena porodice'},{id:'fc',parents:['c','p'],children:['g']}],original:{people:[]}};}
+test('family navigation keeps map context and completion requires saved edits',async t=>{
+ const {d,w,put,save,errors}=await fixture(t,family());const child=d.querySelector('#children > .child-card');
+ assert.equal(d.querySelector('.branch-map-link').textContent,'Mapa cijele grane');assert.match(d.querySelector('.branch-completion summary').textContent,/Otvoren, bez izmjena/);
+ child.querySelector('.review-actions button:nth-child(2)').click();assert.equal(d.querySelector('.review-root-name').textContent,'Dijete Test i Partner Drugi');assert.match(d.querySelector('.branch-map-link').href,/focus=c&returnFamily=fc/);
+ const completion=d.querySelector('.branch-completion form');put(child.querySelector('[data-c=birthDate]'),'1990');let event=new w.Event('submit',{bubbles:true,cancelable:true});completion.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
+ put(d.querySelector('[name=submittedBy]'),'Rođak');assert.equal(completion.querySelector('[name=editor]').value,'Rođak');await save();assert.equal(completion.querySelector('[name=revision]').value,'1');assert.equal(completion.querySelector('[name=context]').value,'c');assert.equal(completion.querySelector('[name=family]').value,'fc');assert.match(d.querySelector('.branch-completion summary').textContent,/U toku/);assert.ok(child.classList.contains('review-family-open'));assert.deepEqual(errors,[]);
+});
 test('adding a person does not propose or save an untouched Gramps name reformat',async t=>{
  const data=family();data.people.find(p=>p.id==='b').name='Milan  Repić';data.original.people=[{handle:'b',primary_name:{first_name:'Milan ',surname_list:[{surname:'Repić'}]}}];
  const {db,w,d,put,errors}=await fixture(t,data);const form=d.querySelector('#familyForm');assert.equal(d.querySelector('[name=mother_firstName]').value,'Milan ');

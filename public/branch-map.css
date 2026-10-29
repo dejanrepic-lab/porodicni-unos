@@ -1,0 +1,18 @@
+/* The branch map is navigation within the same family entry interface. */
+.branch-map .family-tree{overflow-wrap:anywhere}
+.branch-map .hero h1{font-size:25px}
+.branch-map form > .actions:last-child{position:static;margin:14px 0 0;padding:0;border:0;background:transparent;backdrop-filter:none}
+.branch-map .family-node{border:1px solid var(--line);border-radius:var(--r-md);padding:12px;margin:12px 0;background:var(--surface-soft)}
+.branch-map .family-node > summary{cursor:pointer;line-height:1.5;font-weight:700}
+.branch-map .family-node > summary small{font-size:13px;color:var(--muted);white-space:nowrap}
+.branch-map .couple{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.branch-map .person-link{display:block;border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;margin:8px 0;background:#fff;text-decoration:none;min-width:0;overflow-wrap:anywhere}
+.branch-map .person-link strong{font-family:var(--serif);font-size:18px;color:var(--text)}
+.branch-map .person-link small{display:block;color:var(--muted);font-size:13px}
+.branch-map .person-link.selected{border-color:var(--accent);background:var(--accent-soft)}
+.branch-map .descendants{list-style:none;border-left:2px solid #d2def0;padding-left:14px;margin:10px 0 0 8px}
+.branch-map .descendants > li{margin:12px 0}
+.branch-map .search-results{margin-top:14px}
+.branch-map .search-results .person-link{margin:8px 0}
+.branch-map .hero .actions a{white-space:normal;max-width:100%;overflow-wrap:anywhere}
+@media(max-width:700px){.branch-map .hero h1{font-size:22px}.branch-map .couple{grid-template-columns:minmax(0,1fr)}.branch-map .family-node{padding:8px}.branch-map .descendants{margin-left:0;padding-left:8px}.branch-map .section{padding:12px}}
