@@ -26,6 +26,14 @@ async function fixture(t,data,query='person=a'){
  return {db,w,d,put,save,errors,json};
 }
 function family(){return {rootFamily:'f',people:[{id:'a',name:'Test, Ana',birth:'oko 1970',notes:'Originalna napomena'},{id:'b',name:'Test, Marko'},{id:'c',name:'Test, Dijete'},{id:'p',name:'Drugi, Partner'},{id:'g',name:'Test, Unuče',death:'2020'}],families:[{id:'f',parents:['a','b'],children:['c'],notes:'Napomena porodice'},{id:'fc',parents:['c','p'],children:['g']}],original:{people:[]}};}
+test('adding a person does not propose or save an untouched Gramps name reformat',async t=>{
+ const data=family();data.people.find(p=>p.id==='b').name='Milan  Repić';data.original.people=[{handle:'b',primary_name:{first_name:'Milan ',surname_list:[{surname:'Repić'}]}}];
+ const {db,w,d,put,errors}=await fixture(t,data);const form=d.querySelector('#familyForm');assert.equal(d.querySelector('[name=mother_firstName]').value,'Milan ');
+ d.querySelector('#addChild').click();const card=d.querySelector('#children').lastElementChild;put(card.querySelector('[data-c=firstName]'),'Novo dijete');put(d.querySelector('[name=submittedBy]'),'Rođak');
+ const preview=()=>form.onsubmit(new w.Event('submit',{bubbles:true,cancelable:true}));await preview();assert.match(d.querySelector('.preview-totals').textContent,/Nove osobe: 1/);assert.doesNotMatch(d.querySelector('.preview-totals').textContent,/Osobe s izmjenama/);assert.equal(d.querySelectorAll('.preview-before').length,0);
+ await d.querySelector('#sendBtn').onclick();assert.equal(JSON.parse(db.prepare('SELECT working FROM family_links').get().working).people.find(p=>p.id==='b').name,'Milan  Repić');
+ await preview();assert.match(d.querySelector('#result').textContent,/Nema novih izmjena/);d.querySelector('#backBtn').click();put(d.querySelector('[name=mother_firstName]'),'Milan Jovan');await preview();assert.match(d.querySelector('.preview-totals').textContent,/Osobe s izmjenama: 1/);assert.match(d.querySelector('.preview-after').textContent,/Milan Jovan/);assert.deepEqual(errors,[]);
+});
 test('readable date presentation leaves stored dates and editable values unchanged',async t=>{
  const data=family();data.people[0].birth='1956-02-15';data.people[0].death='2015-03-07';
  const {db,w,d,put,save}=await fixture(t,data);const parent=d.querySelector('[data-prefix=father]').closest('.section');

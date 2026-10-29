@@ -5,11 +5,24 @@ const Database=require('better-sqlite3');
 const {scopeFor,applyForm}=require('../lib/branch-form');
 const {compareBranch}=require('../lib/family-review');
 const {mountFamilyLinks}=require('../lib/family-links');
+const {branchPreview}=require('../lib/branch-preview');
 function fixture(){return {rootFamily:'f',people:[{id:'a',name:'Test, Ana',grampsId:'I1',notes:'Stara napomena',events:['Birth: 1900']},{id:'b',name:'Test, Marko',grampsId:'I2',events:[]},{id:'c',name:'Test, Dijete',grampsId:'I3',notes:'Poznata priča',events:[]},{id:'s',name:'Druga, Partner',notes:'Partnerov zapis',events:[]},{id:'g',name:'Unuk',birth:'2000',death:'2020',notes:'Važan izvor',events:[]},{id:'other',name:'Drugi partner',events:[]}],families:[{id:'f',parents:['a','b'],children:['c'],events:['Brak']},{id:'cf',parents:['c','s'],children:['g'],relationship:'Brak',events:[]},{id:'otherf',parents:['c','other'],children:[],events:[]}],original:{people:[]}};}
 test('prefills the original family form and saves the same identities without losing other families',()=>{
  const data=fixture(),payload=scopeFor(data,'a').payload;assert.equal(payload.father.firstName,'Ana');assert.equal(payload.mother.lastName,'Test');assert.equal(payload.children[0].spouse._id,'s');assert.equal(payload.children[0].children[0]._id,'g');
  const before=structuredClone(data),result=applyForm(data,'a','f',payload);assert.equal(data.people.length,before.people.length);assert.equal(data.families.length,before.families.length);assert.deepEqual(data.families.find(f=>f.id==='otherf'),before.families.find(f=>f.id==='otherf'));assert.equal(data.people.find(p=>p.id==='g').death,'2020');assert.equal(data.people.find(p=>p.id==='g').notes,'Važan izvor');assert.equal(data.people.find(p=>p.id==='a').notes,'Stara napomena');assert.equal(result.familyId,'f');assert.equal(compareBranch(before,data).hasChanges,false);
  delete payload.children[0].spouse.notes;payload.children[0].nickname='Mali';payload.children[0].spouse.maidenName='Staro';payload.primaryRelationship='Partnerstvo';payload.notes='Porodična napomena';applyForm(data,'a','f',payload);const diff=compareBranch(before,data);assert.ok(diff.changedPeople.some(x=>x.person.id==='c'));assert.ok(diff.changedPeople.some(x=>x.person.id==='s'));assert.ok(diff.changedFamilies.some(x=>x.family.id==='f'));assert.equal(data.people.find(p=>p.id==='s').notes,'Partnerov zapis');
+});
+test('trimmed imported name parts do not rename untouched people at any generation',()=>{
+ const data=fixture(),parts={a:[' Ana ','Test'],b:['Milan ','Repić'],c:[' Dijete','Test '],s:['Partner  ',' Druga'],g:['Unuk\u00a0','Test']};
+ data.original.people=Object.entries(parts).map(([id,[first,surname]])=>{data.people.find(p=>p.id===id).name=first+' '+surname;return {handle:id,primary_name:{first_name:first,surname_list:[{surname}]}};});
+ const before=structuredClone(data),payload=scopeFor(data,'a').payload;
+ function trim(value){for(const [key,item] of Object.entries(value))if(typeof item==='string')value[key]=item.trim();else if(item&&typeof item==='object')trim(item);}
+ trim(payload);let saved=applyForm(data,'a','f',payload);assert.equal(compareBranch(before,data).hasChanges,false);
+ for(const old of before.people)assert.equal(data.people.find(p=>p.id===old.id).name,old.name);
+ saved.payload.children.push({firstName:'Novo',lastName:'Dijete',spouse:{firstName:'Novi',lastName:'Partner'},children:[{firstName:'Novo unuče',spouse:{},children:[]}]});
+ saved=applyForm(data,'a','f',saved.payload);let preview=branchPreview(before,data,saved);assert.equal(preview.counts.peopleChanged,0);assert.equal(preview.counts.peopleAdded,3);assert.equal(preview.counts.familiesAdded,1);
+ applyForm(data,'a','f',saved.payload);assert.equal(compareBranch(before,data).changedPeople.length,0);
+ saved.payload.mother.firstName='Milan Jovan';saved=applyForm(data,'a','f',saved.payload);preview=branchPreview(before,data,saved);assert.equal(preview.counts.peopleChanged,1);const change=preview.groups.flatMap(g=>g.items).find(i=>i.kind==='changed-person');assert.equal(change.changes[0].before,'Milan  Repić');assert.equal(change.changes[0].after,'Repić, Milan Jovan');
 });
 test('adds children with their partners and grandchildren, then repeats a save without duplicates',()=>{
  const data=fixture(),payload=scopeFor(data,'a').payload;
