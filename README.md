@@ -562,3 +562,5 @@ Zamjena prepisuje početnu i radnu kopiju novim uvozom. Stare dopune se ne spaja
 Priprema uvoza ne mijenja aktivne podatke. Greška u Grampsu, nepotpuna grana ili promjena zaključavanja/revizije tokom pripreme blokiraju zamjenu. Potvrda je jednokratna; arhiviranje i zamjena izvršavaju se u jednoj SQLite transakciji. Link ostaje zaključan do posebnog otključavanja, a postojeće uključeno/isključeno stanje i token se čuvaju.
 
 Nove kolone i tabele uvode se idempotentno pri pokretanju aplikacije. Arhive i pripreme nalaze se u istoj SQLite bazi u trajnom direktoriju podataka, pa ulaze u postojeći backup baze. Trajno brisanje linka briše i njegove arhive.
+
+Admin pregled pojedinačnog linka grupiše status i dijeljenje s tokom prenosa u Gramps u kompaktan vrh stranice. Postavke, datumi i arhive su u manjim sklopivim opcijama. Lista promjena je sklopiva kako bi stablo bilo dostupno bez prolaska kroz dugačke izvještaje.
