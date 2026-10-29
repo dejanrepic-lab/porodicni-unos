@@ -48,7 +48,7 @@ a{color:var(--accent)}
 .section h2,.section h3{margin:0 0 14px}
 .section h2{font-family:var(--serif);font-size:22px;font-weight:700;position:relative;padding-left:14px}
 .section h3{font-size:17px}
-.section > h2::before{content:"";position:absolute;left:0;top:.2em;bottom:.2em;width:4px;border-radius:99px;background:var(--accent)}
+.section:not(.review-person) > h2::before{content:"";position:absolute;left:0;top:.2em;bottom:.2em;width:4px;border-radius:99px;background:var(--accent)}
 .sender-section{padding-bottom:16px}
 .sender-section h2{margin-bottom:12px}
 .compact-section{padding-top:16px;padding-bottom:16px}
