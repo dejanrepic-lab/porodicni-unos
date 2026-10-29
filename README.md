@@ -544,3 +544,5 @@ Daljnje poboljšanje: upozorenje na moguće duplikate prije dodavanja nove osobe
 Dodavanje drugog partnera otvara jasno označenu novu porodicu i odmah polje novog partnera. „Odustani” vraća na prethodno odabranu porodicu; nesačuvane izmjene štiti postojeće upozorenje pri napuštanju.
 
 Brisanje na kartici djeteta namijenjeno je samo naknadno dodanoj osobi: nesačuvani unos se otkazuje, a sačuvano dodano dijete briše se iz kopije linka sa svojim vezama. Uvezena djeca nemaju tu akciju. Brisanje traži potvrdu i čuvanje ostalih izmjena; postojeća zaštita jedinog roditelja sa djecom ostaje aktivna.
+
+U otvorenom unosu djeteta bez partnera postoji samo jedna opcija za početak unosa partnera. Vrsta veze i prazan blok porodičnih napomena pojavljuju se tek kad se otvori unos partnera ili već postoje partner, djeca ili odgovarajući podaci. Sačuvane vrijednosti ostaju očuvane.

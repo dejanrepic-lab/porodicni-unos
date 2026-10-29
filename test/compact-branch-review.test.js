@@ -194,3 +194,11 @@ test('only an added child can be deleted, and deletion removes the person rather
  assert.equal(child.querySelector('.child-remove').textContent,'Obriši dodano dijete');let posted;w.confirm=()=>true;w.HTMLFormElement.prototype.submit=function(){posted={action:this.action,body:new URLSearchParams(new w.FormData(this)).toString()};};child.querySelector('.child-remove').click();assert.ok(posted);
  const response=await w.fetch(posted.action,{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:posted.body});assert.equal(response.status,302);const working=JSON.parse(db.prepare('SELECT working FROM family_links').get().working);assert.equal(working.people.some(p=>p.id===id),false);assert.equal(working.families.some(f=>f.children.includes(id)),false);assert.ok(working.people.some(p=>p.id==='c'));assert.deepEqual(errors,[]);
 });
+
+test('a new child editor has one partner entry and no premature relationship controls',async t=>{
+ const {w,d,put,errors}=await fixture(t,family());d.querySelector('#addChild').click();const child=d.querySelector('#children').lastElementChild,actions=child.querySelector('.review-actions'),partner=child.querySelector(':scope > .descendant-partner'),meta=child.querySelector(':scope > .review-family-meta');
+ assert.equal(actions.querySelector('button:nth-child(2)').hidden,true);assert.equal(partner.open,false);assert.equal(meta.hidden,true);
+ put(child.querySelector('[data-c=firstName]'),'Novo dijete');partner.open=true;partner.dispatchEvent(new w.Event('toggle'));assert.equal(meta.hidden,false);assert.equal(meta.querySelector('.review-relationship').hidden,false);
+ put(child.querySelector('[data-s=firstName]'),'Novi partner');partner.open=false;partner.dispatchEvent(new w.Event('toggle'));assert.equal(meta.hidden,false);
+ child.querySelector(':scope > .actions > .child-collapse').click();assert.equal(actions.querySelector('button:nth-child(2)').hidden,false);assert.equal(actions.querySelector('button:nth-child(2)').textContent,'Porodica');assert.deepEqual(errors,[]);
+});
