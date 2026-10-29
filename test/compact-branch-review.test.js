@@ -179,3 +179,11 @@ test('adding a child has a clear local finish and a single cancellable preview c
  assert.equal(d.querySelectorAll('.preview-item').length,1);assert.match(d.querySelector('#result').textContent,/Dodaješ dijete u porodicu/);d.querySelector('.preview-cancel').click();await Promise.resolve();
  assert.equal(child.isConnected,false);assert.equal(d.body.classList.contains('branch-preview-open'),false);assert.equal(d.querySelector('.review-savebar button').disabled,true);assert.equal(db.prepare('SELECT revision FROM family_links').get().revision,0);d.querySelector('.branch-undo button').click();assert.equal(child.isConnected,true);assert.equal(child.querySelector('[data-c=birthDate]').value,'2026');assert.deepEqual(errors,[]);
 });
+
+test('second partner entry explains the separate union and offers a validated cancel route',async t=>{
+ const data=family();data.people.push({id:'other',name:'Test, Drugi partner'});data.families.push({id:'second',parents:['a','other'],children:[]});
+ const {db,w,d,put,save,errors,json}=await fixture(t,data,'person=a&family=new&returnFamily=second');
+ assert.equal(d.querySelector('.hero h1').textContent,'Dodavanje drugog partnera');assert.equal(d.activeElement.name,'mother_firstName');assert.match(d.querySelector('.branch-cancel-partner').href,/person=a&family=second$/);assert.equal(d.querySelector('[name=mother_firstName]').value,'');
+ put(d.querySelector('[name=mother_firstName]'),'Treći partner');assert.equal(db.prepare('SELECT working FROM family_links').get().working,json);const event=new w.Event('beforeunload',{cancelable:true});w.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
+ put(d.querySelector('[name=submittedBy]'),'Rođak');await save();assert.equal(d.querySelector('.branch-cancel-partner'),null);assert.equal(d.querySelector('.hero h1').textContent,'Pregled porodice');const saved=JSON.parse(db.prepare('SELECT working FROM family_links').get().working);assert.equal(saved.families.length,4);assert.deepEqual(saved.families.find(f=>f.id==='f'),data.families[0]);assert.deepEqual(saved.families.find(f=>f.id==='second'),data.families[2]);assert.deepEqual(errors,[]);
+});
