@@ -145,10 +145,14 @@
   }
   missingTitle.textContent=missingCount?'Šta nedostaje u ovoj porodici · '+missingCount:'Osnovni podaci ove porodice su popunjeni';
   missingBox.hidden=missingCount===0;
-  status.textContent=changed||structureChanged||extraSignature()!==extraInitial?'Ima nesačuvanih izmjena':'Izmjene se čuvaju nakon pregleda';
+  const dirty=Boolean(changed||structureChanged||extraSignature()!==extraInitial);status.textContent=dirty?'Ima nesačuvanih izmjena':'Izmjene se čuvaju nakon pregleda';document.dispatchEvent(new CustomEvent('branch:dirty',{detail:dirty}));
   noChildren.hidden=children.children.length>0;
   document.getElementById('familyChildrenHeading').textContent='Djeca · '+children.children.length;
-  rootName.textContent=roots.map(view=>name(values(view.fields))).filter(Boolean).join(' i ');
+  const selectedView=activeFamily?views.get(activeFamily):null;
+  rootName.textContent=selectedView?[name(values(selectedView.fields)),name(values(selectedView.partnerFields))].filter(Boolean).join(' i '):roots.map(view=>name(values(view.fields))).filter(Boolean).join(' i ');
+  const map=document.querySelector('.branch-map-link'),focus=activeFamily?.dataset.branchId||boot.personId,currentFamily=activeFamily?.dataset.branchFamily||form.dataset.familyId||'';
+  if(map)map.href=boot.base+'?map=1&focus='+encodeURIComponent(focus)+'&returnFamily='+encodeURIComponent(currentFamily)+'#'+encodeURIComponent('tree-person-'+focus);
+  const completion=document.querySelector('.branch-completion');if(completion){completion.querySelector('[name=context]').value=focus;completion.querySelector('[name=family]').value=currentFamily;}
  }
  form.addEventListener('input',refresh);form.addEventListener('change',refresh);
  form.addEventListener('click',event=>{if(event.target.closest('.child-remove')){structureChanged=true;queueMicrotask(refresh);}});

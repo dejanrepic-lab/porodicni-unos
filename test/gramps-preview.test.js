@@ -65,7 +65,8 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   await events.button_click();assert.equal(copied,field.value);assert.match(feedback.textContent,/kopiran/);
   context.navigator.clipboard.writeText=async()=>{throw Error('denied');};await events.button_click();assert.equal(field.focused,true);assert.equal(field.selected,true);assert.match(feedback.textContent,/ručno/);
   const publicHtml = await (await fetch(base+branchPath)).text();
-  assert.match(publicHtml,/Test, Ana/);
+  assert.match(publicHtml,/id="familyForm"/);
+  const mapHtml=await (await fetch(base+branchPath+'?map=1')).text();assert.match(mapHtml,/Ana Test/);assert.match(mapHtml,/Mapa porodične grane/);
   assert.doesNotMatch(publicHtml,/id="person-editor"/);
   const editorHtml=await (await fetch(base+branchPath+'?legacy=1&person=a')).text();
   assert.match(editorHtml,/id="person-editor"/);
@@ -103,7 +104,7 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   assert.equal(staleFamily.status,409);
   const singleParent=await fetch(base+branchPath+'/family',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'4',editor:'Rođak',person:'a',childName:'Još jedno dijete'})});
   assert.equal(singleParent.status,302);
-  const tree=await (await fetch(base+branchPath)).text();assert.match(tree,/Još jedno dijete/);
+  const tree=await (await fetch(base+branchPath+'?map=1')).text();assert.match(tree,/Još jedno dijete/);
   const multiple=await (await fetch(base+branchPath+'?legacy=1&person=a')).text();const familyArea=multiple.split('id="person-families"')[1].split('</section>')[0];assert.doesNotMatch(familyArea,/<details data-family-id="[^"]+" open><summary>/);
   const reopened=await (await fetch(base+branchPath+'?legacy=1&person=a&family=family1')).text();const openedArea=reopened.split('id="person-families"')[1].split('</section>')[0];assert.match(openedArea,/<details data-family-id="[^"]+" open><summary>/);
 
@@ -154,7 +155,7 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   assert.match(afterOrphanAttempt,/Ukloni porodicu/);
   const noFamilyConfirm=await fetch(base+branchPath+'/remove-family',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'8',editor:'Rođak',person:firstChildId,family:createdFamilyId})});assert.equal(noFamilyConfirm.status,400);
   const removeFamily=await fetch(base+branchPath+'/remove-family',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:publicCsrf,revision:'8',editor:'Rođak',person:firstChildId,family:createdFamilyId,confirm:'yes'})});assert.equal(removeFamily.status,302);
-  const afterFamilyRemoval=await (await fetch(base+branchPath)).text();assert.match(afterFamilyRemoval,/Osobe bez porodične veze/);assert.match(afterFamilyRemoval,/Unuk/);
+  const afterFamilyRemoval=await (await fetch(base+branchPath+'?map=1')).text();assert.match(afterFamilyRemoval,/Osobe bez porodične veze/);assert.match(afterFamilyRemoval,/Unuk/);
 
 
 

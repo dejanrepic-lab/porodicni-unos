@@ -482,6 +482,10 @@ Prilikom izrade nove porodice u porodičnom linku može se unijeti partner i vi�
 
 ### Isti obrazac za dopunu porodične grane
 
+Poslani link sada odmah otvara porodični pregled za dopunu, počevši od početne porodice. To je glavni ekran za rad s podacima. **Mapa cijele grane** služi samo za pronalaženje osobe: koristi isti izgled i redoslijed imena kao obrazac, a klik na ime otvara isti porodični pregled. Stari linkovi s pretragom ili fokusom i dalje otvaraju mapu; nijedan novi link nije potreban.
+
+Iz druge porodice dostupni su povratak na početnu i veza do roditeljske porodice. Naslov prati odabranu porodicu i pri kretanju kroz potomke na istoj stranici. **Status obrade** je dostupan uz obrazac; završetak obrade vraća na odabranu porodicu i nije dozvoljen dok postoje nesačuvane izmjene. Oznake promjena i administratorski pregled ostaju očuvani.
+
 Odabirom osobe u privatnom linku otvara se sažet pregled njene porodice: kartice prikazuju imena, poznate osnovne podatke, partnera i broj djece. **Dopuni osobu** otvara samo odabrani unos, s istim poljima i načinom čuvanja kao u postojećem obrascu. Samo jedan unos je otvoren; **Više podataka** skriva rjeđa polja, a poznate vrijednosti ostaju sačuvane i kada su polja sklopljena.
 
 **Šta nedostaje u ovoj porodici** nudi direktan odlazak do praznog datuma ili mjesta rođenja. To su opcione dopune, a ne obavezna polja; datumi smrti se ne traže za svaku osobu. **Porodica** otvara samo porodicu odabranog djeteta. Povratak vodi na prethodnu porodicu ili početni par, bez ponovnog učitavanja i gubitka unosa. Prazan red djeteta se više ne otvara sam; dijete se dodaje izričitim dugmetom.

@@ -65,6 +65,9 @@
 .branch-review{scroll-padding-bottom:100px}
 .compact-review input,.compact-review textarea,.compact-review select{scroll-margin-bottom:100px}
 .branch-preview-open #familyForm,.branch-preview-open .wrap > details,.branch-preview-open #editBanner{display:none !important}
+.branch-completion{padding:12px 16px;font-size:14px}
+.branch-completion > summary{font-weight:700;cursor:pointer}
+.branch-completion form{margin-top:12px}
 .branch-review #previewBox{scroll-margin-top:14px}
 .branch-review #previewBox{padding-bottom:16px !important}
 .branch-review #previewBox > h2{font-size:22px}
