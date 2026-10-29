@@ -13,10 +13,10 @@ async function fixture(t,data,query='person=a'){
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
  t.after(()=>{server.close();db.close();});const origin=`http://127.0.0.1:${server.address().port}`,url=origin+'/branch/compact/form?'+query;
  let page=await (await fetch(url)).text();
- page=page.replace('<link rel="stylesheet" href="/app.css">',()=>'<style>'+asset('app.css')+'</style>');
+ page=page.replace('<link rel="stylesheet" href="/app.css?v=2.13.1">',()=>'<style>'+asset('app.css')+'</style>');
  assert.match(page,/branch-review.css/);assert.match(page,/branch-review.js/);
  for(const file of ['descendant-data.js','branch-form.js','branch-preview.js','branch-review.js'])page=page.replace(`<script src="/${file}"></script>`,()=>'<script>'+asset(file)+'</script>');
- page=page.replace('<link rel="stylesheet" href="/branch-review.css">',()=>'<style>'+asset('branch-review.css')+'</style>');
+ page=page.replace('<link rel="stylesheet" href="/branch-review.css?v=2.13.1">',()=>'<style>'+asset('branch-review.css')+'</style>');
  const errors=[],console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
  const dom=new JSDOM(page,{url,runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,beforeParse(w){w.structuredClone=structuredClone;w.fetch=(u,o)=>fetch(new URL(u,origin),o);w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=(x,y)=>Object.defineProperty(w,'scrollY',{value:typeof x==='object'?x.top:y,writable:true,configurable:true});}});
  t.after(()=>dom.window.close());assert.deepEqual(errors,[]);

@@ -26,7 +26,7 @@
 .compact-review .review-person > .branch-child-actions > .child-collapse{flex:0 1 auto}
 .compact-review .review-person.review-editing{border-color:#8db2f2;background:#fff}
 .compact-review .review-person > h2{font-family:var(--sans);font-size:14px;font-weight:650;letter-spacing:0;margin:0 0 6px;border:0;padding:0;color:var(--muted)}
-.compact-review .review-person > h2::before{content:none}
+.compact-review .review-person > h2::before{content:none;display:none}
 .compact-review .review-person > .child-head{display:none}
 .compact-review .review-person.review-editing > .child-head{display:flex}
 .compact-review .review-person.review-editing > .child-head > strong{display:none}
