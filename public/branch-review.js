@@ -3,7 +3,7 @@
  const form=document.getElementById('familyForm');
  const boot=JSON.parse(document.getElementById('branch-boot').textContent);
  const familyMetas=new Set();
- const views=new Map();let editing=null,activeFamily=null,structureChanged=false,switchingFamily=false;
+ const views=new Map();let editing=null,activeFamily=null,switchingFamily=false;
  let familyTrail=[];
  const make=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text)el.textContent=text;return el;};
  const button=(label,handler)=>{const el=make('button','btn soft',label);el.type='button';el.onclick=handler;return el;};
@@ -11,6 +11,16 @@
  const values=map=>Object.fromEntries(Object.entries(map).map(([key,input])=>[key,input.value.trim()]));
  const name=p=>[p.firstName,p.lastName].filter(Boolean).join(' ');
  const primary=new Set(['firstName','lastName','birthDate','birthPlace']);
+ function structureSignature(){
+  const shape=[],stack=Array.from(children.children).reverse();
+  while(stack.length){const node=stack.pop(),dom=node.nodeType===1;
+   const kids=dom?(node._pendingDescendants||Array.from(descendantList(node).children)):(node.children||[]);
+   shape.push([dom?(node.dataset.branchId||'new:'+node.dataset.index):node._id,kids.length]);
+   for(let i=kids.length-1;i>=0;i--)stack.push(kids[i]);
+  }
+  return JSON.stringify(shape);
+ }
+
  // Move the original inputs into a small, local family row; there are no shadow values.
  function familyMeta(select,notes){
   const el=make('div','review-family-meta'),row=make('label','review-relationship');
@@ -79,17 +89,33 @@
   card.querySelector(':scope > .descendant-family').before(view.familyMeta.el);noteField.remove();oldSelectField.remove();
   if(card.dataset.reference==='true'){
    const link=make('a','btn soft','Otvori povezanu porodicu');link.href=boot.base+'/form?person='+encodeURIComponent(card.dataset.branchId);view.actions.append(link);
-  }else{view.family=button('Porodica',()=>focusDescendant(card));view.actions.append(view.family);}
+  }else{view.family=button('Porodica',()=>{
+   focusDescendant(card);
+   if(!name(values(view.partnerFields))&&!descendantList(card).children.length)reveal(view.partnerFields.firstName);
+  });view.actions.append(view.family);}
+  view.remove=card.querySelector(':scope > .child-head > .child-remove');
+  view.remove.onclick=()=>{
+   const list=card.parentElement,next=card.nextElementSibling;
+   if(editing?.el===card||card.contains(editing?.el))closeEditor();
+   if(activeFamily===card||card.contains(activeFamily)){
+    const previous=familyTrail.pop();if(previous?.isConnected)showFamily(previous,false);else clearDescendantFocus(form);
+   }
+   card.remove();renumberChildren();refresh();
+   document.dispatchEvent(new CustomEvent('branch:child-removed',{detail:{label:name(values(view.fields))||'Nova osoba',wasSaved:Boolean(card.dataset.branchId),restore:()=>{
+    if(!list.isConnected)return false;list.insertBefore(card,next?.parentElement===list?next:null);renumberChildren();refresh();return true;
+   }}}));
+  };
   return view;
  }
  // The legacy blank row is only a prompt. New rows are created explicitly by the user.
  if(!boot.payload.children.length)children.replaceChildren();
  form.querySelectorAll('.child-card').forEach(card=>attachCard(card));
+ let initialStructure=structureSignature();
  const originalAdd=addChild;
  addChild=function(data={},container=children,depth=1){
   const card=originalAdd(data,container,depth),isNew=!data._id&&!name(data)&&!data.name;
   const view=attachCard(card,isNew);
-  if(isNew){structureChanged=true;openEditor(view);}refresh();return card;
+  if(isNew)openEditor(view);refresh();return card;
  };
  const originalClear=clearDescendantFocus;
  clearDescendantFocus=function(target){
@@ -154,7 +180,8 @@
    const signature=JSON.stringify(spouse?{...p,spouse}:p),dirty=view.isNew||signature!==view.initial;
    view.el.classList.toggle('review-changed',dirty);view.state.textContent=dirty?'Izmijenjeno · još nije sačuvano':'';view.state.hidden=!dirty;if(dirty)changed++;
    if(view.partnerTitle)view.partnerTitle.textContent=name(spouse)?'Partner / supružnik: '+name(spouse):'＋ Dodaj partnera';
-   if(view.family){view.family.textContent='Porodica';view.family.setAttribute('aria-label','Otvori porodicu: '+(label||'nova osoba')+' · djece: '+count);view.family.hidden=view.el===activeFamily;}
+   if(view.remove)view.remove.textContent=view.el.dataset.branchId?'Ukloni iz ove porodice':'Odustani od dodavanja';
+   if(view.family){view.family.textContent=!name(spouse)&&!count?'+ Dodaj partnera':'Porodica';view.family.setAttribute('aria-label','Otvori porodicu: '+(label||'nova osoba')+' · djece: '+count);view.family.hidden=view.el===activeFamily;view.family.disabled=!label;}
   }
   missingList.replaceChildren();let missingCount=0;
   for(const view of currentPeople()){
@@ -169,20 +196,22 @@
   }
   missingTitle.textContent=missingCount?'Šta nedostaje u ovoj porodici · '+missingCount:'Osnovni podaci ove porodice su popunjeni';
   missingBox.hidden=missingCount===0;
-  const dirty=Boolean(changed||structureChanged||extraSignature()!==extraInitial);status.textContent=dirty?'Ima nesačuvanih izmjena':'Izmjene se čuvaju nakon pregleda';document.dispatchEvent(new CustomEvent('branch:dirty',{detail:dirty}));
+  const dirty=Boolean(changed||structureSignature()!==initialStructure||extraSignature()!==extraInitial);form.dataset.branchDirty=String(dirty);document.dispatchEvent(new CustomEvent('branch:dirty',{detail:dirty}));
   noChildren.hidden=children.children.length>0;
   document.getElementById('familyChildrenHeading').textContent='Djeca · '+children.children.length;
+  document.getElementById('addChild').textContent='+ Dodaj dijete za '+roots.map(view=>name(values(view.fields))).filter(Boolean).join(' i ');
   const selectedView=activeFamily?views.get(activeFamily):null;
   rootName.textContent=selectedView?[name(values(selectedView.fields)),name(values(selectedView.partnerFields))].filter(Boolean).join(' i '):roots.map(view=>name(values(view.fields))).filter(Boolean).join(' i ');
   for(const meta of familyMetas)if(meta.el.isConnected)for(const {input,preview} of meta.entries)preview.textContent=input.value.trim()||'+ Dodaj';
-  const map=document.querySelector('.branch-map-link'),focus=activeFamily?.dataset.branchId||boot.personId,currentFamily=activeFamily?.dataset.branchFamily||form.dataset.familyId||'';
+  const map=document.querySelector('.branch-map-link'),focus=activeFamily?.dataset.branchId||boot.personId,currentFamily=activeFamily?(activeFamily.dataset.branchFamily||''):(form.dataset.familyId||'');
   if(map)map.href=boot.base+'?map=1&focus='+encodeURIComponent(focus)+'&returnFamily='+encodeURIComponent(currentFamily)+'#'+encodeURIComponent('tree-person-'+focus);
-  const completion=document.querySelector('.branch-completion');if(completion){completion.querySelector('[name=context]').value=focus;completion.querySelector('[name=family]').value=currentFamily;}
+  form.dataset.branchPerson=activeFamily?(activeFamily.dataset.branchId||''):boot.personId;form.dataset.branchFamily=currentFamily;
+  document.dispatchEvent(new CustomEvent('branch:context',{detail:{personId:activeFamily?(activeFamily.dataset.branchId||''):boot.personId,familyId:currentFamily,label:rootName.textContent}}));
  }
  form.addEventListener('input',refresh);form.addEventListener('change',refresh);
- form.addEventListener('click',event=>{if(event.target.closest('.child-remove')){structureChanged=true;queueMicrotask(refresh);}});
+ form.addEventListener('click',event=>{if(event.target.closest('.child-remove'))queueMicrotask(refresh);});
  document.addEventListener('branch:saved',()=>{
-  structureChanged=false;extraInitial=extraSignature();for(const view of views.values()){const p=values(view.fields);view.initial=JSON.stringify(view.partnerFields?{...p,spouse:values(view.partnerFields)}:p);view.isNew=false;}refresh();
+  initialStructure=structureSignature();extraInitial=extraSignature();for(const view of views.values()){const p=values(view.fields);view.initial=JSON.stringify(view.partnerFields?{...p,spouse:values(view.partnerFields)}:p);view.isNew=false;}refresh();
  });
  document.addEventListener('branch:edit-target',event=>{
   const target=event.detail||{},path=target.path||[];

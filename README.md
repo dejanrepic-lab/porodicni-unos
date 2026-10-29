@@ -523,3 +523,16 @@ U porodičnom linku vrsta veze je odmah uz kartice partnera, dostupna u kratkom 
 ### Osvježavanje skripti nakon nadogradnje
 
 Porodični pregled i mapa koriste adrese skripti i stilova sa oznakom sadržaja (`?v=...`). Nakon nadogradnje nova datoteka dobija novu adresu, pa preglednik ili posrednički keš ne nastavlja koristiti staru skriptu. Otvorenu stranicu treba ponovo učitati. Ako je prije ove ispravke ostao stari prikaz, na računaru jednom koristite Ctrl+F5.
+
+### Dopuna iz perspektive rođaka
+
+Provjeren je tok otvaranje linka → osoba i porodica → dopuna → pregled izmjena → čuvanje → završetak dopune, uključujući telefon, povratak iz mape i greške pri slanju.
+
+- Jedno polje „Tvoje ime i prezime” koristi se za čuvanje, završetak dopune i uklanjanje. Ime se pamti u istoj kartici preglednika, zasebno za svaki link; ne preuzima se ime prethodnog rođaka sa servera.
+- Status je kratak podatak u zaglavlju. „Pregledaj izmjene” i „Završi dopunu” nalaze se zajedno. Završetak je moguć i bez izmjena, a nakon čuvanja ostaje jasna potvrda. Završetak ne učitava stranicu ponovo.
+- Dijete bez partnera ima neposrednu opciju „Dodaj partnera”. Porodice potomaka i dalje se čuvaju u istoj kopiji grane.
+- Odustajanje od novog reda i vraćanje uklonjenog djeteta ne ostavljaju lažan status nesačuvanih izmjena. „Vrati” vraća posljednje uklanjanje do čuvanja; osobe i njihovi podaci ostaju u kopiji kad se uklanja samo veza.
+- Uklanjanje djeteta zadržava otvorenu roditeljsku porodicu. Opcije za uklanjanje porodice ili osobe prate stvarni trenutni izbor; blokirane su dok ima nesačuvanih izmjena. Uvezene osobe i porodice ostaju zaštićene postojećim pravilima.
+- Ponovni zahtjev za završetak iste revizije čuva postojeći status administratorskog pregleda.
+
+Daljnje poboljšanje: upozorenje na moguće duplikate prije dodavanja nove osobe i izbor odgovarajuće postojeće osobe. Jednako ime samo po sebi nije dovoljan razlog za automatsko spajanje.

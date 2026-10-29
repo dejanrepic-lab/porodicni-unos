@@ -49,7 +49,7 @@ test('uncached family pages load versioned scripts and styles even when the old 
   const response=await fetch(origin+url),html=await response.text();
   assert.equal(response.headers.get('cache-control'),'no-store');
   const assets=Array.from(html.matchAll(/\b(?:src|href)="(\/[^"]+\.(?:css|js)(?:\?[^"]*)?)"/g),match=>match[1]);
-  assert.equal(assets.length,url.includes('/form?')?6:2);
+  assert.equal(assets.length,url.includes('/form?')?7:2);
   for(const asset of assets){
    const parsed=new URL(asset,origin);
    const expected=fs.readFileSync(path.join(directory,parsed.pathname.slice(1)));
