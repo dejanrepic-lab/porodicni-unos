@@ -79,9 +79,6 @@
 .branch-review{scroll-padding-bottom:100px}
 .compact-review input,.compact-review textarea,.compact-review select{scroll-margin-bottom:100px}
 .branch-preview-open #familyForm,.branch-preview-open .wrap > details,.branch-preview-open #editBanner{display:none !important}
-.branch-completion{padding:12px 16px;font-size:14px}
-.branch-completion > summary{font-weight:700;cursor:pointer}
-.branch-completion form{margin-top:12px}
 .branch-review #previewBox{scroll-margin-top:14px}
 .branch-review #previewBox{padding-bottom:16px !important}
 .branch-review #previewBox > h2{font-size:22px}
@@ -128,4 +125,23 @@
  .review-save-status{flex:1 1 110px;font-size:13px}
  .compact-review .review-savebar button{flex:1 1 155px;white-space:normal;font-size:14px}
  .compact-review .child-card{padding:12px !important}
+}
+
+/* The contributor and workflow controls share one name and one place. */
+.branch-progress{margin:10px 0 0;font-size:14px;color:var(--muted)}
+.compact-review .branch-author h2{font-family:var(--sans);font-size:16px;padding:0;margin-bottom:8px}
+.compact-review .branch-author h2::before{content:none}
+.compact-review .branch-author .field{max-width:460px}
+.branch-finish-hint{font-size:13px;margin:8px 0 0;line-height:1.5}
+.branch-workflow-message,.branch-undo{padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;line-height:1.5;background:#fff}
+.branch-workflow-message{color:var(--danger)}
+.branch-undo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0}
+.branch-undo .btn{min-height:44px}
+.compact-review .review-savebar > button:disabled{opacity:.6;cursor:default}
+.compact-review .review-savebar > .branch-finish{font-size:14px}
+.compact-review .review-person.review-family-open > .descendant-partner{display:block !important}
+.compact-review .review-person.review-family-open > .descendant-partner[hidden]{display:none !important}
+@media(max-width:700px){
+ .compact-review .review-savebar .review-save-status{flex:1 1 100%}
+ .compact-review .review-savebar > button{flex:1 1 110px;min-width:0;font-size:13px}
 }

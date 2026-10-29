@@ -16,7 +16,7 @@ async function fixture(t,data,query='person=a'){
  page=page.replace(/((?:src|href)="\/[^"?]+\.(?:css|js))\?[^"]*"/g,'$1"');
  page=page.replace('<link rel="stylesheet" href="/app.css">',()=>'<style>'+asset('app.css')+'</style>');
  assert.match(page,/branch-review.css/);assert.match(page,/branch-review.js/);
- for(const file of ['descendant-data.js','branch-form.js','branch-preview.js','branch-review.js'])page=page.replace(`<script src="/${file}"></script>`,()=>'<script>'+asset(file)+'</script>');
+ for(const file of ['descendant-data.js','branch-form.js','branch-preview.js','branch-review.js','branch-workflow.js'])page=page.replace(`<script src="/${file}"></script>`,()=>'<script>'+asset(file)+'</script>');
  page=page.replace('<link rel="stylesheet" href="/branch-review.css">',()=>'<style>'+asset('branch-review.css')+'</style>');
  const errors=[],console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
  const dom=new JSDOM(page,{url,runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,beforeParse(w){w.structuredClone=structuredClone;w.fetch=(u,o)=>fetch(new URL(u,origin),o);w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=(x,y)=>Object.defineProperty(w,'scrollY',{value:typeof x==='object'?x.top:y,writable:true,configurable:true});}});
@@ -27,6 +27,53 @@ async function fixture(t,data,query='person=a'){
  return {db,w,d,put,save,errors,json};
 }
 function family(){return {rootFamily:'f',people:[{id:'a',name:'Test, Ana',birth:'oko 1970',notes:'Originalna napomena'},{id:'b',name:'Test, Marko'},{id:'c',name:'Test, Dijete'},{id:'p',name:'Drugi, Partner'},{id:'g',name:'Test, Unuče',death:'2020'}],families:[{id:'f',parents:['a','b'],children:['c'],notes:'Napomena porodice'},{id:'fc',parents:['c','p'],children:['g']}],original:{people:[]}};}
+test('one contributor name handles saving and finishing without a reload or reopening reviewed work',async t=>{
+ const {db,w,d,put,save,errors,json}=await fixture(t,family()),author=d.querySelector('#familyForm [name=submittedBy]'),finish=d.querySelector('.branch-finish'),review=d.querySelector('.review-savebar button');
+ const completion=d.querySelector('.branch-completion form');
+ assert.equal(d.querySelectorAll('#familyForm [name=submittedBy]').length,1);
+ assert.equal(completion.elements.editor.type,'hidden');assert.equal(review.disabled,true);assert.equal(finish.disabled,false);
+ completion.dispatchEvent(new w.Event('submit',{cancelable:true}));
+ assert.equal(d.activeElement,author);assert.match(d.querySelector('.branch-workflow-message').textContent,/ime/);
+ put(author,'Tetka Mira');assert.equal(w.sessionStorage.getItem('branch-author:/branch/compact'),'Tetka Mira');
+ const complete=async()=>{const done=new Promise(resolve=>d.addEventListener('branch:completed',resolve,{once:true}));completion.dispatchEvent(new w.Event('submit',{cancelable:true}));await done;};
+ const url=w.location.href;w.scrollTo(0,500);await complete();await Promise.resolve();
+ assert.equal(w.location.href,url);assert.equal(w.scrollY,500);assert.match(d.querySelector('.branch-progress').textContent,/Završeno/);assert.equal(finish.disabled,true);
+ assert.equal(db.prepare('SELECT working FROM family_links').get().working,json);assert.equal(db.prepare('SELECT revision FROM family_links').get().revision,0);assert.equal(db.prepare('SELECT submitted_by FROM family_link_progress').get().submitted_by,'Tetka Mira');
+ put(d.querySelector('[name=father_birthDate]'),'1972');assert.equal(finish.disabled,true);assert.equal(review.disabled,false);await save();
+ assert.match(d.querySelector('.review-save-status').textContent,/Sve izmjene su sačuvane/);assert.equal(review.disabled,true);assert.equal(finish.disabled,false);assert.equal(completion.elements.revision.value,'1');
+ await complete();db.prepare('UPDATE family_link_progress SET reviewed_revision=1,reviewed_at=?').run('2026-01-02');
+ const response=await w.fetch(completion.action,{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:completion.elements.csrf.value,revision:'1',editor:'Drugo ime'}).toString()});
+ assert.equal((await response.json()).progress,'Pregledano');assert.equal(db.prepare('SELECT reviewed_revision,submitted_by FROM family_link_progress').get().submitted_by,'Tetka Mira');assert.equal(db.prepare('SELECT reviewed_revision FROM family_link_progress').get().reviewed_revision,1);assert.deepEqual(errors,[]);
+});
+test('cancelling a new row and undoing a removed child restore a clean form and preserve family focus',async t=>{
+ const {w,d,errors}=await fixture(t,family()),review=d.querySelector('.review-savebar button');
+ d.querySelector('#addChild').click();const added=d.querySelector('#children').lastElementChild;
+ assert.equal(review.disabled,false);assert.equal(added.querySelector('.child-remove').textContent,'Odustani od dodavanja');
+ added.querySelector('.child-remove').click();await Promise.resolve();assert.equal(review.disabled,true);
+ const unload=new w.Event('beforeunload',{cancelable:true});w.dispatchEvent(unload);assert.equal(unload.defaultPrevented,false);
+ const child=d.querySelector('#children > .child-card');child.querySelector('.review-actions button:nth-child(2)').click();
+ const grandchild=child.querySelector(':scope > .descendant-family > .nested-list > .child-card'),before=w.familyData();
+ grandchild.querySelector('.review-actions button').click();assert.equal(grandchild.querySelector('.child-remove').textContent,'Ukloni iz ove porodice');
+ grandchild.querySelector('.child-remove').click();await Promise.resolve();assert.equal(review.disabled,false);assert.ok(child.classList.contains('review-family-open'));
+ assert.equal(d.querySelector('.branch-undo').hidden,false);d.querySelector('.branch-undo button').click();
+ assert.equal(review.disabled,true);assert.deepEqual(w.familyData(),before);assert.ok(child.classList.contains('review-family-open'));assert.deepEqual(errors,[]);
+});
+test('a child can gain a partner directly and destructive actions follow the selected saved family',async t=>{
+ const data=family();data.people.push({id:'leaf',name:'Test, Novo dijete'});data.families[0].children.push('leaf');
+ const {db,w,d,put,save,errors}=await fixture(t,data),leaf=d.querySelector('#children').lastElementChild,action=leaf.querySelector('.review-actions button:nth-child(2)');
+ assert.equal(action.textContent,'+ Dodaj partnera');action.click();assert.equal(d.querySelectorAll('.review-editing').length,0);
+ const partner=leaf.querySelector('[data-s=firstName]');assert.equal(d.activeElement,partner);assert.equal(partner.closest('.descendant-partner').open,true);
+ put(partner,'Novi partner');put(d.querySelector('[name=submittedBy]'),'Rođak');await save();
+ const saved=JSON.parse(db.prepare('SELECT working FROM family_links').get().working),familyId=saved.families.find(f=>f.parents.includes('leaf')).id;
+ const removal=d.querySelector('form[action$="/remove-family"]');assert.equal(removal.closest('details').hidden,false);assert.equal(removal.elements.family.value,familyId);assert.equal(removal.elements.person.value,'leaf');assert.match(removal.closest('details').textContent,/Novo dijete Test/);
+ put(leaf.querySelector('[data-c=birthDate]'),'2000');const event=new w.Event('submit',{cancelable:true});removal.dispatchEvent(event);assert.equal(event.defaultPrevented,true);assert.match(d.querySelector('.branch-workflow-message').textContent,/Prvo sačuvaj/);assert.equal(db.prepare('SELECT revision FROM family_links').get().revision,1);assert.deepEqual(errors,[]);
+});
+test('finishing errors keep the saved form in place and allow retrying',async t=>{
+ const {db,w,d,put,errors}=await fixture(t,family());put(d.querySelector('[name=submittedBy]'),'Rođak');
+ w.fetch=async()=>({ok:false,json:async()=>({error:'Veza je prekinuta. Pokušaj ponovo.'})});
+ d.querySelector('.branch-completion form').dispatchEvent(new w.Event('submit',{cancelable:true}));await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(d.querySelector('.branch-workflow-message').hidden,false);assert.match(d.querySelector('.branch-workflow-message').textContent,/Veza je prekinuta/);assert.equal(d.querySelector('.branch-finish').disabled,false);assert.equal(d.querySelector('[name=submittedBy]').value,'Rođak');assert.equal(db.prepare('SELECT revision FROM family_links').get().revision,0);assert.deepEqual(errors,[]);
+});
 test('imported standard and custom relationship types stay visible and survive unrelated edits',async t=>{
  const data=family();data.families[0].relationship='Brak';data.families[1].relationship='Veza po običaju <x>';
  const {db,w,d,put,errors}=await fixture(t,data);assert.equal(d.querySelector('.review-relationship select').value,'Brak');assert.equal(d.querySelector('[name=primaryRelationship]').value,'Brak');
@@ -39,7 +86,7 @@ test('family metadata is edited locally without opening person editors or changi
  const {db,w,d,put,save,errors}=await fixture(t,data),form=d.querySelector('#familyForm'),root=d.querySelector('.review-root-extra'),child=d.querySelector('#children > .child-card');
  assert.equal(root.tagName,'DIV');assert.equal(root.previousElementSibling.className,'review-parents');assert.equal(d.querySelector('.relationship-section'),null);
  assert.equal(root.querySelectorAll('h2').length,0);assert.equal(root.querySelectorAll('textarea').length,2);assert.match(root.textContent,/Tetka Mira.*Napomena porodice/);
- assert.equal(root.querySelectorAll('details[open]').length,0);assert.equal(d.querySelectorAll('.review-editing').length,0);assert.match(d.querySelector('.review-save-status').textContent,/nakon pregleda/);
+ assert.equal(root.querySelectorAll('details[open]').length,0);assert.equal(d.querySelectorAll('.review-editing').length,0);assert.match(d.querySelector('.review-save-status').textContent,/Nema nesačuvanih izmjena/);
  put(root.querySelector('select'),'Vanbračna zajednica');put(d.querySelector('[name=source]'),'Porodični dokument');put(d.querySelector('[name=submittedBy]'),'Rođak');
  await form.onsubmit(new w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(d.querySelectorAll('.preview-item').length,1);assert.match(d.querySelector('#result').textContent,/Brak.*Vanbračna zajednica/);
  d.querySelector('.preview-correct').click();assert.equal(d.activeElement.name,'primaryRelationship');assert.equal(d.querySelectorAll('.review-editing').length,0);
@@ -52,10 +99,10 @@ test('family metadata is edited locally without opening person editors or changi
 });
 test('family navigation keeps map context and completion requires saved edits',async t=>{
  const {d,w,put,save,errors}=await fixture(t,family());const child=d.querySelector('#children > .child-card');
- assert.equal(d.querySelector('.branch-map-link').textContent,'Mapa cijele grane');assert.match(d.querySelector('.branch-completion summary').textContent,/Otvoren, bez izmjena/);
+ assert.equal(d.querySelector('.branch-map-link').textContent,'Mapa cijele grane');assert.match(d.querySelector('.branch-progress').textContent,/Otvoren, bez izmjena/);
  child.querySelector('.review-actions button:nth-child(2)').click();assert.equal(d.querySelector('.review-root-name').textContent,'Dijete Test i Partner Drugi');assert.match(d.querySelector('.branch-map-link').href,/focus=c&returnFamily=fc/);
  const completion=d.querySelector('.branch-completion form');put(child.querySelector('[data-c=birthDate]'),'1990');let event=new w.Event('submit',{bubbles:true,cancelable:true});completion.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
- put(d.querySelector('[name=submittedBy]'),'Rođak');assert.equal(completion.querySelector('[name=editor]').value,'Rođak');await save();assert.equal(completion.querySelector('[name=revision]').value,'1');assert.equal(completion.querySelector('[name=context]').value,'c');assert.equal(completion.querySelector('[name=family]').value,'fc');assert.match(d.querySelector('.branch-completion summary').textContent,/U toku/);assert.ok(child.classList.contains('review-family-open'));assert.deepEqual(errors,[]);
+ put(d.querySelector('[name=submittedBy]'),'Rođak');assert.equal(completion.querySelector('[name=editor]').value,'Rođak');await save();assert.equal(completion.querySelector('[name=revision]').value,'1');assert.equal(completion.querySelector('[name=context]').value,'c');assert.equal(completion.querySelector('[name=family]').value,'fc');assert.match(d.querySelector('.branch-progress').textContent,/U toku/);assert.ok(child.classList.contains('review-family-open'));assert.deepEqual(errors,[]);
 });
 test('adding a person does not propose or save an untouched Gramps name reformat',async t=>{
  const data=family();data.people.find(p=>p.id==='b').name='Milan  Repić';data.original.people=[{handle:'b',primary_name:{first_name:'Milan ',surname_list:[{surname:'Repić'}]}}];
@@ -79,7 +126,7 @@ test('compact review opens one editor and one family while preserving and saving
  assert.ok(form.classList.contains('compact-review'));assert.equal(d.querySelectorAll('.review-editing').length,0);
  assert.equal(w.getComputedStyle(parent.querySelector(':scope > .grid')).display,'none');assert.match(parent.querySelector('.review-facts').textContent,/oko 1970/);
  assert.equal(w.getComputedStyle(child.querySelector(':scope > .descendant-family')).display,'none');assert.match(child.querySelector('.review-facts').textContent,/Partner: Partner Drugi.*Djeca: 1/);
- assert.equal(form.querySelector('.sender-section').nextElementSibling.classList.contains('review-savebar'),true);
+ assert.ok(form.querySelector('.sender-section').compareDocumentPosition(form.querySelector('.review-savebar')) & w.Node.DOCUMENT_POSITION_FOLLOWING);
  parent.querySelector('.review-actions button').click();assert.ok(parent.classList.contains('review-editing'));
  const more=parent.querySelector('.review-more');assert.equal(more.open,false);assert.equal(d.querySelector('[name=father_notes]').value,'Originalna napomena');
  const missing=d.querySelector('.review-missing');assert.equal(missing.open,false);const addPlace=Array.from(missing.querySelectorAll('button')).find(b=>b.textContent==='Ana Test — dodaj mjesto rođenja');addPlace.click();assert.equal(d.activeElement.name,'father_birthPlace');put(d.activeElement,'Salzburg');
