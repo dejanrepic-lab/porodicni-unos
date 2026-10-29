@@ -2,6 +2,7 @@
 (()=>{
  const form=document.getElementById('familyForm');
  const boot=JSON.parse(document.getElementById('branch-boot').textContent);
+ const familyMetas=new Set();
  const views=new Map();let editing=null,activeFamily=null,structureChanged=false,switchingFamily=false;
  let familyTrail=[];
  const make=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text)el.textContent=text;return el;};
@@ -10,6 +11,25 @@
  const values=map=>Object.fromEntries(Object.entries(map).map(([key,input])=>[key,input.value.trim()]));
  const name=p=>[p.firstName,p.lastName].filter(Boolean).join(' ');
  const primary=new Set(['firstName','lastName','birthDate','birthPlace']);
+ // Move the original inputs into a small, local family row; there are no shadow values.
+ function familyMeta(select,notes){
+  const el=make('div','review-family-meta'),row=make('label','review-relationship');
+  row.append(make('span','','Vrsta veze'),select);el.append(row);
+  select.options[0].value='';select.options[0].textContent='Nije upisana';
+  const entries=[];
+  for(const [input,label] of notes){
+   const details=make('details','review-inline-note'),summary=make('summary'),preview=make('span'),field=make('label','field');
+   summary.append(make('strong','',label+': '),preview);field.append(make('span','',label),input);
+   input.rows=2;details.append(summary,field);el.append(details);entries.push({input,preview});
+  }
+  const meta={el,entries};familyMetas.add(meta);return meta;
+ }
+ function reveal(input){
+  if(!input)return;
+  for(let parent=input.parentElement;parent&&parent!==form;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;
+  input.focus({preventScroll:true});input.scrollIntoView({behavior:'smooth',block:'nearest'});
+ }
+
  function moreFields(grid,map){
   const details=make('details','review-more'),summary=make('summary','','Više podataka'),extra=make('div','grid');
   details.append(summary,extra);
@@ -53,6 +73,10 @@
    partner.querySelector('h3').remove();details.append(title,...partner.childNodes);partner.replaceWith(details);view.partnerTitle=title;
    moreFields(details.querySelector('.grid'),view.partnerFields);
   }
+  const noteField=view.fields.notes.closest('.field'),oldSelectField=view.partnerFields.relationship.closest('.field');
+  view.familyMeta=familyMeta(view.partnerFields.relationship,[[view.fields.notes,'Napomena porodice']]);
+  view.familyMeta.el.hidden=card.dataset.reference==='true';
+  card.querySelector(':scope > .descendant-family').before(view.familyMeta.el);noteField.remove();oldSelectField.remove();
   if(card.dataset.reference==='true'){
    const link=make('a','btn soft','Otvori povezanu porodicu');link.href=boot.base+'/form?person='+encodeURIComponent(card.dataset.branchId);view.actions.append(link);
   }else{view.family=button('Porodica',()=>focusDescendant(card));view.actions.append(view.family);}
@@ -82,10 +106,9 @@
   refresh();
  }
  focusDescendant=card=>showFamily(card);
- const familyExtra=make('details','review-root-extra section');familyExtra.append(make('summary','','Veza, napomene i izvor'));
  const relationship=form.querySelector('.relationship-section'),source=form.querySelector('[name=source]').closest('.section');
- relationship.before(familyExtra);familyExtra.append(relationship,source);
- familyExtra.querySelectorAll('.section-toggle').forEach(el=>el.hidden=true);
+ const rootMeta=familyMeta(form.querySelector('[name=primaryRelationship]'),[[form.querySelector('[name=source]'),'Izvor'],[form.querySelector('[name=notes]'),'Napomena porodice']]);
+ rootMeta.el.classList.add('review-root-extra','section');parents.after(rootMeta.el);relationship.remove();source.remove();
  const childrenSection=document.getElementById('familyChildrenHeading').closest('.section');
  childrenSection.querySelector(':scope > .section-toggle').hidden=true;
  childrenSection.querySelector(':scope > .subtle').textContent='Odaberi dijete za dopunu ili otvori njegovu porodicu.';
@@ -102,7 +125,6 @@
  document.querySelector('.hero .lead').textContent='Pregledaj poznate podatke. Otvori samo osobu ili porodicu koju želiš dopuniti.';
  document.getElementById('editBanner').textContent='Dopunjavaš kopiju podataka u ovom linku. Izmjene sačuvaj nakon pregleda.';
  const rootName=make('p','review-root-name');document.querySelector('.hero h1').after(rootName);
- const relationshipBadge=make('p','review-relationship');rootName.after(relationshipBadge);
  function currentPeople(){
   const owner=activeFamily?views.get(activeFamily):null;
   const people=owner?[owner]:[...roots];
@@ -152,7 +174,7 @@
   document.getElementById('familyChildrenHeading').textContent='Djeca · '+children.children.length;
   const selectedView=activeFamily?views.get(activeFamily):null;
   rootName.textContent=selectedView?[name(values(selectedView.fields)),name(values(selectedView.partnerFields))].filter(Boolean).join(' i '):roots.map(view=>name(values(view.fields))).filter(Boolean).join(' i ');
-  relationshipBadge.textContent='Vrsta veze: '+((selectedView?values(selectedView.partnerFields).relationship:form.querySelector('[name=primaryRelationship]').value)||'nije upisana');
+  for(const meta of familyMetas)if(meta.el.isConnected)for(const {input,preview} of meta.entries)preview.textContent=input.value.trim()||'+ Dodaj';
   const map=document.querySelector('.branch-map-link'),focus=activeFamily?.dataset.branchId||boot.personId,currentFamily=activeFamily?.dataset.branchFamily||form.dataset.familyId||'';
   if(map)map.href=boot.base+'?map=1&focus='+encodeURIComponent(focus)+'&returnFamily='+encodeURIComponent(currentFamily)+'#'+encodeURIComponent('tree-person-'+focus);
   const completion=document.querySelector('.branch-completion');if(completion){completion.querySelector('[name=context]').value=focus;completion.querySelector('[name=family]').value=currentFamily;}
@@ -169,7 +191,7 @@
   }
   if(!path.length){
    clearDescendantFocus(form);
-   if(target.field){familyExtra.open=true;const input=form.querySelector('[name='+target.field+']');input?.focus({preventScroll:true});input?.scrollIntoView({behavior:'smooth',block:'center'});}
+   if(target.field)reveal(form.querySelector('[name='+target.field+']'));
    else childrenSection.scrollIntoView({behavior:'smooth',block:'start'});
    return;
   }
@@ -180,8 +202,9 @@
   const hasFamily=card.dataset.branchFamily||card._pendingDescendants?.length||descendantList(card).children.length||name(values(view.partnerFields));
   if(target.role==='partner'||target.role==='family'||hasFamily)focusDescendant(card);
   else if(owner)focusDescendant(owner);else clearDescendantFocus(form);
+  if(target.role==='family'){reveal(target.field==='relationship'?view.partnerFields.relationship:view.fields[target.field]);return;}
   openEditor(view,target.role==='partner'?'firstName':target.field);
-  const input=target.role==='partner'?view.partnerFields[target.field||'firstName']:target.role==='family'&&target.field==='relationship'?view.partnerFields.relationship:view.fields[target.field];
+  const input=target.role==='partner'?view.partnerFields[target.field||'firstName']:view.fields[target.field];
   if(input){for(let parent=input.parentElement;parent&&parent!==card;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;input.focus({preventScroll:true});input.scrollIntoView({behavior:'smooth',block:'center'});}
  });
  form.classList.add('compact-review');document.body.classList.add('branch-review');refresh();
