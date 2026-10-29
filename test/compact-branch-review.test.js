@@ -52,11 +52,11 @@ test('cancelling a new row and undoing a removed child restore a clean form and 
  added.querySelector('.child-remove').click();await Promise.resolve();assert.equal(review.disabled,true);
  const unload=new w.Event('beforeunload',{cancelable:true});w.dispatchEvent(unload);assert.equal(unload.defaultPrevented,false);
  const child=d.querySelector('#children > .child-card');child.querySelector('.review-actions button:nth-child(2)').click();
- const grandchild=child.querySelector(':scope > .descendant-family > .nested-list > .child-card'),before=w.familyData();
- grandchild.querySelector('.review-actions button').click();assert.equal(grandchild.querySelector('.child-remove').textContent,'Ukloni iz ove porodice');
- grandchild.querySelector('.child-remove').click();await Promise.resolve();assert.equal(review.disabled,false);assert.ok(child.classList.contains('review-family-open'));
+ const grandchild=w.addGrandchild(child);grandchild.querySelector('[data-c=firstName]').value='Privremeno';const before=w.familyData();
+ grandchild.querySelector('.review-actions button').click();assert.equal(grandchild.querySelector('.child-remove').textContent,'Odustani od dodavanja');
+ grandchild.querySelector('.child-remove').click();await Promise.resolve();assert.equal(review.disabled,true);assert.ok(child.classList.contains('review-family-open'));
  assert.equal(d.querySelector('.branch-undo').hidden,false);d.querySelector('.branch-undo button').click();
- assert.equal(review.disabled,true);assert.deepEqual(w.familyData(),before);assert.ok(child.classList.contains('review-family-open'));assert.deepEqual(errors,[]);
+ assert.equal(review.disabled,false);assert.deepEqual(w.familyData(),before);assert.ok(child.classList.contains('review-family-open'));assert.deepEqual(errors,[]);
 });
 test('a child can gain a partner directly and destructive actions follow the selected saved family',async t=>{
  const data=family();data.people.push({id:'leaf',name:'Test, Novo dijete'});data.families[0].children.push('leaf');
@@ -186,4 +186,11 @@ test('second partner entry explains the separate union and offers a validated ca
  assert.equal(d.querySelector('.hero h1').textContent,'Dodavanje drugog partnera');assert.equal(d.activeElement.name,'mother_firstName');assert.match(d.querySelector('.branch-cancel-partner').href,/person=a&family=second$/);assert.equal(d.querySelector('[name=mother_firstName]').value,'');
  put(d.querySelector('[name=mother_firstName]'),'Treći partner');assert.equal(db.prepare('SELECT working FROM family_links').get().working,json);const event=new w.Event('beforeunload',{cancelable:true});w.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
  put(d.querySelector('[name=submittedBy]'),'Rođak');await save();assert.equal(d.querySelector('.branch-cancel-partner'),null);assert.equal(d.querySelector('.hero h1').textContent,'Pregled porodice');const saved=JSON.parse(db.prepare('SELECT working FROM family_links').get().working);assert.equal(saved.families.length,4);assert.deepEqual(saved.families.find(f=>f.id==='f'),data.families[0]);assert.deepEqual(saved.families.find(f=>f.id==='second'),data.families[2]);assert.deepEqual(errors,[]);
+});
+
+test('only an added child can be deleted, and deletion removes the person rather than just the parent link',async t=>{
+ const {db,w,d,put,save,errors}=await fixture(t,family());const imported=d.querySelector('#children > .child-card');assert.equal(imported.querySelector('.child-remove').hidden,true);imported.querySelector('.child-remove').click();assert.equal(imported.isConnected,true);
+ d.querySelector('#addChild').click();const child=d.querySelector('#children').lastElementChild;put(child.querySelector('[data-c=firstName]'),'Greška');put(d.querySelector('[name=submittedBy]'),'Rođak');await save();const id=child.dataset.branchId;
+ assert.equal(child.querySelector('.child-remove').textContent,'Obriši dodano dijete');let posted;w.confirm=()=>true;w.HTMLFormElement.prototype.submit=function(){posted={action:this.action,body:new URLSearchParams(new w.FormData(this)).toString()};};child.querySelector('.child-remove').click();assert.ok(posted);
+ const response=await w.fetch(posted.action,{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:posted.body});assert.equal(response.status,302);const working=JSON.parse(db.prepare('SELECT working FROM family_links').get().working);assert.equal(working.people.some(p=>p.id===id),false);assert.equal(working.families.some(f=>f.children.includes(id)),false);assert.ok(working.people.some(p=>p.id==='c'));assert.deepEqual(errors,[]);
 });

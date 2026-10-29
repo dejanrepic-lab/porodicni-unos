@@ -95,7 +95,21 @@
   });view.actions.append(view.family);}
   view.remove=card.querySelector(':scope > .child-head > .child-remove');
   view.actions.append(view.remove);
-  view.remove.onclick=()=>{
+  view.remove.onclick=event=>{
+   const id=card.dataset.branchId;
+   if(id){
+    event.stopPropagation();
+    if(boot.originalPeople.includes(id))return;
+    if(form.dataset.branchDirty==='true'){showToast('Prvo sačuvaj ostale izmjene prije brisanja djeteta.');return;}
+    const author=form.querySelector('[name=submittedBy]');if(!author.value.trim()){author.focus();author.reportValidity();return;}
+    if(!window.confirm('Obriši '+name(values(view.fields))+' i njegove veze iz ovog linka? Gramps baza se ne mijenja.'))return;
+    const request=document.createElement('form');request.method='post';request.action=boot.base+'/remove-person';
+    for(const [key,value] of Object.entries({csrf:boot.csrf,revision:form.dataset.revision,id,editor:author.value.trim(),confirm:'yes'})){
+     const input=document.createElement('input');input.type='hidden';input.name=key;input.value=value;request.append(input);
+    }
+    document.body.append(request);request.submit();return;
+   }
+
    const list=card.parentElement,next=card.nextElementSibling;
    if(editing?.el===card||card.contains(editing?.el))closeEditor();
    if(activeFamily===card||card.contains(activeFamily)){
@@ -181,7 +195,7 @@
    const signature=JSON.stringify(spouse?{...p,spouse}:p),dirty=view.isNew||signature!==view.initial;
    view.el.classList.toggle('review-changed',dirty);view.state.textContent=dirty?(view.isNew?'Novo · nije sačuvano':'Izmijenjeno · još nije sačuvano'):'';view.state.hidden=!dirty;if(dirty)changed++;
    if(view.partnerTitle)view.partnerTitle.textContent=name(spouse)?'Partner / supružnik: '+name(spouse):'＋ Dodaj partnera';
-   if(view.remove)view.remove.textContent=view.el.dataset.branchId?'Ukloni iz ove porodice':'Odustani od dodavanja';
+   if(view.remove){view.remove.hidden=boot.originalPeople.includes(view.el.dataset.branchId);view.remove.textContent=view.el.dataset.branchId?'Obriši dodano dijete':'Odustani od dodavanja';}
    if(view.family){view.family.textContent=!name(spouse)&&!count?'+ Dodaj partnera':'Porodica';view.family.setAttribute('aria-label','Otvori porodicu: '+(label||'nova osoba')+' · djece: '+count);view.family.hidden=view.el===activeFamily;view.family.disabled=!label;}
   }
   missingList.replaceChildren();let missingCount=0;
