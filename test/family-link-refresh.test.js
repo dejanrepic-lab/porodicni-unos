@@ -1,0 +1,74 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const express=require('express');
+const Database=require('better-sqlite3');
+const {mountFamilyLinks}=require('../lib/family-links');
+const {progressStatus}=require('../lib/family-review');
+const snapshot=()=>({people:[{handle:'a',primary_name:{first_name:'Ažurirano',surname_list:[{surname:'Test'}]}},{handle:'new-child',gramps_id:'I123',primary_name:{first_name:'Dijete',surname_list:[{surname:'Test'}]}}],families:[{handle:'f',father_handle:'a',child_ref_list:[{ref:'new-child'}],type:0}],events:[],places:[],notes:[]});
+test('an existing database gains refresh state without losing rows and can be mounted again',()=>{
+ const db=new Database(':memory:');
+ db.exec('CREATE TABLE family_links(id INTEGER PRIMARY KEY,token TEXT UNIQUE NOT NULL,label TEXT NOT NULL,baseline TEXT NOT NULL,working TEXT NOT NULL,created TEXT NOT NULL,last_seen TEXT,updated TEXT,active INTEGER NOT NULL DEFAULT 1,revision INTEGER NOT NULL DEFAULT 0)');
+ const data=JSON.stringify({people:[{id:'a',name:'Staro'}],families:[]});
+ db.prepare('INSERT INTO family_links(token,label,baseline,working,created) VALUES(?,?,?,?,?)').run('old','Stari link',data,data,'2026-01-01');
+ const options={db,adminAuth:(req,res,next)=>next(),client:()=>({snapshot:async()=>snapshot()})};
+ mountFamilyLinks(express(),options);mountFamilyLinks(express(),options);
+ const row=db.prepare('SELECT * FROM family_links').get();assert.equal(row.locked,0);assert.equal(row.refreshed_at,null);assert.equal(row.token,'old');assert.equal(row.working,data);assert.equal(row.revision,0);
+ db.close();
+});
+async function fixture(t){
+ const db=new Database(':memory:');db.pragma('foreign_keys = ON');const app=express();let source=async()=>snapshot(),calls=0;
+ mountFamilyLinks(app,{db,adminAuth:(req,res,next)=>req.get('x-admin')==='yes'?next():res.sendStatus(401),client:()=>({snapshot:()=>{calls++;return source();}})});
+ const base={rootFamily:'f',people:[{id:'a',name:'Test, Staro'}],families:[{id:'f',parents:['a'],children:[]}],original:{people:[]}};
+ const working=structuredClone(base);working.people.push({id:'local',name:'Probno dijete'});working.families[0].children.push('local');
+ db.prepare('INSERT INTO family_links(token,label,baseline,working,created) VALUES(?,?,?,?,?)').run('stable-token','Rođak',JSON.stringify(base),JSON.stringify(working),'2026-01-01');
+ db.prepare('INSERT INTO family_link_history(link_id,previous,changed_by,created) VALUES(1,?,?,?)').run(JSON.stringify(base),'Tetka Mira','2026-01-02');
+ db.prepare('INSERT INTO family_link_progress(link_id,submitted_revision,reviewed_revision) VALUES(1,0,0)').run();
+ db.prepare('INSERT INTO family_link_review_snapshots(link_id,revision,snapshot) VALUES(1,0,?)').run(JSON.stringify(working));
+ const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>{server.close();db.close();});
+ const origin='http://127.0.0.1:'+server.address().port,admin='/admin/family-links/1',publicUrl='/branch/stable-token';
+ const get=(url,auth=true)=>fetch(origin+url,{headers:auth?{'x-admin':'yes'}:{}});
+ const html=await (await get(admin)).text(),csrf=html.match(/name="csrf" value="([^"]+)"/)[1];
+ const post=(url,body={},auth=true)=>fetch(origin+url,{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded',...(auth?{'x-admin':'yes'}:{})},body:new URLSearchParams({csrf,...body})});
+ const row=()=>db.prepare('SELECT * FROM family_links WHERE id=1').get();
+ return {db,get,post,admin,publicUrl,row,base,working,setSource:fn=>source=fn,calls:()=>calls,csrf};
+}
+test('locked refresh archives the entire previous cycle, replaces both copies and preserves the URL',async t=>{
+ const f=await fixture(t),old=f.row();const oldPage=await (await f.get(f.publicUrl+'/form?person=a',false)).text(),oldBoot=JSON.parse(oldPage.match(/<script id="branch-boot" type="application\/json">([\s\S]*?)<\/script>/)[1]);let response=await f.post(f.admin+'/lock',{revision:0,locked:'1'});assert.equal(response.status,302);
+ assert.equal((await f.get(f.publicUrl,false)).status,423);
+ for(const route of ['/form-save','/form-preview','/person','/add','/family','/remove-person','/remove-family','/completion'])assert.equal((await f.post(f.publicUrl+route,{},false)).status,423);
+ response=await f.post(f.admin+'/refresh/prepare',{revision:1,family:'f'});assert.equal(response.status,302);assert.equal(f.row().working,old.working);
+ const preview=await (await f.get(f.admin+'/refresh/preview')).text();assert.match(preview,/Svi podaci linka/);assert.match(preview,/Test, Ažurirano/);
+ const nonce=f.db.prepare('SELECT nonce FROM family_link_refresh_drafts').get().nonce;
+ assert.equal((await f.post(f.admin+'/refresh/commit',{revision:1,nonce})).status,409);
+ response=await f.post(f.admin+'/refresh/commit',{revision:1,nonce,confirm:'yes'});assert.equal(response.status,302);
+ const fresh=f.row();assert.equal(fresh.token,old.token);assert.equal(fresh.locked,1);assert.equal(fresh.revision,2);assert.equal(fresh.baseline,fresh.working);assert.equal(JSON.parse(fresh.working).people.some(p=>p.id==='local'),false);assert.equal(JSON.parse(fresh.working).people.find(p=>p.id==='new-child').grampsId,'I123');
+ for(const table of ['family_link_history','family_link_progress','family_link_review_snapshots','family_link_refresh_drafts'])assert.equal(f.db.prepare('SELECT COUNT(*) n FROM '+table).get().n,0);
+ assert.equal(progressStatus(fresh,undefined),'Spreman za nove dopune');
+ const archive=JSON.parse(f.db.prepare('SELECT content FROM family_link_archives').get().content);assert.equal(archive.link.working,old.working);assert.equal(archive.link.baseline,old.baseline);assert.equal(archive.history[0].changed_by,'Tetka Mira');assert.ok(archive.progress);assert.ok(archive.review);
+ assert.equal((await f.get(f.admin+'/archives/1',false)).status,401);const download=await f.get(f.admin+'/archives/1');assert.match(download.headers.get('content-disposition'),/attachment/);assert.deepEqual(await download.json(),archive);
+ assert.equal((await f.post(f.admin+'/refresh/commit',{revision:1,nonce,confirm:'yes'})).status,409);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM family_link_archives').get().n,1);
+ assert.equal((await f.post(f.admin+'/lock',{revision:2,locked:'0'})).status,302);const opened=await f.get(f.publicUrl+'/form?person=a',false);assert.equal(opened.status,200);assert.match(await opened.text(),/Ažurirano/);
+ assert.equal((await fetch(new URL(f.publicUrl+'/form-save',opened.url),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csrf:oldBoot.csrf,revision:0,personId:'a',familyId:'f',payload:oldBoot.payload})})).status,409);
+ assert.equal(f.row().baseline,f.row().working);
+});
+test('refresh requires admin authentication, CSRF, a lock and a current revision',async t=>{
+ const f=await fixture(t),before=f.row();
+ assert.equal((await f.post(f.admin+'/lock',{revision:0,locked:'1'},false)).status,401);
+ assert.equal((await f.post(f.admin+'/lock',{csrf:'bad',revision:0,locked:'1'})).status,403);
+ assert.equal((await f.post(f.admin+'/refresh/prepare',{revision:0,family:'f'})).status,409);
+ assert.equal((await f.post(f.admin+'/lock',{revision:99,locked:'1'})).status,409);
+ assert.equal(f.calls(),0);assert.deepEqual(f.row(),before);
+ await f.post(f.admin+'/lock',{revision:0,locked:'1'});const locked=f.row();f.setSource(async()=>{throw Error('Gramps nije dostupan');});
+ assert.equal((await f.post(f.admin+'/refresh/prepare',{revision:1,family:'f'})).status,409);assert.deepEqual(f.row(),locked);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM family_link_archives').get().n,0);
+ f.setSource(async()=>snapshot());assert.equal((await f.post(f.admin+'/refresh/prepare',{revision:1,family:'missing'})).status,409);assert.deepEqual(f.row(),locked);
+});
+test('unlocking and relocking invalidates old previews and an import still in flight',async t=>{
+ const f=await fixture(t);await f.post(f.admin+'/lock',{revision:0,locked:'1'});
+ await f.post(f.admin+'/refresh/prepare',{revision:1,family:'f'});const nonce=f.db.prepare('SELECT nonce FROM family_link_refresh_drafts').get().nonce;
+ let release,started;const ready=new Promise(resolve=>started=resolve);f.setSource(()=>new Promise(resolve=>{release=resolve;started();}));
+ const pending=f.post(f.admin+'/refresh/prepare',{revision:1,family:'f'});await ready;
+ await f.post(f.admin+'/lock',{revision:1,locked:'0'});await f.post(f.admin+'/lock',{revision:2,locked:'1'});release(snapshot());
+ assert.equal((await pending).status,409);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM family_link_refresh_drafts').get().n,0);
+ assert.equal((await f.post(f.admin+'/refresh/commit',{revision:3,nonce,confirm:'yes'})).status,409);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM family_link_archives').get().n,0);
+ assert.equal(f.row().working,JSON.stringify(f.working));
+});
