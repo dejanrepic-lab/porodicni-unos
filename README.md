@@ -519,3 +519,7 @@ Pregled, trajni odgovor, administratorski prikaz i TXT izvoz prate sve unesene g
 ### Dopuna veze i porodičnih napomena
 
 U porodičnom linku vrsta veze je odmah uz kartice partnera, dostupna u kratkom izboru bez otvaranja osobe. Izvor i napomena prikazuju sažetak, a klik otvara samo pripadajuće polje na istom mjestu. Isti raspored važi i za otvorenu porodicu potomka. Izmjene i dalje prolaze kroz pregled prije čuvanja u kopiji grane.
+
+### Osvježavanje skripti nakon nadogradnje
+
+Porodični pregled i mapa koriste adrese skripti i stilova sa oznakom sadržaja (`?v=...`). Nakon nadogradnje nova datoteka dobija novu adresu, pa preglednik ili posrednički keš ne nastavlja koristiti staru skriptu. Otvorenu stranicu treba ponovo učitati. Ako je prije ove ispravke ostao stari prikaz, na računaru jednom koristite Ctrl+F5.
