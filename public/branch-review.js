@@ -81,7 +81,7 @@
   if(partner){
    const details=make('details','nested descendant-partner'),title=make('summary');details.hidden=partner.hidden;
    partner.querySelector('h3').remove();details.append(title,...partner.childNodes);partner.replaceWith(details);view.partnerTitle=title;
-   moreFields(details.querySelector('.grid'),view.partnerFields);
+   moreFields(details.querySelector('.grid'),view.partnerFields);details.addEventListener('toggle',refresh);
   }
   const noteField=view.fields.notes.closest('.field'),oldSelectField=view.partnerFields.relationship.closest('.field');
   view.familyMeta=familyMeta(view.partnerFields.relationship,[[view.fields.notes,'Napomena porodice']]);
@@ -195,8 +195,14 @@
    const signature=JSON.stringify(spouse?{...p,spouse}:p),dirty=view.isNew||signature!==view.initial;
    view.el.classList.toggle('review-changed',dirty);view.state.textContent=dirty?(view.isNew?'Novo · nije sačuvano':'Izmijenjeno · još nije sačuvano'):'';view.state.hidden=!dirty;if(dirty)changed++;
    if(view.partnerTitle)view.partnerTitle.textContent=name(spouse)?'Partner / supružnik: '+name(spouse):'＋ Dodaj partnera';
+   if(view.familyMeta){
+    const enteringPartner=view.partnerTitle?.parentElement.open;
+    view.familyMeta.el.querySelector('.review-relationship').hidden=!name(spouse)&&!spouse.relationship&&!enteringPartner;
+    view.familyMeta.el.hidden=view.el.dataset.reference==='true'||(!name(spouse)&&!spouse.relationship&&!enteringPartner&&!count&&!p.notes);
+   }
+
    if(view.remove){view.remove.hidden=boot.originalPeople.includes(view.el.dataset.branchId);view.remove.textContent=view.el.dataset.branchId?'Obriši dodano dijete':'Odustani od dodavanja';}
-   if(view.family){view.family.textContent=!name(spouse)&&!count?'+ Dodaj partnera':'Porodica';view.family.setAttribute('aria-label','Otvori porodicu: '+(label||'nova osoba')+' · djece: '+count);view.family.hidden=view.el===activeFamily;view.family.disabled=!label;}
+   if(view.family){view.family.textContent=!name(spouse)&&!count?'+ Dodaj partnera':'Porodica';view.family.setAttribute('aria-label','Otvori porodicu: '+(label||'nova osoba')+' · djece: '+count);view.family.hidden=view.el===activeFamily||(view.el.classList.contains('review-editing')&&!name(spouse)&&!count);view.family.disabled=!label;}
   }
   missingList.replaceChildren();let missingCount=0;
   for(const view of currentPeople()){
