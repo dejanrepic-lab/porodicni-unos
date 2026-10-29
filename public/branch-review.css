@@ -1,0 +1,80 @@
+/* Compact branch review, using the same inputs and descendant cards as the public form. */
+.branch-review [hidden]{display:none !important}
+.branch-review .hero{padding:18px 20px}
+.branch-review .hero h1{font-size:25px;margin-bottom:4px}
+.branch-review .hero .lead{font-size:14px}
+.review-root-name{margin:0 0 8px;font-size:18px;font-weight:700;overflow-wrap:anywhere}
+.branch-review .edit-banner{padding:10px 14px;font-size:13px;margin-bottom:12px}
+.compact-review .section{padding:14px 16px;margin:10px 0}
+.review-parents{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0}
+.compact-review .review-parents > .section{margin:0}
+.review-parents > .review-editing{grid-column:1/-1}
+.compact-review .review-person{scroll-margin-top:16px;min-width:0}
+.compact-review .review-person:not(.review-editing) > .grid,
+.compact-review .review-person:not(.review-editing) > .section-toggle,
+.compact-review .review-person:not(.review-editing) > .branch-other-partner,
+.compact-review .review-person:not(.review-editing) > .descendant-partner,
+.compact-review .review-person:not(.review-editing) > .field,
+.compact-review .review-person:not(.review-editing) > .branch-child-notes,
+.compact-review .review-person:not(.review-editing) > .branch-child-actions,
+.compact-review .review-person:not(.review-editing) > .child-head > .child-remove{display:none !important}
+.compact-review .review-person > .descendant-family{display:none}
+.compact-review .review-person.review-family-open > .descendant-family{display:block}
+.compact-review .review-person.focus-ancestor > .descendant-family{display:contents !important}
+.compact-review .review-person > .branch-child-actions > .descendant-focus,
+.compact-review .review-person > .branch-child-actions > .branch-continue{display:none !important}
+.compact-review .review-person > .branch-child-actions > .child-collapse{flex:0 1 auto}
+.compact-review .review-person.review-editing{border-color:#8db2f2;background:#fff}
+.compact-review .review-person > h2{font-size:14px;margin:0 0 7px;border:0;padding:0;color:var(--muted)}
+.compact-review .review-person > .child-head{display:none}
+.compact-review .review-person.review-editing > .child-head{display:flex}
+.compact-review .review-person.review-editing > .child-head > strong{display:none}
+.compact-review .review-person.review-editing > .child-head{justify-content:flex-end}
+.review-editing > .review-summary .review-actions > button:first-child{display:none}
+.review-summary{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px}
+.review-summary > :not(.review-actions){grid-column:1}
+.review-summary > .review-actions{grid-column:2;grid-row:1 / span 4;align-self:center;margin-top:0}
+.review-name{display:block;font-size:18px;line-height:1.35;overflow-wrap:anywhere}
+.review-facts,.review-hint{margin:5px 0;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.review-hint{color:var(--muted);font-size:13px}
+.review-state{display:block;color:#8a4b08;font-size:12px;margin-top:6px}
+.review-actions{margin-top:9px;gap:8px}
+.compact-review .review-actions .btn{padding:8px 12px;min-height:40px;white-space:normal;overflow-wrap:anywhere;min-width:0;text-align:left}
+.review-editing > .grid{margin-top:14px}
+.review-more{grid-column:1/-1;border-top:1px solid var(--line);padding-top:10px}
+.review-more > .grid{margin-top:12px}
+.review-more summary,.review-root-extra > summary,.review-missing > summary,.descendant-partner > summary{cursor:pointer;font-weight:700;line-height:1.5}
+.compact-review .descendant-partner > .grid{margin-top:12px}
+.compact-review .review-root-extra > .section{border:0;padding:12px 0 0;margin:0;box-shadow:none}
+.review-missing-list{display:flex;flex-wrap:wrap;gap:8px}
+.review-missing-list .btn{font-weight:600;white-space:normal;text-align:left;min-width:0;max-width:100%;overflow-wrap:anywhere;min-height:44px}
+.compact-review .child-card{padding:12px 14px;margin-top:10px;background:#fff}
+.compact-review.descendant-focus-mode > .review-root-extra{display:none}
+.compact-review.descendant-focus-mode > .review-parents{display:none}
+.compact-review.descendant-focus-mode > .section.review-missing{display:block !important}
+.compact-review.descendant-focus-mode > .section.review-missing[hidden]{display:none !important}
+.compact-review.descendant-focus-mode .focus-section > h2,
+.compact-review.descendant-focus-mode .focus-section > .subtle,
+.compact-review.descendant-focus-mode .focus-section > .actions:not(.descendant-focus-toolbar),
+.compact-review.descendant-focus-mode .focus-section > .review-empty{display:none !important}
+.compact-review .review-savebar{position:sticky;bottom:8px;z-index:20;border:1px solid var(--line);border-radius:12px;background:#fff;padding:10px 12px;box-shadow:0 3px 18px #17203318;align-items:center;justify-content:space-between}
+.review-save-status{font-size:13px;color:var(--muted)}
+.compact-review .review-savebar button{min-height:44px}
+.review-empty{color:var(--muted);font-size:14px}
+.branch-review{scroll-padding-bottom:100px}
+.compact-review input,.compact-review textarea,.compact-review select{scroll-margin-bottom:100px}
+@media(max-width:700px){
+ .branch-review .hero{padding:14px !important}
+ .branch-review .hero h1{font-size:22px}
+ .compact-review .section{padding:12px !important}
+ .review-parents{grid-template-columns:minmax(0,1fr)}
+ .review-summary{display:block}
+ .review-summary > .review-actions{margin-top:9px}
+ .compact-review .review-person > h2{font-size:14px !important;padding:0 !important;border:0 !important}
+ .compact-review .review-actions{flex-direction:row}
+ .compact-review .review-actions .btn{flex:1 1 125px;font-size:14px !important}
+ .compact-review .review-savebar{bottom:4px;gap:6px;padding:8px}
+ .review-save-status{flex:1 1 110px;font-size:12px}
+ .compact-review .review-savebar button{flex:1 1 155px;white-space:normal;font-size:14px}
+ .compact-review .child-card{padding:12px !important}
+}

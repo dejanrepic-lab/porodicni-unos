@@ -62,7 +62,7 @@
   try{
    const response=await fetch(boot.base+'/form-save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csrf:boot.csrf,revision,personId:boot.personId,familyId,payload:currentPreview})});
    const result=await response.json().catch(()=>({error:'Link više nije dostupan ili sesija nije važeća. Sačuvaj svoj unos prije osvježavanja.'}));if(!response.ok)throw Error(result.error||'Čuvanje nije uspjelo.');revision=result.revision;familyId=result.familyId;stamp(result.payload);updateRemoval();updatePartnerAction(result.payload);
-   document.getElementById('previewBox').style.display='none';status.textContent='';showToast('Izmjene su sačuvane. Nastavi tamo gdje si stao.');banner.textContent='Sačuvano. Možeš nastaviti unos u ovoj porodici.';window.scrollTo(0,returnY);
+   document.getElementById('previewBox').style.display='none';status.textContent='';showToast('Izmjene su sačuvane. Nastavi tamo gdje si stao.');banner.textContent='Sačuvano. Možeš nastaviti unos u ovoj porodici.';document.dispatchEvent(new CustomEvent('branch:saved'));window.scrollTo(0,returnY);
   }catch(e){status.textContent=e.message;}finally{button.disabled=false;}
  };
  // Warn before abandoning unsaved edits while changing families or returning to the tree.
