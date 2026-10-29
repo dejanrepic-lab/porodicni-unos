@@ -45,7 +45,7 @@
     <div class="section compact-section relationship-section no-collapse">
       <h2>Osnovna porodica</h2>
       <div class="grid">
-        <div class="field"><label>Vrsta veze</label><select name="primaryRelationship"><option value=""></option><option>Brak</option><option>Vanbračna zajednica</option><option>Partnerstvo</option><option>Nepoznato</option></select></div>
+        <div class="field"><label>Vrsta veze</label><select name="primaryRelationship"><option value=""></option><option>Brak</option><option>Vanbračna zajednica</option><option>Registrovano partnerstvo</option><option>Partnerstvo</option><option>Nepoznato</option></select></div>
       </div>
     </div>
 
@@ -145,7 +145,7 @@
           <select name="partner_relationship">
             <option value=""></option>
             <option>Brak</option>
-            <option>Vanbračna zajednica</option>
+            <option>Vanbračna zajednica</option><option>Registrovano partnerstvo</option>
             <option>Partnerstvo</option>
             <option>Nepoznato</option>
           </select>
@@ -490,8 +490,8 @@ function addChild(data={},container=children,depth=1){
  const field=(label,key,prefix='c')=>`<div class="field"><label>${label}<input data-${prefix}="${key}"></label></div>`;
  const personFields=field('Ime','firstName')+field('Prezime','lastName')+field('Djevojačko prezime','maidenName')+field('Nadimak','nickname')+field('Datum rođenja','birthDate')+field('Mjesto rođenja','birthPlace')+field('Datum smrti','deathDate')+field('Mjesto smrti','deathPlace');
  const spouseFields=['firstName','lastName','maidenName','nickname','birthDate','birthPlace','deathDate','deathPlace'].map((k,i)=>field(['Ime','Prezime','Djevojačko prezime','Nadimak','Datum rođenja','Mjesto rođenja','Datum smrti','Mjesto smrti'][i],k,'s')).join('');
- card.innerHTML=`<div class="child-head"><strong>Dijete</strong><button type="button" class="remove child-remove">Ukloni dijete</button></div><div class="grid">${personFields}</div><div class="nested descendant-partner"><h3>Supružnik / partner</h3><div class="grid">${spouseFields}<div class="field"><label>Vrsta veze<select data-s="relationship"><option></option><option>Brak</option><option>Vanbračna zajednica</option><option>Partnerstvo</option><option>Nepoznato</option></select></label></div></div></div><div class="nested descendant-family"><h3 class="pair-children-title">Djeca ovog para</h3><div class="nested-list"></div><div class="actions"><button type="button" class="pair-add-child btn soft add-grandchild">＋ Dodaj dijete ovog para</button></div></div><div class="field full"><label>Napomena za ovu porodicu<textarea data-c="notes"></textarea></label></div><details class="branch-child-notes"><summary>Napomene o osobi</summary><div class="field"><label>Napomene osobe<textarea data-c="personNotes"></textarea></label></div></details><div class="actions branch-child-actions"><button type="button" class="child-collapse">Završi unos</button><button type="button" class="btn soft descendant-focus">Otvori ovu porodicu</button></div>`;
- card.querySelectorAll('[data-c]').forEach(e=>e.value=person[e.dataset.c]||'');card.querySelectorAll('[data-s]').forEach(e=>e.value=data.spouse?.[e.dataset.s]||'');
+ card.innerHTML=`<div class="child-head"><strong>Dijete</strong><button type="button" class="remove child-remove">Ukloni dijete</button></div><div class="grid">${personFields}</div><div class="nested descendant-partner"><h3>Supružnik / partner</h3><div class="grid">${spouseFields}<div class="field"><label>Vrsta veze<select data-s="relationship"><option></option><option>Brak</option><option>Vanbračna zajednica</option><option>Registrovano partnerstvo</option><option>Partnerstvo</option><option>Nepoznato</option></select></label></div></div></div><div class="nested descendant-family"><h3 class="pair-children-title">Djeca ovog para</h3><div class="nested-list"></div><div class="actions"><button type="button" class="pair-add-child btn soft add-grandchild">＋ Dodaj dijete ovog para</button></div></div><div class="field full"><label>Napomena za ovu porodicu<textarea data-c="notes"></textarea></label></div><details class="branch-child-notes"><summary>Napomene o osobi</summary><div class="field"><label>Napomene osobe<textarea data-c="personNotes"></textarea></label></div></details><div class="actions branch-child-actions"><button type="button" class="child-collapse">Završi unos</button><button type="button" class="btn soft descendant-focus">Otvori ovu porodicu</button></div>`;
+ card.querySelectorAll('[data-c]').forEach(e=>e.value=person[e.dataset.c]||'');card.querySelectorAll('[data-s]').forEach(e=>setFieldValue(e,data.spouse?.[e.dataset.s]));
  container.appendChild(card);if(depth>1&&(data.children||[]).length)card._pendingDescendants=structuredClone(data.children);else for(const child of data.children||[])addGrandchild(card,child);
  const refresh=()=>{card.querySelector(':scope > .child-head strong').textContent=childDisplayName(card,Array.from(container.children).indexOf(card)+1);refreshPairContext(card);};
  card.addEventListener('input',event=>{if(event.target.closest('.child-card')===card)refresh();});
@@ -514,9 +514,16 @@ if(!editPublicId)addChild();
 
 function objFrom(prefix, scope=document){const o={};scope.querySelectorAll(`[data-${prefix}]`).forEach(e=>o[e.dataset[prefix]]=e.value.trim());return o;}
 
+function setFieldValue(input,value){
+  if(!input)return;const text=String(value??'');
+  if(input.tagName==='SELECT'&&text&&!Array.from(input.options).some(option=>option.value===text)){
+    const option=document.createElement('option');option.value=text;option.textContent=text;input.appendChild(option);
+  }
+  input.value=text;
+}
 function setNamed(form, name, value){
   const e=form.querySelector(`[name="${name}"]`);
-  if(e) e.value=value??'';
+  setFieldValue(e,value);
 }
 function renderExistingFiles(mode){
   const box=document.getElementById(mode+'ExistingFiles');

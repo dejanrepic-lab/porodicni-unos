@@ -16,7 +16,7 @@ async function fixture(t,data,query='person=a'){
  page=page.replace('<link rel="stylesheet" href="/app.css?v=2.13.1">',()=>'<style>'+asset('app.css')+'</style>');
  assert.match(page,/branch-review.css/);assert.match(page,/branch-review.js/);
  for(const file of ['descendant-data.js','branch-form.js','branch-preview.js','branch-review.js'])page=page.replace(`<script src="/${file}"></script>`,()=>'<script>'+asset(file)+'</script>');
- page=page.replace('<link rel="stylesheet" href="/branch-review.css?v=2.13.2">',()=>'<style>'+asset('branch-review.css')+'</style>');
+ page=page.replace('<link rel="stylesheet" href="/branch-review.css?v=2.13.3">',()=>'<style>'+asset('branch-review.css')+'</style>');
  const errors=[],console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
  const dom=new JSDOM(page,{url,runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,beforeParse(w){w.structuredClone=structuredClone;w.fetch=(u,o)=>fetch(new URL(u,origin),o);w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=(x,y)=>Object.defineProperty(w,'scrollY',{value:typeof x==='object'?x.top:y,writable:true,configurable:true});}});
  t.after(()=>dom.window.close());assert.deepEqual(errors,[]);
@@ -26,6 +26,13 @@ async function fixture(t,data,query='person=a'){
  return {db,w,d,put,save,errors,json};
 }
 function family(){return {rootFamily:'f',people:[{id:'a',name:'Test, Ana',birth:'oko 1970',notes:'Originalna napomena'},{id:'b',name:'Test, Marko'},{id:'c',name:'Test, Dijete'},{id:'p',name:'Drugi, Partner'},{id:'g',name:'Test, Unuče',death:'2020'}],families:[{id:'f',parents:['a','b'],children:['c'],notes:'Napomena porodice'},{id:'fc',parents:['c','p'],children:['g']}],original:{people:[]}};}
+test('imported standard and custom relationship types stay visible and survive unrelated edits',async t=>{
+ const data=family();data.families[0].relationship='Brak';data.families[1].relationship='Veza po običaju <x>';
+ const {db,w,d,put,errors}=await fixture(t,data);assert.equal(d.querySelector('.review-relationship').textContent,'Vrsta veze: Brak');assert.equal(d.querySelector('[name=primaryRelationship]').value,'Brak');
+ const child=d.querySelector('#children > .child-card');assert.equal(child.querySelector('[data-s=relationship]').value,'Veza po običaju <x>');assert.match(child.querySelector('.review-facts').textContent,/Veza: Veza po običaju <x>/);assert.equal(d.querySelector('x'),null);
+ child.querySelector('.review-actions button:nth-child(2)').click();assert.equal(d.querySelector('.review-relationship').textContent,'Vrsta veze: Veza po običaju <x>');put(child.querySelector('[data-c=birthPlace]'),'Novo mjesto');put(d.querySelector('[name=submittedBy]'),'Rođak');await d.querySelector('#familyForm').onsubmit(new w.Event('submit',{bubbles:true,cancelable:true}));
+ assert.equal(Array.from(d.querySelectorAll('.preview-change > strong')).some(el=>el.textContent==='Vrsta veze'),false);await d.querySelector('#sendBtn').onclick();const saved=JSON.parse(db.prepare('SELECT working FROM family_links').get().working);assert.equal(saved.families[0].relationship,'Brak');assert.equal(saved.families[1].relationship,'Veza po običaju <x>');assert.deepEqual(errors,[]);
+});
 test('family navigation keeps map context and completion requires saved edits',async t=>{
  const {d,w,put,save,errors}=await fixture(t,family());const child=d.querySelector('#children > .child-card');
  assert.equal(d.querySelector('.branch-map-link').textContent,'Mapa cijele grane');assert.match(d.querySelector('.branch-completion summary').textContent,/Otvoren, bez izmjena/);
