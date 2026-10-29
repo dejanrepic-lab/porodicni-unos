@@ -34,19 +34,28 @@
   result.append(make('p','subtle','Podatke dopunjava: '+currentPreview.submittedBy));
   for(const [key,label] of [['peopleChanged','Osobe s izmjenama'],['peopleAdded','Nove osobe'],['familiesAdded','Nove porodice'],['linksRemoved','Uklonjene veze']])if(preview.counts[key])summary.append(make('span','',label+': '+preview.counts[key]));
   result.append(summary);
+  const newPeople=new Set(preview.groups.flatMap(group=>group.items.filter(item=>item.kind==='new-person').map(item=>item.personId)));
+  const childFamilies=new Map();for(const group of preview.groups)for(const item of group.items)for(const id of item.addedChildIds||[])childFamilies.set(id,group.label);
   for(const group of preview.groups){
    const section=make('section','preview-family');section.append(make('h3','','Porodica: '+group.label));
    if(group.trail)section.append(make('p','preview-trail',group.trail));
-   for(const item of group.items){
+   for(const original of group.items){
+    const item={...original,addedChildren:(original.addedChildren||[]).filter((_,i)=>!newPeople.has(original.addedChildIds?.[i]))};
+    if(item.kind==='family'&&!item.isNew&&!item.changes.length&&!item.addedChildren.length&&!item.removedChildren?.length&&!item.removedParents?.length)continue;
     const card=make('article','preview-item'),head=make('div','preview-item-head');
     const title=make('div');title.append(make('span','preview-kind',item.kind==='new-person'?'Nova osoba':item.kind==='changed-person'?'Izmijenjeni podaci':item.isNew?'Nova porodica':'Porodične veze i podaci'),make('h4','',item.name));
     head.append(title,correction(item.target));card.append(head);
+    if(item.kind==='new-person'&&childFamilies.has(item.personId)){
+     card.append(make('p','subtle','Dodaješ dijete u porodicu: '+childFamilies.get(item.personId)));
+     const cancel=make('button','btn soft preview-cancel','Odustani od dodavanja');cancel.type='button';
+     cancel.onclick=()=>{back.onclick();document.dispatchEvent(new CustomEvent('branch:remove-target',{detail:item.target}));};card.append(cancel);
+    }
     for(const change of item.changes)card.append(changeRow(change,item.kind==='new-person'||item.isNew));
     for(const [key,label,cls] of [['addedChildren','Dodano dijete','preview-added-link'],['removedChildren','Dijete se uklanja iz ove porodice','preview-removed-link'],['removedParents','Partner / roditelj se uklanja iz ove porodice','preview-removed-link']])for(const person of item[key]||[])card.append(make('p',cls,label+': '+person));
     if(item.removedChildren?.length||item.removedParents?.length)card.append(make('p','subtle','Uklanja se porodična veza. Osoba i njeni ostali podaci ostaju u ovom linku.'));
     section.append(card);
    }
-   result.append(section);
+   if(section.querySelector('.preview-item'))result.append(section);
   }
   send.disabled=false;
  }

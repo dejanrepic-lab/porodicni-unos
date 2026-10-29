@@ -65,7 +65,7 @@
   el.insertBefore(summary,el.querySelector(':scope > .grid'));
   const grid=el.querySelector(':scope > .grid');if(grid)moreFields(grid,map);
   let done=el.querySelector(':scope > .section-toggle,:scope > .actions > .child-collapse');
-  if(done){view.done=done;done.textContent='Vrati se na pregled';done.onclick=()=>{closeEditor();view.edit.focus({preventScroll:true});};}
+  if(done){view.done=done;done.textContent='Vrati se na pregled';done.onclick=()=>{if(view.isNew&&!name(values(view.fields))){showToast('Upiši ime osobe prije završetka unosa.');view.fields.firstName.focus();return;}closeEditor();view.edit.focus({preventScroll:true});};}
   views.set(el,view);return view;
  }
  const roots=['father','mother'].map(prefix=>{
@@ -94,6 +94,7 @@
    if(!name(values(view.partnerFields))&&!descendantList(card).children.length)reveal(view.partnerFields.firstName);
   });view.actions.append(view.family);}
   view.remove=card.querySelector(':scope > .child-head > .child-remove');
+  view.actions.append(view.remove);
   view.remove.onclick=()=>{
    const list=card.parentElement,next=card.nextElementSibling;
    if(editing?.el===card||card.contains(editing?.el))closeEditor();
@@ -176,9 +177,9 @@
    const absent=[!p.birthDate?'datum rođenja':'',!p.birthPlace?'mjesto rođenja':''].filter(Boolean);
    view.missing.textContent=label&&absent.length?'Nedostaje: '+absent.join(', '):'';view.missing.hidden=!view.missing.textContent;
    view.edit.textContent=label?'Dopuni osobu':view===roots[1]?'＋ Dodaj partnera':'Unesi podatke';
-   view.edit.setAttribute('aria-label',view.edit.textContent+(label?' — '+label:''));if(view.done)view.done.textContent='Vrati se na pregled';
+   view.edit.setAttribute('aria-label',view.edit.textContent+(label?' — '+label:''));if(view.done)view.done.textContent=view.isNew?'Gotovo — dodaj u porodicu':'Gotovo — vrati se na porodicu';
    const signature=JSON.stringify(spouse?{...p,spouse}:p),dirty=view.isNew||signature!==view.initial;
-   view.el.classList.toggle('review-changed',dirty);view.state.textContent=dirty?'Izmijenjeno · još nije sačuvano':'';view.state.hidden=!dirty;if(dirty)changed++;
+   view.el.classList.toggle('review-changed',dirty);view.state.textContent=dirty?(view.isNew?'Novo · nije sačuvano':'Izmijenjeno · još nije sačuvano'):'';view.state.hidden=!dirty;if(dirty)changed++;
    if(view.partnerTitle)view.partnerTitle.textContent=name(spouse)?'Partner / supružnik: '+name(spouse):'＋ Dodaj partnera';
    if(view.remove)view.remove.textContent=view.el.dataset.branchId?'Ukloni iz ove porodice':'Odustani od dodavanja';
    if(view.family){view.family.textContent=!name(spouse)&&!count?'+ Dodaj partnera':'Porodica';view.family.setAttribute('aria-label','Otvori porodicu: '+(label||'nova osoba')+' · djece: '+count);view.family.hidden=view.el===activeFamily;view.family.disabled=!label;}
@@ -235,6 +236,11 @@
   openEditor(view,target.role==='partner'?'firstName':target.field);
   const input=target.role==='partner'?view.partnerFields[target.field||'firstName']:view.fields[target.field];
   if(input){for(let parent=input.parentElement;parent&&parent!==card;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;input.focus({preventScroll:true});input.scrollIntoView({behavior:'smooth',block:'center'});}
+ });
+ document.addEventListener('branch:remove-target',event=>{
+  const path=event.detail?.path;if(!path?.length)return;let list=children,card;
+  for(const index of path){if(card){ensureDescendantChildren(card);list=descendantList(card);}card=list.children[index];if(!card)return;}
+  if(!card.dataset.branchId)views.get(card)?.remove.click();
  });
  form.classList.add('compact-review');document.body.classList.add('branch-review');refresh();
 })();
