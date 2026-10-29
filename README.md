@@ -542,3 +542,5 @@ Daljnje poboljšanje: upozorenje na moguće duplikate prije dodavanja nove osobe
 „Gotovo — dodaj u porodicu” zatvara mali obrazac tek kad osoba ima ime. Novi član ostaje označen „Novo · nije sačuvano” do pregleda i čuvanja. Pregled prikazuje jednu karticu za dodavanje djeteta, sa porodicom kojoj pripada i opcijama „Ispravi” i „Odustani od dodavanja”. Uklanjanje je neposredno na kartici osobe; „Vrati” ostaje dostupan prije čuvanja.
 
 Dodavanje drugog partnera otvara jasno označenu novu porodicu i odmah polje novog partnera. „Odustani” vraća na prethodno odabranu porodicu; nesačuvane izmjene štiti postojeće upozorenje pri napuštanju.
+
+Brisanje na kartici djeteta namijenjeno je samo naknadno dodanoj osobi: nesačuvani unos se otkazuje, a sačuvano dodano dijete briše se iz kopije linka sa svojim vezama. Uvezena djeca nemaju tu akciju. Brisanje traži potvrdu i čuvanje ostalih izmjena; postojeća zaštita jedinog roditelja sa djecom ostaje aktivna.
