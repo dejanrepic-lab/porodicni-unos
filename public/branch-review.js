@@ -177,7 +177,7 @@
    const absent=[!p.birthDate?'datum rođenja':'',!p.birthPlace?'mjesto rođenja':''].filter(Boolean);
    view.missing.textContent=label&&absent.length?'Nedostaje: '+absent.join(', '):'';view.missing.hidden=!view.missing.textContent;
    view.edit.textContent=label?'Dopuni osobu':view===roots[1]?'＋ Dodaj partnera':'Unesi podatke';
-   view.edit.setAttribute('aria-label',view.edit.textContent+(label?' — '+label:''));if(view.done)view.done.textContent=view.isNew?'Gotovo — dodaj u porodicu':'Gotovo — vrati se na porodicu';
+   view.edit.setAttribute('aria-label',view.edit.textContent+(label?' — '+label:''));if(view.done)view.done.textContent=view.doneLabel||(view.isNew?'Gotovo — dodaj u porodicu':'Gotovo — vrati se na porodicu');
    const signature=JSON.stringify(spouse?{...p,spouse}:p),dirty=view.isNew||signature!==view.initial;
    view.el.classList.toggle('review-changed',dirty);view.state.textContent=dirty?(view.isNew?'Novo · nije sačuvano':'Izmijenjeno · još nije sačuvano'):'';view.state.hidden=!dirty;if(dirty)changed++;
    if(view.partnerTitle)view.partnerTitle.textContent=name(spouse)?'Partner / supružnik: '+name(spouse):'＋ Dodaj partnera';
@@ -243,4 +243,14 @@
   if(!card.dataset.branchId)views.get(card)?.remove.click();
  });
  form.classList.add('compact-review');document.body.classList.add('branch-review');refresh();
+ if(boot.familyId==='new'){
+  const hero=document.querySelector('.hero'),heading=hero.querySelector('h1'),lead=hero.querySelector('.lead');
+  heading.textContent='Dodavanje drugog partnera';document.title=heading.textContent;
+  lead.textContent='Unesi novog partnera i njihovu djecu. Postojeća porodica ostaje sačuvana. Odustajanje ne čuva ovaj unos.';
+  const cancel=make('a','btn soft branch-cancel-partner','Odustani — nazad na postojeću porodicu');cancel.href=boot.cancelUrl;hero.querySelector('nav').prepend(cancel);
+  roots[1].el.querySelector('h2').textContent='Novi partner / supružnik';roots[1].doneLabel='Gotovo — dodaj partnera';roots[1].done.textContent=roots[1].doneLabel;
+  const inlineCancel=cancel.cloneNode(true);inlineCancel.className='btn soft branch-cancel-partner-inline';inlineCancel.textContent='Odustani od novog partnera';roots[1].done.after(inlineCancel);openEditor(roots[1]);
+  document.addEventListener('branch:saved',()=>{cancel.remove();inlineCancel.remove();roots[1].doneLabel='';roots[1].done.textContent='Gotovo — vrati se na porodicu';roots[1].el.querySelector('h2').textContent='Partner / supružnik';heading.textContent='Pregled porodice';lead.textContent='Izmjene su sačuvane. Možeš nastaviti dopunu ove porodice.';document.title='Porodica – dopuna podataka';},{once:true});
+ }
+
 })();

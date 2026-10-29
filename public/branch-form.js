@@ -25,7 +25,7 @@
  const partnerAction=document.createElement('details');partnerAction.className='branch-other-partner';
  const partnerSummary=document.createElement('summary');partnerSummary.textContent='Drugi partner / druga veza';partnerAction.appendChild(partnerSummary);
  const partnerHint=document.createElement('p');partnerHint.textContent='Koristi samo ako ova osoba ima još jednog partnera. Otvara se zaseban unos za tu vezu i njihovu djecu.';partnerAction.appendChild(partnerHint);
- const partnerActions=document.createElement('div');partnerActions.className='actions';const newPartner=document.createElement('a');newPartner.className='btn soft';newPartner.href=boot.base+'/form?person='+encodeURIComponent(boot.personId)+'&family=new';newPartner.textContent='＋ Dodaj drugog partnera';partnerActions.appendChild(newPartner);partnerAction.appendChild(partnerActions);
+ const partnerActions=document.createElement('div');partnerActions.className='actions';const newPartner=document.createElement('a');newPartner.className='btn soft';newPartner.href=boot.base+'/form?person='+encodeURIComponent(boot.personId)+'&family=new&returnFamily='+encodeURIComponent(familyId||'');newPartner.textContent='＋ Dodaj drugog partnera';partnerActions.appendChild(newPartner);partnerAction.appendChild(partnerActions);
  const firstPersonSection=form.querySelector('[data-prefix=father]').closest('.section');firstPersonSection.insertBefore(partnerAction,firstPersonSection.querySelector(':scope > .section-toggle'));
  function updatePartnerAction(payload){partnerAction.hidden=!familyId||familyId==='new'||!payload.mother?._id;}
  updatePartnerAction(initial);
