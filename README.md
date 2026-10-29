@@ -474,9 +474,13 @@ Prilikom izrade nove porodice u porodičnom linku može se unijeti partner i vi�
 
 ### Isti obrazac za dopunu porodične grane
 
-Odabirom osobe u privatnom linku otvara se postojeći porodični obrazac, unaprijed popunjen podacima te porodice. Koriste se iste kartice djece, partnera i unučadi, završavanje sekcija i pregled prije čuvanja. Dugme **Sačuvaj izmjene u linku** čuva kopiju bez ponovnog učitavanja stranice.
+Odabirom osobe u privatnom linku otvara se sažet pregled njene porodice: kartice prikazuju imena, poznate osnovne podatke, partnera i broj djece. **Dopuni osobu** otvara samo odabrani unos, s istim poljima i načinom čuvanja kao u postojećem obrascu. Samo jedan unos je otvoren; **Više podataka** skriva rjeđa polja, a poznate vrijednosti ostaju sačuvane i kada su polja sklopljena.
 
-Za druge porodice iste osobe služe veze u vrhu obrasca; **Nova porodica ove osobe** otvara prazan obrazac vezan za tu osobu. Poslije čuvanja veza u kartici djeteta otvara njegovu porodicu radi nastavka kroz naredne generacije.
+**Šta nedostaje u ovoj porodici** nudi direktan odlazak do praznog datuma ili mjesta rođenja. To su opcione dopune, a ne obavezna polja; datumi smrti se ne traže za svaku osobu. **Porodica** otvara samo porodicu odabranog djeteta. Povratak vodi na prethodnu porodicu ili početni par, bez ponovnog učitavanja i gubitka unosa. Prazan red djeteta se više ne otvara sam; dijete se dodaje izričitim dugmetom.
+
+**Vrati se na pregled** sklapa unos, ali ga ne čuva. Oznaka **Izmijenjeno · još nije sačuvano** i donje dugme **Pregledaj i sačuvaj** razdvajaju uređivanje od čuvanja. Poslije pregleda, **Sačuvaj izmjene u linku** čuva kopiju i zadržava izabranu porodicu i položaj stranice. Ime osobe koja dopunjava podatke unosi se pri dnu prije čuvanja.
+
+Za druge porodice iste osobe služe veze u vrhu obrasca; **Drugi partner / druga veza** uz prvu osobu otvara prazan unos za dodatnu vezu. Primjeri imena i datuma se ne prikazuju u praznim poljima privatnog linka.
 
 Uklanjanjem kartice djeteta uklanja se veza s otvorenim parom, dok osoba i njene druge porodice ostaju sačuvane. Odvojene porodice i osobe dostupne su u stablu i pretrazi. Nova porodica i nova osoba mogu se ukloniti uz potvrdu; uvezene osobe i porodice ostaju zaštićene.
 
