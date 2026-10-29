@@ -178,6 +178,14 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 
 Najnovije izmjene su prikazane prve.
 
+### UI osvježenje (mobilni + desktop)
+- Novi `public/app.css` zamjenjuje pet slojeva inline CSS-a (v1.6–v2.6) koji su se poništavali kroz `!important`. Nazivi klasa su isti, JS nije mijenjan.
+- Polja imaju 16px font i najmanje 48px visine (ranije 14px / 42px), čime se na iPhone-u izbjegava automatski zoom pri unosu.
+- Ispravljen naslov „Porodica: …“ (bijel tekst na svijetloj podlozi) i zalutala plava crta uz „Prva osoba“ / „Partner“ u pregledu grane.
+- Dugme „Pregled unosa“ ostaje zalijepljeno na dnu ekrana na telefonu i tabletu.
+- Polja se same raspoređuju u 1–3 kolone zavisno od širine; vidljiv fokus za tastaturu; `prefers-reduced-motion`; osnovni stil za štampu.
+- Pregled grane prikazuje datume kao `15.02.1956` (samo prikaz, spremljeni podaci se ne mijenjaju).
+
 ### v2.11
 - Admin tabela sada ima odvojene kolone „Prvi unos“ i „Zadnja izmjena“.
 - Kod dorađenih zapisa u koloni zadnje izmjene prikazuje se i ko je izvršio doradu.

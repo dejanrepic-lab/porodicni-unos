@@ -117,7 +117,8 @@
    if(!view.el.isConnected)continue;
    const p=values(view.fields),spouse=view.partnerFields?values(view.partnerFields):null;
    const label=name(p);view.person.textContent=label||(view===roots[1]?'Partner nije upisan':'Nova osoba');
-   const facts=[p.birthDate?'Rođ. '+p.birthDate:'',p.birthPlace,p.deathDate?'Preminuo/la '+p.deathDate:''];
+   const shown=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)?d.split('-').reverse().join('.'):d;
+   const facts=[p.birthDate?'Rođ. '+shown(p.birthDate):'',p.birthPlace,p.deathDate?'Preminuo/la '+shown(p.deathDate):''];
    if(spouse&&name(spouse))facts.push('Partner: '+name(spouse));
    const count=view.partnerFields?(view.el._pendingDescendants?.length??descendantList(view.el).children.length):0;
    if(view.partnerFields)facts.push('Djeca: '+count);
