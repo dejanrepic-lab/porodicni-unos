@@ -42,7 +42,7 @@
  const personRemovalForm=document.createElement('form');personRemovalForm.method='post';personRemovalForm.action=boot.base+'/remove-person';const personFields={};for(const [name,value] of Object.entries({csrf:boot.csrf,revision,id:boot.personId,editor:''})){const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;personRemovalForm.appendChild(input);personFields[name]=input;}
  const personLabel=document.createElement('label'),personConfirm=document.createElement('input');personConfirm.type='checkbox';personConfirm.name='confirm';personConfirm.value='yes';personConfirm.required=true;personLabel.append(personConfirm,document.createTextNode(' Potvrđujem uklanjanje osobe i njenih veza.'));personRemovalForm.appendChild(personLabel);const personButton=document.createElement('button');personButton.type='submit';personButton.className='btn dark';personButton.textContent='Ukloni osobu';personButton.style.background='#b42318';personRemovalForm.appendChild(personButton);personRemoval.appendChild(personRemovalForm);removal.after(personRemoval);
  personRemovalForm.addEventListener('submit',event=>{const editor=form.querySelector('[name=submittedBy]');if(!editor.value.trim()){event.preventDefault();editor.reportValidity();editor.focus();return;}personFields.editor.value=editor.value.trim();});
- function updateRemoval(){removal.hidden=!familyId||familyId==='new'||boot.originalFamilies.includes(familyId);removalFields.family.value=familyId;removalFields.revision.value=revision;personFields.revision.value=revision;}
+ function updateRemoval(){form.dataset.revision=revision;form.dataset.familyId=familyId;removal.hidden=!familyId||familyId==='new'||boot.originalFamilies.includes(familyId);removalFields.family.value=familyId;removalFields.revision.value=revision;personFields.revision.value=revision;}
  updateRemoval();
  const ownFamilyData=familyData;
  function stampNode(card,c){
@@ -54,7 +54,7 @@
  function stamp(payload){rootIds={father:payload.father?._id||'',mother:payload.mother?._id||''};Array.from(children.children).forEach((card,i)=>stampNode(card,payload.children[i]||{}));}
  stamp(initial);
  familyData=()=>{const payload=ownFamilyData();payload.father._id=rootIds.father;payload.mother._id=rootIds.mother;for(const prefix of ['father','mother'])for(const key of ['maidenName','notes'])payload[prefix][key]=form.querySelector('[name='+prefix+'_'+key+']').value.trim();return payload;};
- form.onsubmit=e=>{e.preventDefault();returnY=window.scrollY;show(familyData());};
+ form.onsubmit=e=>{e.preventDefault();returnY=window.scrollY;return show(familyData());};
  document.getElementById('backBtn').onclick=()=>{document.getElementById('previewBox').style.display='none';window.scrollTo(0,returnY);};
  document.getElementById('sendBtn').textContent='Sačuvaj izmjene u linku';
  document.getElementById('sendBtn').onclick=async()=>{

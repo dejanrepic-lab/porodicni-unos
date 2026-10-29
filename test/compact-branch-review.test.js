@@ -14,14 +14,14 @@ async function fixture(t,data,query='person=a'){
  t.after(()=>{server.close();db.close();});const origin=`http://127.0.0.1:${server.address().port}`,url=origin+'/branch/compact/form?'+query;
  let page=await (await fetch(url)).text();
  assert.match(page,/branch-review.css/);assert.match(page,/branch-review.js/);
- for(const file of ['descendant-data.js','branch-form.js','branch-review.js'])page=page.replace(`<script src="/${file}"></script>`,()=>'<script>'+asset(file)+'</script>');
+ for(const file of ['descendant-data.js','branch-form.js','branch-preview.js','branch-review.js'])page=page.replace(`<script src="/${file}"></script>`,()=>'<script>'+asset(file)+'</script>');
  page=page.replace('<link rel="stylesheet" href="/branch-review.css">',()=>'<style>'+asset('branch-review.css')+'</style>');
  const errors=[],console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
  const dom=new JSDOM(page,{url,runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,beforeParse(w){w.structuredClone=structuredClone;w.fetch=(u,o)=>fetch(new URL(u,origin),o);w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=(x,y)=>Object.defineProperty(w,'scrollY',{value:typeof x==='object'?x.top:y,writable:true,configurable:true});}});
  t.after(()=>dom.window.close());assert.deepEqual(errors,[]);
  const w=dom.window,d=w.document;
  const put=(input,value)=>{input.value=value;input.dispatchEvent(new w.Event('input',{bubbles:true}));};
- const save=async()=>{d.querySelector('#familyForm').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await d.querySelector('#sendBtn').onclick();};
+ const save=async()=>{await d.querySelector('#familyForm').onsubmit(new w.Event('submit',{bubbles:true,cancelable:true}));await d.querySelector('#sendBtn').onclick();};
  return {db,w,d,put,save,errors,json};
 }
 function family(){return {rootFamily:'f',people:[{id:'a',name:'Test, Ana',birth:'oko 1970',notes:'Originalna napomena'},{id:'b',name:'Test, Marko'},{id:'c',name:'Test, Dijete'},{id:'p',name:'Drugi, Partner'},{id:'g',name:'Test, Unuče',death:'2020'}],families:[{id:'f',parents:['a','b'],children:['c'],notes:'Napomena porodice'},{id:'fc',parents:['c','p'],children:['g']}],original:{people:[]}};}
@@ -63,4 +63,15 @@ test('deep family navigation returns one level and a failed save retains the edi
  d.querySelector('.descendant-focus-toolbar button').click();assert.ok(child.classList.contains('review-family-open'));assert.equal(grandchild.classList.contains('review-family-open'),false);assert.equal(w.familyData().children[0].children[0].children[0].birthDate,'oko 1930');
  put(d.querySelector('[name=source]'),'Tetka Mira');assert.equal(d.querySelector('.review-save-status').textContent,'Ima nesačuvanih izmjena');put(d.querySelector('[name=submittedBy]'),'Rođak');
  db.prepare('UPDATE family_links SET revision=revision+1').run();await save();assert.match(d.querySelector('#sendStatus').textContent,/u međuvremenu/);assert.match(greatGrandchild.querySelector('.review-state').textContent,/nije sačuvano/);assert.equal(greatGrandchild.querySelector('[data-c=birthDate]').value,'oko 1930');assert.ok(child.classList.contains('review-family-open'));assert.deepEqual(errors,[]);
+});
+test('save preview shows just the changes and correction returns to the exact person',async t=>{
+ const {db,w,d,put,errors}=await fixture(t,family());const form=d.querySelector('#familyForm');
+ put(d.querySelector('[name=father_birthDate]'),'1972');put(d.querySelector('[name=submittedBy]'),'Rođak');
+ const preview=()=>form.onsubmit(new w.Event('submit',{bubbles:true,cancelable:true}));await preview();
+ assert.ok(d.body.classList.contains('branch-preview-open'));assert.equal(d.querySelectorAll('.preview-family').length,1);assert.equal(d.querySelectorAll('.preview-item').length,1);assert.match(d.querySelector('#result').textContent,/Datum rođenja.*Bilo.*oko 1970.*Sada.*1972/);assert.doesNotMatch(d.querySelector('#result').textContent,/Originalna napomena/);assert.equal(db.prepare('SELECT revision FROM family_links').get().revision,0);
+ d.querySelector('.preview-correct').click();assert.equal(d.body.classList.contains('branch-preview-open'),false);assert.equal(d.activeElement.name,'father_birthDate');assert.equal(d.querySelector('[name=father_birthDate]').value,'1972');
+ put(d.querySelector('[name=father_birthDate]'),'1973');await preview();await d.querySelector('#sendBtn').onclick();assert.equal(d.body.classList.contains('branch-preview-open'),false);assert.equal(JSON.parse(db.prepare('SELECT working FROM family_links').get().working).people.find(p=>p.id==='a').birth,'1973');
+ await preview();assert.match(d.querySelector('#result').textContent,/Nema novih izmjena/);assert.equal(d.querySelector('#sendBtn').disabled,true);d.querySelector('#backBtn').click();
+ const child=d.querySelector('#children > .child-card');child.querySelector('.review-actions button:nth-child(2)').click();put(child.querySelector('[data-c=birthDate]'),'1990');await preview();d.querySelector('.preview-correct').click();assert.ok(child.classList.contains('review-family-open'));assert.equal(d.activeElement.dataset.c,'birthDate');put(child.querySelector('[data-c=birthDate]'),'');
+ const grandchild=child.querySelector(':scope > .descendant-family > .nested-list > .child-card');put(grandchild.querySelector('[data-c=birthPlace]'),'Novo mjesto');await preview();assert.equal(d.querySelectorAll('.preview-item').length,1);d.querySelector('.preview-correct').click();assert.equal(d.activeElement.dataset.c,'birthPlace');assert.ok(grandchild.classList.contains('review-editing'));assert.ok(child.classList.contains('review-family-open'));assert.deepEqual(errors,[]);
 });

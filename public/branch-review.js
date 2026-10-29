@@ -154,5 +154,27 @@
  document.addEventListener('branch:saved',()=>{
   structureChanged=false;extraInitial=extraSignature();for(const view of views.values()){const p=values(view.fields);view.initial=JSON.stringify(view.partnerFields?{...p,spouse:values(view.partnerFields)}:p);view.isNew=false;}refresh();
  });
+ document.addEventListener('branch:edit-target',event=>{
+  const target=event.detail||{},path=target.path||[];
+  if(target.role==='father'||target.role==='mother'){
+   clearDescendantFocus(form);openEditor(roots[target.role==='father'?0:1],target.field);return;
+  }
+  if(!path.length){
+   clearDescendantFocus(form);
+   if(target.field){familyExtra.open=true;const input=form.querySelector('[name='+target.field+']');input?.focus({preventScroll:true});input?.scrollIntoView({behavior:'smooth',block:'center'});}
+   else childrenSection.scrollIntoView({behavior:'smooth',block:'start'});
+   return;
+  }
+  let list=children,card,owner=null;
+  for(const index of path){if(card){owner=card;ensureDescendantChildren(card);list=descendantList(card);}card=list.children[index];if(!card)return;}
+  if(target.role==='family'&&!target.field){focusDescendant(card);return;}
+  const view=views.get(card);if(!view)return;
+  const hasFamily=card.dataset.branchFamily||card._pendingDescendants?.length||descendantList(card).children.length||name(values(view.partnerFields));
+  if(target.role==='partner'||target.role==='family'||hasFamily)focusDescendant(card);
+  else if(owner)focusDescendant(owner);else clearDescendantFocus(form);
+  openEditor(view,target.role==='partner'?'firstName':target.field);
+  const input=target.role==='partner'?view.partnerFields[target.field||'firstName']:target.role==='family'&&target.field==='relationship'?view.partnerFields.relationship:view.fields[target.field];
+  if(input){for(let parent=input.parentElement;parent&&parent!==card;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;input.focus({preventScroll:true});input.scrollIntoView({behavior:'smooth',block:'center'});}
+ });
  form.classList.add('compact-review');document.body.classList.add('branch-review');refresh();
 })();

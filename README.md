@@ -480,6 +480,10 @@ Odabirom osobe u privatnom linku otvara se sažet pregled njene porodice: kartic
 
 **Vrati se na pregled** sklapa unos, ali ga ne čuva. Oznaka **Izmijenjeno · još nije sačuvano** i donje dugme **Pregledaj i sačuvaj** razdvajaju uređivanje od čuvanja. Poslije pregleda, **Sačuvaj izmjene u linku** čuva kopiju i zadržava izabranu porodicu i položaj stranice. Ime osobe koja dopunjava podatke unosi se pri dnu prije čuvanja.
 
+Pregled prije čuvanja prikazuje samo nove izmjene iz trenutnog unosa, grupisane po porodicama: stare i nove vrijednosti, nove osobe te dodane ili uklonjene veze. **Ispravi** vodi direktno do odgovarajuće osobe ili porodice, bez gubitka unosa. Uklanjanje djeteta iz porodice je posebno opisano kao uklanjanje veze; osoba ostaje u linku. Obrazac je za vrijeme pregleda sklonjen, a pregled se skroluje zajedno sa stranicom, bez dodatnog unutrašnjeg prozora. Ako nema izmjena ili pregled ne prođe provjeru, čuvanje nije omogućeno.
+
+Pregled koristi iste provjere i obradu kao čuvanje (`form-preview`), ali radi nad kopijom u memoriji i ne mijenja podatke, reviziju ni istoriju. Poslije uspješnog čuvanja naredni pregled poredi unos s upravo sačuvanim stanjem. Sukob revizija se prikazuje prije potvrde, dok uneseni podaci ostaju u obrascu.
+
 Za druge porodice iste osobe služe veze u vrhu obrasca; **Drugi partner / druga veza** uz prvu osobu otvara prazan unos za dodatnu vezu. Primjeri imena i datuma se ne prikazuju u praznim poljima privatnog linka.
 
 Uklanjanjem kartice djeteta uklanja se veza s otvorenim parom, dok osoba i njene druge porodice ostaju sačuvane. Odvojene porodice i osobe dostupne su u stablu i pretrazi. Nova porodica i nova osoba mogu se ukloniti uz potvrdu; uvezene osobe i porodice ostaju zaštićene.
