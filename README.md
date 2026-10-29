@@ -502,6 +502,12 @@ Uklanjanjem kartice djeteta uklanja se veza s otvorenim parom, dok osoba i njene
 
 Prilozi se u porodičnom linku još ne dodaju. Izmjene ostaju u kopiji linka za administratorski pregled; ništa se automatski ne šalje u Gramps.
 
+### Vrsta partnerske veze iz Grampsa
+
+Uvoz prenosi Grampsov tip porodične veze: **Brak**, **Vanbračna zajednica**, **Registrovano partnerstvo**, **Nepoznato** ili prilagođeni naziv. Vrsta veze je vidljiva uz naslov odabrane porodice, na karticama potomaka i u mapi grane. Nepoznat ili nedostajući tip se ne pretvara automatski u brak na osnovu djece ili događaja. Prilagođeni nazivi ostaju izabrani u obrascu i ne brišu se prilikom dopune drugih podataka.
+
+Pri pokretanju se starim linkovima dopunjava ranije izostavljena vrsta veze iz njihovog sačuvanog izvornog Gramps zapisa. Dopuna obuhvata početni, radni i sačuvane istorijske preglede, tako da ne stvara novu korisničku izmjenu niti mijenja reviziju ili status obrade. Postojeće ispravke se čuvaju; prazna vrijednost nakon ranije izričite izmjene ostaje prazna. Ako izvorni tip nije sačuvan, podatak ostaje neupisan. Ponovno pokretanje ne ponavlja dopunu, a izvorna Gramps baza se ne mijenja.
+
 ### Potomci kroz proizvoljan broj koljena
 
 Svaka kartica djeteta sada ima iste mogućnosti: podatke osobe, partnera, vlastitu djecu i njihove naredne porodice. To važi i za običan unos i za kopiju iz Grampsa. Nema unaprijed zadanog posljednjeg koljena.

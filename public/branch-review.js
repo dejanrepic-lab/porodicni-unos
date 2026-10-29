@@ -102,6 +102,7 @@
  document.querySelector('.hero .lead').textContent='Pregledaj poznate podatke. Otvori samo osobu ili porodicu koju želiš dopuniti.';
  document.getElementById('editBanner').textContent='Dopunjavaš kopiju podataka u ovom linku. Izmjene sačuvaj nakon pregleda.';
  const rootName=make('p','review-root-name');document.querySelector('.hero h1').after(rootName);
+ const relationshipBadge=make('p','review-relationship');rootName.after(relationshipBadge);
  function currentPeople(){
   const owner=activeFamily?views.get(activeFamily):null;
   const people=owner?[owner]:[...roots];
@@ -120,6 +121,7 @@
    const shown=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)?d.split('-').reverse().join('.'):d;
    const facts=[p.birthDate?'Rođ. '+shown(p.birthDate):'',p.birthPlace,p.deathDate?'Preminuo/la '+shown(p.deathDate):''];
    if(spouse&&name(spouse))facts.push('Partner: '+name(spouse));
+   if(spouse?.relationship)facts.push('Veza: '+spouse.relationship);
    const count=view.partnerFields?(view.el._pendingDescendants?.length??descendantList(view.el).children.length):0;
    if(view.partnerFields)facts.push('Djeca: '+count);
    view.facts.textContent=facts.filter(Boolean).join(' · ');view.facts.hidden=!view.facts.textContent;
@@ -150,6 +152,7 @@
   document.getElementById('familyChildrenHeading').textContent='Djeca · '+children.children.length;
   const selectedView=activeFamily?views.get(activeFamily):null;
   rootName.textContent=selectedView?[name(values(selectedView.fields)),name(values(selectedView.partnerFields))].filter(Boolean).join(' i '):roots.map(view=>name(values(view.fields))).filter(Boolean).join(' i ');
+  relationshipBadge.textContent='Vrsta veze: '+((selectedView?values(selectedView.partnerFields).relationship:form.querySelector('[name=primaryRelationship]').value)||'nije upisana');
   const map=document.querySelector('.branch-map-link'),focus=activeFamily?.dataset.branchId||boot.personId,currentFamily=activeFamily?.dataset.branchFamily||form.dataset.familyId||'';
   if(map)map.href=boot.base+'?map=1&focus='+encodeURIComponent(focus)+'&returnFamily='+encodeURIComponent(currentFamily)+'#'+encodeURIComponent('tree-person-'+focus);
   const completion=document.querySelector('.branch-completion');if(completion){completion.querySelector('[name=context]').value=focus;completion.querySelector('[name=family]').value=currentFamily;}
