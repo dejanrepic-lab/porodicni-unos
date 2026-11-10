@@ -29,6 +29,10 @@ const FORM_COOKIE = 'porodicni_form_access';
 const FORM_COOKIE_SECRET = process.env.FORM_COOKIE_SECRET || ADMIN_SESSION_SECRET;
 const NEXTCLOUD_ACCESS_TOKEN = process.env.NEXTCLOUD_ACCESS_TOKEN || '';
 const MAX_UPLOAD_MB = Math.max(1, Number(process.env.MAX_UPLOAD_MB || 15));
+const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY || '';
+const TURNSTILE_ALLOWED_HOSTNAMES = (process.env.TURNSTILE_ALLOWED_HOSTNAMES || 'porodica.repkonet.com')
+  .split(',').map(s => s.trim()).filter(Boolean);
+const TURNSTILE_ACTION = 'porodicni_unos_submit';
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const db = initializeDatabase(DATA_DIR);
@@ -92,6 +96,41 @@ function formAccessRequired(req, res, next) {
   if (verifyFormAccess(token)) return next();
   const nextUrl = encodeURIComponent(req.originalUrl || '/');
   return res.redirect(`/access?next=${nextUrl}`);
+}
+
+async function verifyTurnstile(req) {
+  if (!TURNSTILE_SECRET_KEY) return { ok: true };
+
+  const token = String((req.body && req.body['cf-turnstile-response']) || '');
+  if (!token) return { ok: false, reason: 'missing_token' };
+
+  const params = new URLSearchParams();
+  params.append('secret', TURNSTILE_SECRET_KEY);
+  params.append('response', token);
+  if (req.ip) params.append('remoteip', req.ip);
+
+  let data;
+  try {
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: params
+    });
+    data = await resp.json();
+  } catch (e) {
+    console.error('Turnstile siteverify nije dostupan:', e.message);
+    return { ok: false, reason: 'siteverify_unreachable' };
+  }
+
+  if (!data || data.success !== true) {
+    return { ok: false, reason: 'verification_failed', errorCodes: data && data['error-codes'] };
+  }
+  if (data.action && data.action !== TURNSTILE_ACTION) {
+    return { ok: false, reason: 'action_mismatch' };
+  }
+  if (TURNSTILE_ALLOWED_HOSTNAMES.length && data.hostname && !TURNSTILE_ALLOWED_HOSTNAMES.includes(data.hostname)) {
+    return { ok: false, reason: 'hostname_mismatch' };
+  }
+  return { ok: true };
 }
 
 function adminAuth(req, res, next) {
@@ -273,7 +312,14 @@ function submitRateLimit(req, res, next) {
   next();
 }
 
-app.post('/api/submissions', formAccessRequired, submitRateLimit, upload.array('files', 10), (req, res) => {
+app.post('/api/submissions', formAccessRequired, submitRateLimit, upload.array('files', 10), async (req, res) => {
+  const turnstile = await verifyTurnstile(req);
+  if (!turnstile.ok) {
+    cleanupFiles(req.files);
+    console.warn('Turnstile odbijen (submissions):', turnstile.reason, turnstile.errorCodes || '');
+    return res.status(400).json({ error: 'Provjera da niste robot nije uspjela. Osvježite stranicu i pokušajte ponovo.' });
+  }
+
   let payload;
   try { payload = JSON.parse(req.body.payload || '{}'); DescendantData.flatten(payload.children||[]); }
   catch { cleanupFiles(req.files); return res.status(400).json({ error: 'Neispravan sadržaj obrasca.' }); }
@@ -309,7 +355,14 @@ app.get('/edit/:publicId', formAccessRequired, (req, res) => {
   res.redirect(`/?edit=${encodeURIComponent(row.public_id)}`);
 });
 
-app.post('/api/submissions/:publicId/update', formAccessRequired, submitRateLimit, upload.array('files', 10), (req, res) => {
+app.post('/api/submissions/:publicId/update', formAccessRequired, submitRateLimit, upload.array('files', 10), async (req, res) => {
+  const turnstile = await verifyTurnstile(req);
+  if (!turnstile.ok) {
+    cleanupFiles(req.files);
+    console.warn('Turnstile odbijen (update):', turnstile.reason, turnstile.errorCodes || '');
+    return res.status(400).json({ error: 'Provjera da niste robot nije uspjela. Osvježite stranicu i pokušajte ponovo.' });
+  }
+
   const existing = db.prepare(`SELECT * FROM submissions WHERE public_id=?`).get(req.params.publicId);
   if (!existing) {
     cleanupFiles(req.files);

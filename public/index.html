@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Porodično stablo – unos podataka</title>
 <link rel="stylesheet" href="/app.css?v=2.13.1">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -190,6 +191,12 @@
     <h2>Pregled unesenih podataka</h2>
     <p class="subtle">Provjerite podatke prije slanja. Ako je nešto pogrešno, vratite se gore i ispravite.</p>
     <div id="result" class="report"></div>
+    <div id="cf-turnstile-widget" class="cf-turnstile" style="margin:14px 0"
+         data-sitekey="0x4AAAAAAF7fGh_l1suUjz9h"
+         data-action="porodicni_unos_submit"
+         data-callback="onTurnstileSuccess"
+         data-expired-callback="onTurnstileReset"
+         data-error-callback="onTurnstileReset"></div>
     <div class="actions">
       <button type="button" class="btn primary" id="sendBtn">Pošalji podatke</button>
       <button type="button" class="btn soft" id="backBtn">Vrati se na uređivanje</button>
@@ -812,11 +819,23 @@ document.getElementById('backBtn').onclick=()=>{
   document.getElementById('previewBox').style.display='none';
   (currentMode==='family'?document.getElementById('familyForm'):document.getElementById('personForm')).scrollIntoView({behavior:'smooth'});
 };
+let turnstileToken='';
+function onTurnstileSuccess(token){ turnstileToken=token; }
+function onTurnstileReset(){ turnstileToken=''; }
+function resetTurnstileWidget(){
+  turnstileToken='';
+  if(window.turnstile){
+    const el=document.getElementById('cf-turnstile-widget');
+    if(el) window.turnstile.reset(el);
+  }
+}
 document.getElementById('sendBtn').onclick=async()=>{
   if(!currentPreview) return;
   const btn=document.getElementById('sendBtn'); const status=document.getElementById('sendStatus');
+  if(!turnstileToken){ status.textContent='Molimo potvrdite da niste robot (iznad dugmeta za slanje).'; return; }
   btn.disabled=true; status.textContent='Šaljem podatke...';
   const fd=new FormData(); fd.append('payload',JSON.stringify(currentPreview));
+  fd.append('cf-turnstile-response',turnstileToken);
   const uploadMode=currentPreview.type==='porodica'?'family':'person';
   for(const f of selectedFiles[uploadMode]) fd.append('files',f);
   try{
@@ -824,6 +843,7 @@ document.getElementById('sendBtn').onclick=async()=>{
     const r=await fetch(endpoint,{method:'POST',body:fd});
     const j=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(j.error||'Slanje nije uspjelo.');
+    resetTurnstileWidget();
     document.getElementById('previewBox').style.display='none';
     document.getElementById('receiptBox').style.display='block';
     if(!editMode) clearDraft(false);
@@ -834,7 +854,7 @@ document.getElementById('sendBtn').onclick=async()=>{
     document.getElementById('receiptReport').innerHTML=currentPreview.type==='porodica'?familyReport(currentPreview):personReport(currentPreview);
     document.getElementById('receiptActionStatus').textContent='';
     document.getElementById('receiptBox').scrollIntoView({behavior:'smooth'});
-  }catch(err){ status.textContent=err.message; btn.disabled=false; }
+  }catch(err){ resetTurnstileWidget(); status.textContent=err.message; btn.disabled=false; }
 };
 document.getElementById('copyReceiptBtn').onclick=async()=>{
   if(!currentReceiptUrl) return;
