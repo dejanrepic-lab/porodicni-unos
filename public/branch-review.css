@@ -137,7 +137,7 @@
 .branch-workflow-message{color:var(--danger)}
 .branch-undo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0}
 .branch-undo .btn{min-height:44px}
-.compact-review .review-savebar > button:disabled{opacity:.6;cursor:default}
+.compact-review .review-savebar > button:disabled{opacity:1;background:#e4e7ec;border-color:#e4e7ec;color:#667085;cursor:default}
 .compact-review .review-savebar > .branch-finish{font-size:14px}
 .compact-review .review-person.review-family-open > .descendant-partner{display:block !important}
 .compact-review .review-person.review-family-open > .descendant-partner[hidden]{display:none !important}
@@ -148,3 +148,7 @@
 
 .compact-review .review-actions > .child-remove{background:var(--danger-soft,#fff1f2);color:var(--danger);font-size:13px;padding:8px 12px;min-height:44px;white-space:normal}
 .preview-cancel{margin:10px 0;min-height:44px;white-space:normal}
+/* First-visit guidance for relatives: three short numbered steps in the header. */
+.branch-steps{margin:12px 0 4px;padding-left:22px;font-size:15px;line-height:1.45;color:var(--ink)}
+.branch-steps li{margin:4px 0}
+.branch-steps li::marker{font-weight:700;color:var(--accent)}

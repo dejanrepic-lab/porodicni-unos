@@ -174,11 +174,15 @@
  const status=make('span','review-save-status');status.setAttribute('role','status');savebar.prepend(status);
  const extraSignature=()=>JSON.stringify(['primaryRelationship','source','notes'].map(key=>form.querySelector('[name='+key+']').value));
  let extraInitial=extraSignature();
- const sender=form.querySelector('.sender-section');savebar.before(sender);
+ // The contributor name is the first step for a relative, so it stays above the family instead of surprising them at save time.
+ const sender=form.querySelector('.sender-section');form.prepend(sender);
  document.querySelector('.family-title').hidden=true;
  document.querySelector('.hero h1').textContent='Pregled porodice';
- document.querySelector('.hero .lead').textContent='Pregledaj poznate podatke. Otvori samo osobu ili porodicu koju želiš dopuniti.';
- document.getElementById('editBanner').textContent='Dopunjavaš kopiju podataka u ovom linku. Izmjene sačuvaj nakon pregleda.';
+ document.querySelector('.hero .lead').textContent='Pomozi da porodično stablo bude tačno. Upiši samo ono što znaš — prazna polja su sasvim u redu.';
+ const steps=make('ol','branch-steps');steps.setAttribute('aria-label','Kako dopuniti');
+ for(const text of ['Upiši svoje ime, da znamo od koga su podaci.','Kod osobe čije podatke znaš dodirni „Dopuni osobu“ ili dodaj dijete koje nedostaje.','Dodirni „Pregledaj i sačuvaj“. Kad završiš sve, dodirni „Završi dopunu“.'])steps.append(make('li','',text));
+ document.querySelector('.hero .lead').after(steps);
+ document.getElementById('editBanner').textContent='Ne možeš ništa pokvariti: izmjene ne ulaze odmah u porodično stablo. Prvo ih pregleda administrator.';
  const rootName=make('p','review-root-name');document.querySelector('.hero h1').after(rootName);
  function currentPeople(){
   const owner=activeFamily?views.get(activeFamily):null;
@@ -280,6 +284,7 @@
  if(boot.familyId==='new'){
   const hero=document.querySelector('.hero'),heading=hero.querySelector('h1'),lead=hero.querySelector('.lead');
   heading.textContent='Dodavanje drugog partnera';document.title=heading.textContent;
+  hero.querySelector('.branch-steps').hidden=true;
   lead.textContent='Unesi novog partnera i njihovu djecu. Postojeća porodica ostaje sačuvana. Odustajanje ne čuva ovaj unos.';
   const cancel=make('a','btn soft branch-cancel-partner','Odustani — nazad na postojeću porodicu');cancel.href=boot.cancelUrl;hero.querySelector('nav').prepend(cancel);
   roots[1].el.querySelector('h2').textContent='Novi partner / supružnik';roots[1].doneLabel='Gotovo — dodaj partnera';roots[1].done.textContent=roots[1].doneLabel;

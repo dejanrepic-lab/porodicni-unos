@@ -5,13 +5,15 @@
  const bar=form.querySelector('.review-savebar'),review=bar.querySelector('button'),status=bar.querySelector('.review-save-status');
  let dirty=form.dataset.branchDirty==='true',busy=false,progress=boot.progress||'Otvoren, bez izmjena',saved=false;
  const make=(tag,cls,text)=>{const el=document.createElement(tag);el.className=cls;if(text)el.textContent=text;return el;};
- sender.classList.add('branch-author');sender.querySelector('h2').textContent='Tvoja dopuna';
+ sender.classList.add('branch-author');sender.querySelector('h2').textContent='1. Tvoje ime';
  author.id='branch-author';author.autocomplete='name';author.maxLength=160;
- const label=author.closest('.field').querySelector('label');label.textContent='Tvoje ime i prezime';label.htmlFor=author.id;
+ const label=author.closest('.field').querySelector('label');label.textContent='Ime i prezime';label.htmlFor=author.id;
  const storageKey='branch-author:'+boot.base;
  try{if(!author.value)author.value=sessionStorage.getItem(storageKey)||'';}catch{}
  // Remember only the name in this tab, separately for each private link.
- author.addEventListener('input',()=>{try{sessionStorage.setItem(storageKey,author.value);}catch{}syncAuthor();});
+ author.addEventListener('input',()=>{author.setCustomValidity('');try{sessionStorage.setItem(storageKey,author.value);}catch{}syncAuthor();});
+ // Say what is missing in the family's language instead of the browser's generic required-field text.
+ author.addEventListener('invalid',()=>author.setCustomValidity(author.value.trim()?'':'Upiši svoje ime i prezime, da znamo od koga su podaci.'));
  const progressLabel=make('p','branch-progress');progressLabel.setAttribute('role','status');document.querySelector('.hero').append(progressLabel);
  const message=make('p','branch-workflow-message');message.hidden=true;message.setAttribute('role','alert');bar.before(message);
  const completion=make('div','branch-completion');completion.hidden=true;
@@ -26,11 +28,11 @@
  function showError(text){message.textContent=text;message.hidden=false;}
  function render(){
   progressLabel.textContent='Status dopune: '+progress;
-  status.textContent=dirty?'Ima nesačuvanih izmjena':saved?'Sve izmjene su sačuvane':'Nema nesačuvanih izmjena';
-  review.disabled=!dirty||busy;review.textContent='Pregledaj izmjene';
   const done=/^(Završeno|Pregledano)/.test(progress);
+  status.textContent=dirty?'Ima nesačuvanih izmjena':done?'Dopuna je završena. Hvala!':saved?'Sve izmjene su sačuvane. Kad završiš, dodirni „Završi dopunu“.':'Još nema izmjena. Kad nešto dopuniš, sačuvaj ovdje.';
+  review.disabled=!dirty||busy;review.textContent='Pregledaj i sačuvaj';
   finish.disabled=dirty||busy||done;finish.textContent=busy?'Završavam…':done?'Dopuna završena':'Završi dopunu';
-  hint.textContent=dirty?'Prvo pregledaj i sačuvaj izmjene. Zatim možeš nastaviti ili završiti dopunu.':done?'Dopuna je završena. Ako se sjetiš još nečega, možeš nastaviti uređivanje.':'Kada dopuniš sve što znaš u ovom linku, odaberi „Završi dopunu”.';
+  hint.textContent=done?'Dopuna je završena. Ako se sjetiš još nečega, možeš nastaviti uređivanje.':'Upiši ga jednom. Dodaje se uz sve tvoje izmjene.';
  }
  document.addEventListener('branch:dirty',event=>{dirty=Boolean(event.detail);if(dirty)message.hidden=true;render();});
  document.addEventListener('branch:context',event=>{

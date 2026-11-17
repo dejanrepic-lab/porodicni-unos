@@ -178,6 +178,13 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 
 Najnovije izmjene su prikazane prve.
 
+### Jasniji porodični link za rođake
+- Na vrhu linka stoje tri kratka koraka: upiši svoje ime → „Dopuni osobu“ kod osobe koju poznaješ → „Pregledaj i sačuvaj“, pa „Završi dopunu“.
+- Polje za ime saradnika je prvo na stranici („1. Tvoje ime“), a ne na dnu gdje se tražilo tek pri čuvanju. Poruka kad ime nedostaje je na našem jeziku.
+- Umjesto tehničke napomene o „kopiji podataka“ piše da izmjene ne ulaze odmah u stablo, nego ih prvo pregleda administrator.
+- Traka za čuvanje kaže šta je sljedeći korak („Još nema izmjena…“, „Sve izmjene su sačuvane. Kad završiš, dodirni „Završi dopunu“.“), dugme se uvijek zove „Pregledaj i sačuvaj“, a onemogućena dugmad su jasno siva.
+- Podaci, server i postojeći linkovi nisu mijenjani.
+
 ### Brži unos u editoru porodičnog linka
 - „Dopuni osobu“ otvara prvo polje koje nedostaje (npr. mjesto rođenja), a ne već popunjeno ime, pa se uvezeni podaci ne mogu slučajno dopisati.
 - Enter / „Dalje“ na tastaturi telefona prelazi na sljedeće polje iste osobe, a nakon zadnjeg na „Gotovo“. Ranije je Enter slao cijeli obrazac i skakao na dno stranice.
