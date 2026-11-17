@@ -86,7 +86,7 @@ test('family metadata is edited locally without opening person editors or changi
  const {db,w,d,put,save,errors}=await fixture(t,data),form=d.querySelector('#familyForm'),root=d.querySelector('.review-root-extra'),child=d.querySelector('#children > .child-card');
  assert.equal(root.tagName,'DIV');assert.equal(root.previousElementSibling.className,'review-parents');assert.equal(d.querySelector('.relationship-section'),null);
  assert.equal(root.querySelectorAll('h2').length,0);assert.equal(root.querySelectorAll('textarea').length,2);assert.match(root.textContent,/Tetka Mira.*Napomena porodice/);
- assert.equal(root.querySelectorAll('details[open]').length,0);assert.equal(d.querySelectorAll('.review-editing').length,0);assert.match(d.querySelector('.review-save-status').textContent,/Nema nesačuvanih izmjena/);
+ assert.equal(root.querySelectorAll('details[open]').length,0);assert.equal(d.querySelectorAll('.review-editing').length,0);assert.match(d.querySelector('.review-save-status').textContent,/Još nema izmjena/);
  put(root.querySelector('select'),'Vanbračna zajednica');put(d.querySelector('[name=source]'),'Porodični dokument');put(d.querySelector('[name=submittedBy]'),'Rođak');
  await form.onsubmit(new w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(d.querySelectorAll('.preview-item').length,1);assert.match(d.querySelector('#result').textContent,/Brak.*Vanbračna zajednica/);
  d.querySelector('.preview-correct').click();assert.equal(d.activeElement.name,'primaryRelationship');assert.equal(d.querySelectorAll('.review-editing').length,0);
