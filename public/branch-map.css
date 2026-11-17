@@ -1,18 +1,47 @@
-/* The branch map is navigation within the same family entry interface. */
+/* The branch map is navigation within the same family link; it shares the review page's header and cards. */
+.branch-map{--card-line:#e2e8f2;--soft:#f5f7fb;--pill:999px;--lift:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.06);--hero-from:#1f4fae;--hero-to:#2f6fe0;background:#f3f6fb}
+.branch-map .wrap{max-width:900px}
 .branch-map .family-tree{overflow-wrap:anywhere}
-.branch-map .hero h1{font-size:25px}
+
+.branch-map .hero{padding:22px 24px 20px;border:0;border-radius:22px;color:#fff;
+  background:radial-gradient(120% 140% at 100% 0%,rgba(255,255,255,.16) 0%,rgba(255,255,255,0) 55%),linear-gradient(135deg,var(--hero-from),var(--hero-to));
+  box-shadow:0 10px 30px rgba(31,79,174,.25)}
+.branch-map .hero h1{font-family:var(--sans);font-size:clamp(22px,5vw,30px);font-weight:800;letter-spacing:-.02em;margin:0 0 6px}
+.branch-map .hero .lead{color:rgba(255,255,255,.9);font-size:15px}
+.branch-map .hero .actions{gap:8px;margin-top:14px}
+.branch-map .hero .actions a{min-height:42px;padding:8px 14px;border-radius:var(--pill);border:0;background:rgba(255,255,255,.95);color:var(--hero-from);font-size:14px;font-weight:700;white-space:normal;max-width:100%;overflow-wrap:anywhere;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+.branch-map .section{padding:16px 18px;border:1px solid var(--card-line);border-radius:18px;box-shadow:var(--lift)}
+.branch-map .section > h2{font-family:var(--sans);font-size:19px;font-weight:800;padding-left:0}
+.branch-map .section > h2::before{content:none}
+.branch-map .section input:not([type=hidden]){border-radius:12px}
+.branch-map .section .btn{border-radius:12px}
 .branch-map form > .actions:last-child{position:static;margin:14px 0 0;padding:0;border:0;background:transparent;backdrop-filter:none}
-.branch-map .family-node{border:1px solid var(--line);border-radius:var(--r-md);padding:12px;margin:12px 0;background:var(--surface-soft)}
-.branch-map .family-node > summary{cursor:pointer;line-height:1.5;font-weight:700}
-.branch-map .family-node > summary small{font-size:13px;color:var(--muted);white-space:normal}
+
+.branch-map .family-node{border:1px solid var(--card-line);border-radius:16px;padding:12px;margin:12px 0;background:var(--soft)}
+.branch-map .family-node > summary{cursor:pointer;line-height:1.45;font-weight:750;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:40px}
+.branch-map .family-node > summary::-webkit-details-marker{display:none}
+.branch-map .family-node > summary::before{content:"";flex:0 0 auto;align-self:center;width:8px;height:8px;margin:0 4px 0 2px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);opacity:.55;transition:transform .15s ease}
+.branch-map .family-node[open] > summary::before{transform:rotate(45deg)}
+.branch-map .family-node > summary small{font-size:13px;color:var(--muted);font-weight:600;white-space:normal}
 .branch-map .couple{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
-.branch-map .person-link{display:block;border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;margin:8px 0;background:#fff;text-decoration:none;min-width:0;overflow-wrap:anywhere}
-.branch-map .person-link strong{font-family:var(--serif);font-size:18px;color:var(--text)}
-.branch-map .person-link small{display:block;color:var(--muted);font-size:13px}
-.branch-map .person-link.selected{border-color:var(--accent);background:var(--accent-soft)}
+.branch-map .person-link{display:block;border:1px solid var(--card-line);border-radius:14px;padding:11px 14px;margin:8px 0;background:#fff;text-decoration:none;min-width:0;overflow-wrap:anywhere;box-shadow:0 1px 2px rgba(16,24,40,.04);transition:border-color .15s ease,box-shadow .15s ease}
+.branch-map .person-link:hover{border-color:#b9cdf3;box-shadow:0 4px 14px rgba(36,94,199,.12)}
+.branch-map .person-link strong{font-family:var(--sans);font-size:16.5px;font-weight:750;color:var(--text)}
+.branch-map .person-link small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.branch-map .person-link.selected{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 3px rgba(36,94,199,.14)}
 .branch-map .descendants{list-style:none;border-left:2px solid #d2def0;padding-left:14px;margin:10px 0 0 8px}
 .branch-map .descendants > li{margin:12px 0}
 .branch-map .search-results{margin-top:14px}
 .branch-map .search-results .person-link{margin:8px 0}
-.branch-map .hero .actions a{white-space:normal;max-width:100%;overflow-wrap:anywhere}
-@media(max-width:700px){.branch-map .hero h1{font-size:22px}.branch-map .couple{grid-template-columns:minmax(0,1fr)}.branch-map .family-node{padding:8px}.branch-map .descendants{margin-left:0;padding-left:8px}.branch-map .section{padding:12px}}
+
+@media(max-width:700px){
+ .branch-map .wrap{padding:12px 12px max(24px,env(safe-area-inset-bottom))}
+ .branch-map .hero{padding:16px 16px 14px;border-radius:20px}
+ .branch-map .hero .lead{font-size:14px}
+ .branch-map .couple{grid-template-columns:minmax(0,1fr)}
+ .branch-map .family-node{padding:8px 10px}
+ .branch-map .descendants{margin-left:0;padding-left:8px}
+ .branch-map .section{padding:14px;border-radius:16px}
+}
+@media(prefers-reduced-motion:reduce){.branch-map .person-link,.branch-map .family-node > summary::before{transition:none}}

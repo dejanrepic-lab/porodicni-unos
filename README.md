@@ -178,6 +178,15 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 
 Najnovije izmjene su prikazane prve.
 
+### Novi izgled porodičnog linka (mobilni prvo)
+- Plavo zaglavlje sa imenom porodice, statusom dopune kao oznakom u boji i tri kratka numerisana koraka; na telefonu je polje za ime vidljivo već na prvom ekranu.
+- Kartice osoba imaju krug s inicijalima, podatke kao male oznake (rođenje, mjesto, partner, djeca) i narandžastu oznaku „Nedostaje: …“; izmijenjene a nesačuvane osobe imaju narandžasti rub.
+- Dugmad imaju ikone („Dopuni osobu“, „Porodica“), dodavanje djeteta je isprekidano polje, a „Šta nedostaje“ je istaknuto toplom bojom.
+- Traka za čuvanje je na telefonu donja ploča preko cijele širine; „Pregledaj i sačuvaj“ je plavo kad ima izmjena, a „Završi dopunu“ zeleno tek kad su izmjene sačuvane.
+- Pregled prije čuvanja jasnije razlikuje „Bilo“ (precrtano) i „Sada“ (zeleno); potvrde se prikazuju iznad trake za čuvanje.
+- Mapa cijele grane koristi isto zaglavlje i kartice.
+- Samo izgled i tekstovi: podaci, server i rute nisu mijenjani.
+
 ### Jasniji porodični link za rođake
 - Na vrhu linka stoje tri kratka koraka: upiši svoje ime → „Dopuni osobu“ kod osobe koju poznaješ → „Pregledaj i sačuvaj“, pa „Završi dopunu“.
 - Polje za ime saradnika je prvo na stranici („1. Tvoje ime“), a ne na dnu gdje se tražilo tek pri čuvanju. Poruka kad ime nedostaje je na našem jeziku.

@@ -1,30 +1,80 @@
-/* Compact branch review, using the same inputs and descendant cards as the public form. */
+/* Family link for relatives: a calm, mobile-first review of known data with small, obvious steps.
+   Shares app.css tokens and form inputs with the public form; only this page's look lives here.
+   Order: tokens → page → header → guidance → cards → people → family data → children → save bar → preview → mobile. */
+
+/* ───────── Tokens ───────── */
+.branch-review{
+  --page:#f3f6fb;--card-line:#e2e8f2;--soft:#f5f7fb;--chip:#eff3f9;--chip-ink:#344054;
+  --gap-ink:#8a4f00;--gap-soft:#fff3dc;--gap-line:#f5d08b;
+  --changed:#e07b12;--changed-soft:#fff1e3;
+  --ok:#1f7a45;--ok-soft:#e7f6ec;
+  --card-radius:18px;--pill:999px;
+  --lift:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.06);
+  --hero-from:#1f4fae;--hero-to:#2f6fe0;
+  background:var(--page);
+}
 .branch-review [hidden]{display:none !important}
-.branch-review .hero{padding:18px 20px}
-.branch-review .hero h1{font-size:25px;margin-bottom:4px}
-.branch-review .hero .lead{font-size:14px}
-.review-root-name{margin:0 0 8px;font-family:var(--serif);font-size:19px;font-weight:700;overflow-wrap:anywhere}
-.review-family-meta{display:flex;flex-wrap:wrap;align-items:start;gap:8px 16px;min-width:0}
-.review-family-meta > *{min-width:0;max-width:100%}
-.review-relationship{display:flex;align-items:center;flex:1 1 260px;gap:10px;min-height:44px;font-size:14px}
-.review-relationship > span{flex-shrink:0}
-.compact-review .review-relationship select{width:auto;flex:1;min-width:0;max-width:360px;min-height:44px;padding:8px 10px;background:var(--accent-soft);color:var(--accent-ink);border-color:#d3e2fb}
-.review-inline-note{flex:1 1 180px;font-size:14px;line-height:1.5}
-.review-inline-note > summary{cursor:pointer;min-height:44px;padding:10px 0;overflow-wrap:anywhere}
-.review-inline-note > summary > span{color:var(--muted);white-space:pre-wrap;display:-webkit-inline-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;vertical-align:top}
-.review-inline-note[open] > summary > span{display:none}
-.compact-review .review-inline-note textarea{min-height:72px;padding:9px 10px;font-weight:400}
-.review-inline-note .field{margin-top:2px}
-.review-inline-note .field > span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
-.compact-review .review-person > .review-family-meta{display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:8px}
-.compact-review .review-person.review-family-open > .review-family-meta,
-.compact-review .review-person.review-editing > .review-family-meta{display:flex}
-.branch-review .edit-banner{padding:10px 14px;font-size:13px;margin-bottom:12px}
-.compact-review .section{padding:14px 16px;margin:10px 0}
-.review-parents{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0}
+.branch-review .wrap{max-width:900px}
+.branch-review{scroll-padding-bottom:120px}
+.compact-review input,.compact-review textarea,.compact-review select{scroll-margin-bottom:130px}
+
+/* Small line icons drawn with masks, so buttons keep plain text labels for scripts and screen readers. */
+.compact-review .review-actions > .btn::before,.branch-map-link::before{
+  content:"";flex:0 0 auto;width:17px;height:17px;background:currentColor;
+  -webkit-mask:var(--icon) center/contain no-repeat;mask:var(--icon) center/contain no-repeat}
+.compact-review .review-actions > .btn:first-child{--icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E")}
+.compact-review .review-actions > .btn:nth-child(2):not(.child-remove){--icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1'/%3E%3Cpath d='M16 3.1a4 4 0 0 1 0 7.8'/%3E%3Cpath d='M22 21v-1a6 6 0 0 0-4-5.7'/%3E%3C/svg%3E")}
+.compact-review .review-actions > .review-add::before,.compact-review .review-actions > .child-remove::before,.compact-review .review-actions > a.btn::before{content:none}
+.branch-map-link{--icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='5' r='2.5'/%3E%3Ccircle cx='5' cy='19' r='2.5'/%3E%3Ccircle cx='19' cy='19' r='2.5'/%3E%3Cpath d='M12 7.5V12M5 16.5V14a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2.5'/%3E%3C/svg%3E")}
+
+/* ───────── Header ───────── */
+.branch-review .hero{display:flex;flex-direction:column;padding:22px 24px 20px;border:0;border-radius:22px;color:#fff;
+  background:radial-gradient(120% 140% at 100% 0%,rgba(255,255,255,.16) 0%,rgba(255,255,255,0) 55%),linear-gradient(135deg,var(--hero-from),var(--hero-to));
+  box-shadow:0 10px 30px rgba(31,79,174,.25)}
+.branch-review .hero > h1{order:0;font-family:var(--sans);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0 0 6px;color:rgba(255,255,255,.78)}
+.review-root-name{order:1;margin:0;font-family:var(--sans);font-size:clamp(24px,5.4vw,32px);font-weight:800;line-height:1.15;letter-spacing:-.02em;overflow-wrap:anywhere}
+.branch-progress{order:2;align-self:flex-start;display:inline-flex;align-items:center;gap:7px;margin:12px 0 0;padding:5px 12px 5px 10px;border-radius:var(--pill);background:rgba(255,255,255,.16);color:#fff;font-size:13px;font-weight:650;line-height:1.3}
+.branch-progress::before{content:"";width:8px;height:8px;border-radius:50%;background:#ffd166}
+.branch-progress[data-state=done]::before{background:#7ee2a8}
+.branch-progress[data-state=open]::before{background:rgba(255,255,255,.75)}
+.branch-review .hero .lead{order:3;margin-top:14px;font-size:15px;line-height:1.5;color:rgba(255,255,255,.9)}
+.branch-steps{order:4;list-style:none;counter-reset:step;margin:14px 0 0;padding:0;display:grid;gap:8px}
+.branch-steps li{counter-increment:step;display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;margin:0;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.12);font-size:14.5px;line-height:1.4;color:#fff}
+.branch-steps li::before{content:counter(step);display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#fff;color:var(--hero-from);font-weight:800;font-size:14px}
+.branch-review .hero > .actions{order:5;margin-top:14px;gap:8px}
+.branch-review .hero > .actions .btn{min-height:42px;padding:8px 14px;border-radius:var(--pill);background:rgba(255,255,255,.95);border:0;color:var(--hero-from);font-size:14px;font-weight:700;white-space:normal;max-width:100%;overflow-wrap:anywhere;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.branch-review .hero > .actions .btn:hover{background:#fff}
+.branch-review .edit-banner{display:flex !important;gap:10px;align-items:flex-start;margin:14px 2px 6px;padding:0;border:0;background:transparent;color:var(--muted);font-size:13.5px;line-height:1.45}
+.branch-review .edit-banner[hidden]{display:none !important}
+.branch-review .edit-banner::before{content:"";flex:0 0 18px;height:18px;margin-top:1px;background:var(--ok);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E") center/contain no-repeat}
+
+/* ───────── Cards ───────── */
+.compact-review .section,.branch-review .wrap > details.section,.branch-review #previewBox{padding:16px 18px;margin:12px 0;border:1px solid var(--card-line);border-radius:var(--card-radius);background:#fff;box-shadow:var(--lift)}
+.compact-review .section > h2{font-family:var(--sans);font-size:19px;font-weight:800;letter-spacing:-.01em;padding-left:0;margin:0 0 6px}
+.compact-review .section:not(.review-person) > h2::before{content:none}
+.compact-review .section > .subtle{margin:0 0 6px}
+.compact-review .btn.soft,.branch-review .btn.soft{background:#eef3fd;border:1px solid #dbe6fb;color:var(--accent-ink);border-radius:12px}
+.compact-review .btn.soft:hover{background:#e3ecfc}
+.compact-review summary{list-style:none}
+.compact-review summary::-webkit-details-marker{display:none}
+.compact-review details > summary::before{content:"";display:inline-block;width:8px;height:8px;margin:0 10px 2px 2px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s ease;opacity:.6}
+.compact-review details[open] > summary::before{transform:rotate(45deg);margin-bottom:5px}
+
+/* Step 1: contributor name */
+.compact-review .branch-author{border-color:#cddcf7;background:linear-gradient(180deg,#f8fbff,#fff)}
+.compact-review .branch-author h2{display:flex;align-items:center;gap:10px;font-size:17px;margin-bottom:10px}
+.compact-review .branch-author .field{max-width:460px}
+.compact-review .branch-author label{font-size:14px;color:var(--muted);font-weight:600}
+.compact-review .branch-author input{min-height:52px;font-size:17px;border-radius:14px}
+.branch-finish-hint{font-size:13px;margin:8px 0 0;line-height:1.5}
+
+/* ───────── People ───────── */
+.review-parents{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
 .compact-review .review-parents > .section{margin:0}
 .review-parents > .review-editing{grid-column:1/-1}
-.compact-review .review-person{scroll-margin-top:16px;min-width:0}
+.compact-review .review-person{scroll-margin-top:16px;min-width:0;transition:border-color .15s ease,box-shadow .15s ease}
 .compact-review .review-person:not(.review-editing) > .grid,
 .compact-review .review-person:not(.review-editing) > .section-toggle,
 .compact-review .review-person:not(.review-editing) > .branch-other-partner,
@@ -39,31 +89,87 @@
 .compact-review .review-person > .branch-child-actions > .descendant-focus,
 .compact-review .review-person > .branch-child-actions > .branch-continue{display:none !important}
 .compact-review .review-person > .branch-child-actions > .child-collapse{flex:0 1 auto}
-.compact-review .review-person.review-editing{border-color:#8db2f2;background:#fff}
-.compact-review .review-person > h2{font-family:var(--sans);font-size:14px;font-weight:650;letter-spacing:0;margin:0 0 6px;border:0;padding:0;color:var(--muted)}
+.compact-review .review-person.review-family-open > .descendant-partner{display:block !important}
+.compact-review .review-person.review-family-open > .descendant-partner[hidden]{display:none !important}
+.compact-review .review-person.review-editing{border-color:#9dbcf4;box-shadow:0 0 0 4px rgba(36,94,199,.10),var(--lift)}
+.compact-review .review-person.review-changed:not(.review-editing){border-color:#f3c48f;box-shadow:inset 4px 0 0 var(--changed),var(--lift)}
+.compact-review .review-person > h2{font-family:var(--sans);font-size:12px;font-weight:750;letter-spacing:.07em;text-transform:uppercase;margin:0 0 10px;border:0;padding:0;color:var(--muted)}
 .compact-review .review-person > h2::before{content:none;display:none}
 .compact-review .review-person > .child-head{display:none}
-.compact-review .review-person.review-editing > .child-head{display:flex}
+.compact-review .review-person.review-editing > .child-head{display:flex;justify-content:flex-end}
 .compact-review .review-person.review-editing > .child-head > strong{display:none}
-.compact-review .review-person.review-editing > .child-head{justify-content:flex-end}
 .review-editing > .review-summary .review-actions > button:first-child{display:none}
-.review-summary{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px}
-.review-summary > :not(.review-actions){grid-column:1}
-.review-summary > .review-actions{grid-column:2;grid-row:1 / span 4;align-self:center;margin-top:0}
-.review-name{display:block;font-family:var(--serif);font-size:20px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
-.review-facts,.review-hint{margin:6px 0;font-size:15px;line-height:1.5;overflow-wrap:anywhere}
-.review-hint{color:var(--muted);font-size:14px}
-.review-state{display:block;color:#8a4b08;font-size:13px;margin-top:6px}
-.review-actions{margin-top:9px;gap:8px}
-.compact-review .review-actions .btn{padding:8px 14px;min-height:44px;white-space:normal;overflow-wrap:anywhere;min-width:0;text-align:center}
-.review-editing > .grid{margin-top:14px}
-.review-more{grid-column:1/-1;border-top:1px solid var(--line);padding-top:10px}
+
+.review-summary{min-width:0;display:grid;grid-template-columns:48px minmax(0,1fr) auto;column-gap:14px;align-items:center}
+.review-avatar{grid-column:1;grid-row:1 / span 4;align-self:start;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;font-size:16px;font-weight:800;letter-spacing:.02em;background:#e7eefc;color:#1f4fae}
+.review-avatar[data-tone="1"]{background:#e6f5ee;color:#16683e}
+.review-avatar[data-tone="2"]{background:#fdeee3;color:#9a4a0c}
+.review-avatar[data-tone="3"]{background:#f1eafd;color:#5b2fa6}
+.review-avatar[data-tone="4"]{background:#e3f4f8;color:#0d6273}
+.review-avatar[data-tone="5"]{background:#fde9ef;color:#a3214f}
+.review-avatar[data-tone="new"]{background:#fff;color:var(--accent);border:2px dashed #b5c8ee;font-size:22px;font-weight:600}
+.review-summary > :not(.review-actions):not(.review-avatar){grid-column:2;min-width:0}
+.review-summary > .review-actions{grid-column:3;grid-row:1 / span 4;align-self:center;margin-top:0}
+.review-name{display:block;font-family:var(--sans);font-size:18px;font-weight:750;line-height:1.3;letter-spacing:-.01em;overflow-wrap:anywhere}
+.review-facts{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 0;font-size:13.5px;line-height:1.35}
+.review-fact{display:inline-block;padding:4px 10px;border-radius:var(--pill);background:var(--chip);color:var(--chip-ink);overflow-wrap:anywhere;max-width:100%}
+.review-sep{display:none}
+.review-hint{justify-self:start;display:inline-flex;gap:6px;align-items:center;margin:7px 0 0;padding:4px 10px;border-radius:var(--pill);background:var(--gap-soft);color:var(--gap-ink);font-size:13px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.review-hint::before{content:"";flex:0 0 7px;height:7px;border-radius:50%;background:#f0a020}
+.review-state{justify-self:start;display:inline-block;margin-top:7px;padding:4px 10px;border-radius:var(--pill);background:var(--changed-soft);color:#a4460a;font-size:12.5px;font-weight:700}
+.review-actions{margin-top:10px;gap:8px}
+.compact-review .review-actions .btn{gap:7px;padding:8px 14px;min-height:44px;font-size:14.5px;font-weight:700;white-space:normal;overflow-wrap:anywhere;min-width:0;text-align:center}
+.compact-review .review-actions > .child-remove{background:var(--danger-soft,#fff1f2);border-color:#fbd5d0;color:var(--danger);font-size:13.5px;padding:8px 12px;min-height:44px;white-space:normal}
+
+/* Editing a person */
+.review-editing > .grid{margin-top:16px;gap:12px 14px}
+.compact-review .review-person .field label{font-size:14px;font-weight:650;color:#3a4558}
+.compact-review .review-person input,.compact-review .review-person select{border-radius:12px}
+.compact-review .review-person textarea{border-radius:12px}
+.compact-review .review-person input:focus,.compact-review .review-person select:focus,.compact-review .review-person textarea:focus,.compact-review .branch-author input:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(36,94,199,.18);background:#fbfdff}
+.compact-review .review-person.review-editing > .child-head{border:0;padding:0;margin:0}
+.review-more{grid-column:1/-1;border-top:1px solid var(--card-line);padding-top:10px}
 .review-more > .grid{margin-top:12px}
-.review-more summary,.review-missing > summary,.descendant-partner > summary{cursor:pointer;font-weight:700;line-height:1.5}
-.compact-review .descendant-partner > .grid{margin-top:12px}
-.review-missing-list{display:flex;flex-wrap:wrap;gap:8px}
-.review-missing-list .btn{font-weight:600;white-space:normal;text-align:left;min-width:0;max-width:100%;overflow-wrap:anywhere;min-height:44px}
-.compact-review .child-card{padding:12px 14px;margin-top:10px;background:#fff}
+.review-more summary,.review-missing > summary,.descendant-partner > summary{cursor:pointer;font-weight:700;line-height:1.5;min-height:44px;display:flex;align-items:center}
+.compact-review .descendant-partner{border:1px solid var(--card-line);border-radius:14px;background:var(--soft);padding:4px 14px}
+.compact-review .descendant-partner[open]{padding-bottom:14px}
+.compact-review .descendant-partner > .grid{margin-top:8px}
+.compact-review .review-person > .section-toggle,.compact-review .review-person > .branch-child-actions .child-collapse{min-height:48px;border-radius:12px}
+.compact-review .branch-other-partner{margin-top:12px;font-size:14px}
+.compact-review .branch-other-partner > summary{color:var(--muted);font-weight:650;min-height:44px;display:flex;align-items:center;cursor:pointer}
+
+/* ───────── Family data and gaps ───────── */
+.review-family-meta{display:flex;flex-wrap:wrap;align-items:start;gap:8px 16px;min-width:0}
+.review-family-meta > *{min-width:0;max-width:100%}
+.review-relationship{display:flex;align-items:center;flex:1 1 260px;gap:10px;min-height:44px;font-size:14px;font-weight:650;color:#3a4558}
+.review-relationship > span{flex-shrink:0}
+.compact-review .review-relationship select{width:auto;flex:1;min-width:0;max-width:360px;min-height:44px;padding:8px 12px;border-radius:12px;background:var(--soft);color:var(--text);border-color:var(--card-line);font-weight:650}
+.review-inline-note{flex:1 1 180px;font-size:14px;line-height:1.5}
+.review-inline-note > summary{cursor:pointer;min-height:44px;padding:10px 0;overflow-wrap:anywhere}
+.review-inline-note > summary > strong{font-weight:700;margin-right:4px}
+.review-inline-note > summary > span{color:var(--accent);font-weight:600;white-space:pre-wrap;display:-webkit-inline-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;vertical-align:top}
+.review-inline-note[open] > summary > span{display:none}
+.compact-review .review-inline-note textarea{min-height:76px;padding:10px 12px;font-weight:400;border-radius:12px}
+.review-inline-note .field{margin-top:2px}
+.review-inline-note .field > span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.compact-review .review-person > .review-family-meta{display:none;margin-top:14px;border-top:1px solid var(--card-line);padding-top:8px}
+.compact-review .review-person.review-family-open > .review-family-meta,
+.compact-review .review-person.review-editing > .review-family-meta{display:flex}
+
+.compact-review .section.review-missing{border-color:var(--gap-line);background:linear-gradient(180deg,#fffaf0,#fff);padding-top:8px;padding-bottom:8px}
+.compact-review .review-missing > summary{color:var(--gap-ink)}
+.compact-review .review-missing[open]{padding-bottom:16px}
+.review-missing-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.review-missing-list .btn{font-weight:650;font-size:14px;white-space:normal;text-align:left;justify-content:flex-start;min-width:0;max-width:100%;overflow-wrap:anywhere;min-height:44px;border-radius:12px;background:#fff !important;border:1px solid var(--gap-line) !important;color:var(--gap-ink) !important}
+
+/* ───────── Children ───────── */
+.review-empty{color:var(--muted);font-size:14px}
+.compact-review .child-card{padding:14px 16px;margin-top:10px;border:1px solid var(--card-line);border-radius:16px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.compact-review .descendant-family{margin-top:14px;padding:14px;border-radius:16px;background:var(--soft);border:1px solid var(--card-line)}
+.compact-review .descendant-family > h3{font-size:16px;font-weight:800;margin:0 0 4px}
+.compact-review #addChild,.compact-review .add-grandchild{gap:8px;width:100%;min-height:52px;border:1.5px dashed #b2c6ec;background:transparent;color:var(--accent-ink);border-radius:14px;font-size:15px;font-weight:700;white-space:normal}
+.compact-review #addChild:hover,.compact-review .add-grandchild:hover{background:#f3f7ff;border-color:var(--accent)}
+.compact-review .descendant-focus-toolbar .btn{border-radius:var(--pill)}
 .compact-review.descendant-focus-mode > .review-root-extra{display:none}
 .compact-review.descendant-focus-mode > .review-parents{display:none}
 .compact-review.descendant-focus-mode > .section.review-missing{display:block !important}
@@ -72,83 +178,89 @@
 .compact-review.descendant-focus-mode .focus-section > .subtle,
 .compact-review.descendant-focus-mode .focus-section > .actions:not(.descendant-focus-toolbar),
 .compact-review.descendant-focus-mode .focus-section > .review-empty{display:none !important}
-.compact-review .review-savebar{position:sticky;bottom:max(8px,env(safe-area-inset-bottom));z-index:20;border:1px solid var(--line);border-radius:12px;background:#fff;padding:10px 12px;box-shadow:0 3px 18px #17203318;align-items:center;justify-content:space-between}
-.review-save-status{font-size:14px;color:var(--muted)}
-.compact-review .review-savebar button{min-height:44px}
-.review-empty{color:var(--muted);font-size:14px}
-.branch-review{scroll-padding-bottom:100px}
-.compact-review input,.compact-review textarea,.compact-review select{scroll-margin-bottom:100px}
+
+/* ───────── Save bar and workflow messages ───────── */
+.compact-review .review-savebar{position:sticky;bottom:max(10px,env(safe-area-inset-bottom));z-index:20;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 10px;margin-top:16px;padding:10px 12px;border:1px solid rgba(226,232,242,.9);border-radius:18px;background:rgba(255,255,255,.92);-webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);box-shadow:0 10px 30px rgba(16,24,40,.14)}
+.review-save-status{flex:1 1 200px;font-size:13.5px;line-height:1.4;color:var(--muted)}
+.compact-review .review-savebar > button{min-height:48px;border-radius:14px;font-size:15px;font-weight:750;white-space:normal}
+.compact-review .review-savebar > button:first-of-type:not(:disabled){background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(36,94,199,.35)}
+.compact-review .review-savebar > button:disabled{opacity:1;background:#eceff4;border-color:#eceff4;color:#8a94a6;box-shadow:none;cursor:default}
+.compact-review .review-savebar[data-stage=saved] > .branch-finish:not(:disabled){background:var(--ok-soft);border-color:#bfe6cc;color:var(--ok)}
+.branch-workflow-message,.branch-undo{padding:10px 14px;border:1px solid var(--card-line);border-radius:14px;font-size:14px;line-height:1.5;background:#fff;box-shadow:var(--lift)}
+.branch-workflow-message{color:var(--danger);border-color:#f6c9c3;background:#fff7f6}
+.branch-undo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0}
+.branch-undo .btn{min-height:44px}
+
+/* ───────── Preview before saving ───────── */
 .branch-preview-open #familyForm,.branch-preview-open .wrap > details,.branch-preview-open #editBanner{display:none !important}
-.branch-review #previewBox{scroll-margin-top:14px}
-.branch-review #previewBox{padding-bottom:16px !important}
-.branch-review #previewBox > h2{font-size:22px}
+.branch-review #previewBox{scroll-margin-top:14px;padding-bottom:16px !important}
+.branch-review #previewBox > h2{font-family:var(--sans);font-size:21px;font-weight:800;padding-left:0}
+.branch-review #previewBox > h2::before{content:none}
 .branch-review #result{max-height:none;overflow:visible;border:0;padding:0;background:transparent}
 .preview-totals{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}
-.preview-totals > span{background:var(--accent2);color:#174ea6;font-size:14px;font-weight:700;border-radius:8px;padding:6px 9px}
+.preview-totals > span{background:var(--accent-soft);color:var(--accent-ink);font-size:13.5px;font-weight:700;border-radius:var(--pill);padding:5px 12px}
 .preview-family{margin:18px 0 22px}
-.preview-family > h3{font-size:18px;margin:0 0 5px;overflow-wrap:anywhere}
+.preview-family > h3{font-size:17px;margin:0 0 5px;overflow-wrap:anywhere}
 .preview-trail{font-size:13px;color:var(--muted);margin:0 0 10px;overflow-wrap:anywhere}
-.preview-item{border:1px solid var(--line);border-radius:12px;padding:13px;margin:10px 0;background:#fff}
+.preview-item{border:1px solid var(--card-line);border-radius:16px;padding:14px;margin:10px 0;background:#fff}
 .preview-item-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
 .preview-item-head > div{min-width:0;flex:1}
 .preview-item-head h4{font-size:17px;margin:3px 0 0;overflow-wrap:anywhere}
-.preview-kind{font-size:13px;color:var(--muted);font-weight:700}
+.preview-kind{font-size:12px;color:var(--muted);font-weight:750;letter-spacing:.06em;text-transform:uppercase}
 .preview-correct{flex:0 0 auto;min-height:44px;width:auto !important;max-width:110px}
-.preview-change{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.preview-change{border-top:1px solid var(--card-line);padding-top:10px;margin-top:10px}
 .preview-change > strong{display:block;font-size:13px;margin-bottom:7px}
 .preview-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.preview-values > div{padding:9px 10px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;min-width:0}
-.preview-before{background:#f2f4f7;color:#475467}
-.preview-after{background:#eaf6ee;color:#165b37}
+.preview-values > div{padding:9px 11px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;min-width:0}
+.preview-before{background:#f2f4f7;color:#475467;text-decoration:line-through;text-decoration-color:rgba(71,84,103,.35)}
+.preview-before .preview-value-label{text-decoration:none}
+.preview-after{background:var(--ok-soft);color:#165b37;font-weight:600}
 .preview-added-value{font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
-.preview-value-label{display:block;font-size:12px;font-weight:700;margin-bottom:4px}
-.preview-added-link,.preview-removed-link{font-size:14px;padding:9px;border-radius:8px;overflow-wrap:anywhere}
-.preview-added-link{background:#eaf6ee;color:#165b37}
+.preview-value-label{display:block;font-size:11.5px;font-weight:750;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;opacity:.8}
+.preview-added-link,.preview-removed-link{font-size:14px;padding:9px 11px;border-radius:12px;overflow-wrap:anywhere}
+.preview-added-link{background:var(--ok-soft);color:#165b37}
 .preview-removed-link{background:#fff4e5;color:#854a0e}
-.branch-review #previewBox > .actions{position:static;background:#fff;border-top:1px solid var(--line);padding-top:14px}
-.branch-review #previewBox > .actions button{min-height:44px;white-space:normal}
+.branch-review #previewBox > .actions{position:static;background:#fff;border-top:1px solid var(--card-line);padding-top:14px;gap:10px}
+.branch-review #previewBox > .actions button{min-height:50px;border-radius:14px;white-space:normal;font-size:15.5px}
+.branch-review #sendBtn:not(:disabled){box-shadow:0 4px 14px rgba(36,94,199,.35)}
 .preview-error{color:var(--danger)}
-@media(max-width:700px){.preview-values{grid-template-columns:minmax(0,1fr)}.preview-item-head{align-items:flex-start}.preview-correct{padding:8px 10px!important}.branch-review #previewBox > .actions button{flex:1 1 130px}}
-@media(max-width:700px){
- .branch-review .hero{padding:14px !important}
- .branch-review .hero h1{font-size:22px}
- .compact-review .section{padding:12px !important}
- .review-parents{grid-template-columns:minmax(0,1fr)}
- .review-inline-note{flex-basis:110px}
- .review-inline-note[open]{flex-basis:100%}
- .review-summary{display:block}
- .review-summary > .review-actions{margin-top:9px}
- .compact-review .review-person > h2{font-size:14px !important;padding:0 !important;border:0 !important}
- .compact-review .review-actions{flex-direction:row}
- .compact-review .review-actions .btn{flex:1 1 125px;font-size:14px !important}
- .compact-review .review-savebar{bottom:4px;gap:6px;padding:8px}
- .review-save-status{flex:1 1 110px;font-size:13px}
- .compact-review .review-savebar button{flex:1 1 155px;white-space:normal;font-size:14px}
- .compact-review .child-card{padding:12px !important}
-}
-
-/* The contributor and workflow controls share one name and one place. */
-.branch-progress{margin:10px 0 0;font-size:14px;color:var(--muted)}
-.compact-review .branch-author h2{font-family:var(--sans);font-size:16px;padding:0;margin-bottom:8px}
-.compact-review .branch-author h2::before{content:none}
-.compact-review .branch-author .field{max-width:460px}
-.branch-finish-hint{font-size:13px;margin:8px 0 0;line-height:1.5}
-.branch-workflow-message,.branch-undo{padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;line-height:1.5;background:#fff}
-.branch-workflow-message{color:var(--danger)}
-.branch-undo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0}
-.branch-undo .btn{min-height:44px}
-.compact-review .review-savebar > button:disabled{opacity:1;background:#e4e7ec;border-color:#e4e7ec;color:#667085;cursor:default}
-.compact-review .review-savebar > .branch-finish{font-size:14px}
-.compact-review .review-person.review-family-open > .descendant-partner{display:block !important}
-.compact-review .review-person.review-family-open > .descendant-partner[hidden]{display:none !important}
-@media(max-width:700px){
- .compact-review .review-savebar .review-save-status{flex:1 1 100%}
- .compact-review .review-savebar > button{flex:1 1 110px;min-width:0;font-size:13px}
-}
-
-.compact-review .review-actions > .child-remove{background:var(--danger-soft,#fff1f2);color:var(--danger);font-size:13px;padding:8px 12px;min-height:44px;white-space:normal}
 .preview-cancel{margin:10px 0;min-height:44px;white-space:normal}
-/* First-visit guidance for relatives: three short numbered steps in the header. */
-.branch-steps{margin:12px 0 4px;padding-left:22px;font-size:15px;line-height:1.45;color:var(--ink)}
-.branch-steps li{margin:4px 0}
-.branch-steps li::marker{font-weight:700;color:var(--accent)}
+
+/* ───────── Phones ───────── */
+@media(max-width:700px){
+ .branch-review .wrap{padding:12px 12px max(24px,env(safe-area-inset-bottom))}
+ .branch-review .hero{padding:16px 16px 14px;border-radius:20px;margin-bottom:6px}
+ .branch-review .hero .lead{margin-top:10px;font-size:14px;line-height:1.45}
+ .branch-progress{margin-top:10px;font-size:12.5px}
+ .branch-steps{margin-top:10px;gap:6px}
+ .branch-steps li{grid-template-columns:24px minmax(0,1fr);gap:9px;font-size:13.5px;line-height:1.35;padding:7px 10px;border-radius:12px}
+ .branch-steps li::before{width:24px;height:24px;font-size:13px}
+ .branch-review .hero > .actions{margin-top:12px}
+ .branch-review .hero > .actions .btn{min-height:40px;font-size:13.5px}
+ .branch-review .edit-banner{margin:10px 4px 4px;font-size:13px}
+ .branch-review .hero > .actions{flex-direction:row;flex-wrap:wrap}
+ .branch-review .hero > .actions .btn{flex:0 1 auto}
+ .compact-review .section,.branch-review .wrap > details.section,.branch-review #previewBox{padding:14px;border-radius:16px}
+ .review-parents{grid-template-columns:minmax(0,1fr);gap:10px}
+ .review-summary{grid-template-columns:44px minmax(0,1fr)}
+ .review-avatar{width:44px;height:44px;font-size:15px}
+ .review-summary > .review-actions{grid-column:1 / -1;grid-row:auto;margin-top:12px}
+ .compact-review .review-actions{flex-direction:row;flex-wrap:wrap}
+ .compact-review .review-actions .btn{flex:1 1 130px;padding:8px 10px;font-size:14px;white-space:nowrap}
+ .review-inline-note,.review-inline-note[open]{flex-basis:100%}
+ .review-inline-note > summary{min-height:40px;padding:8px 0}
+ .compact-review .child-card{padding:12px}
+ .compact-review .descendant-family{padding:10px;margin-left:-2px;margin-right:-2px}
+ /* The save bar becomes a bottom sheet across the whole screen width, above the phone's home indicator. */
+ .compact-review .review-savebar{bottom:0;margin:16px -12px 0;padding:10px 12px max(10px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;border-bottom:0;gap:8px;box-shadow:0 -6px 24px rgba(16,24,40,.12)}
+ .compact-review .review-savebar .review-save-status{flex:1 1 100%;font-size:13px}
+ .compact-review .review-savebar > button{flex:1 1 120px;min-width:0;font-size:14.5px}
+ .preview-values{grid-template-columns:minmax(0,1fr)}
+ .preview-item-head{align-items:flex-start}
+ .preview-correct{padding:8px 10px !important}
+ .branch-review #previewBox > .actions button{flex:1 1 130px}
+}
+@media(prefers-reduced-motion:reduce){.compact-review .review-person,.compact-review details > summary::before{transition:none}}
+/* Confirmation toasts float above the save bar instead of covering its buttons. */
+.branch-review .toast{bottom:calc(150px + env(safe-area-inset-bottom));border-radius:16px}
+@media(min-width:701px){.branch-review .toast{bottom:110px}}

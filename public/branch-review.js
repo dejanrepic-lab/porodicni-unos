@@ -74,7 +74,8 @@
   const view={el,fields:map,initial:JSON.stringify(values(map)),isNew};
   const summary=make('div','review-summary'),person=make('strong','review-name'),facts=make('p','review-facts'),missing=make('p','review-hint'),state=make('span','review-state');
   const actions=make('div','actions review-actions');view.edit=button('Dopuni',()=>openEditor(view));view.edit.setAttribute('aria-expanded','false');actions.append(view.edit);
-  summary.append(person,facts,missing,state,actions);view.summary=summary;view.person=person;view.facts=facts;view.missing=missing;view.state=state;view.actions=actions;
+  const avatar=make('span','review-avatar');avatar.setAttribute('aria-hidden','true');view.avatar=avatar;
+  summary.append(avatar,person,facts,missing,state,actions);view.summary=summary;view.person=person;view.facts=facts;view.missing=missing;view.state=state;view.actions=actions;
   el.classList.add('review-person');el.classList.remove('user-collapsed');
   el.insertBefore(summary,el.querySelector(':scope > .grid'));
   const grid=el.querySelector(':scope > .grid');if(grid)moreFields(grid,map);
@@ -178,9 +179,9 @@
  const sender=form.querySelector('.sender-section');form.prepend(sender);
  document.querySelector('.family-title').hidden=true;
  document.querySelector('.hero h1').textContent='Pregled porodice';
- document.querySelector('.hero .lead').textContent='Pomozi da porodično stablo bude tačno. Upiši samo ono što znaš — prazna polja su sasvim u redu.';
+ document.querySelector('.hero .lead').textContent='Upiši samo ono što znaš — prazna polja su sasvim u redu.';
  const steps=make('ol','branch-steps');steps.setAttribute('aria-label','Kako dopuniti');
- for(const text of ['Upiši svoje ime, da znamo od koga su podaci.','Kod osobe čije podatke znaš dodirni „Dopuni osobu“ ili dodaj dijete koje nedostaje.','Dodirni „Pregledaj i sačuvaj“. Kad završiš sve, dodirni „Završi dopunu“.'])steps.append(make('li','',text));
+ for(const text of ['Upiši svoje ime.','Kod osobe koju poznaješ dodirni „Dopuni osobu“ ili dodaj dijete.','Dodirni „Pregledaj i sačuvaj“, a na kraju „Završi dopunu“.'])steps.append(make('li','',text));
  document.querySelector('.hero .lead').after(steps);
  document.getElementById('editBanner').textContent='Ne možeš ništa pokvariti: izmjene ne ulaze odmah u porodično stablo. Prvo ih pregleda administrator.';
  const rootName=make('p','review-root-name');document.querySelector('.hero h1').after(rootName);
@@ -199,13 +200,19 @@
    if(!view.el.isConnected)continue;
    const p=values(view.fields),spouse=view.partnerFields?values(view.partnerFields):null;
    const label=name(p);view.person.textContent=label||(view===roots[1]?'Partner nije upisan':'Nova osoba');
+   // Initials give each card a face; the hue follows the name so the same person keeps one colour.
+   const initials=label?[p.firstName,p.lastName].filter(Boolean).map(part=>Array.from(part)[0]).join('').toUpperCase():'+';
+   if(view.avatar.textContent!==initials){view.avatar.textContent=initials;let hue=0;for(const ch of label)hue=(hue*31+ch.codePointAt(0))%6;view.avatar.dataset.tone=label?String(hue):'new';}
    const shown=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)?d.split('-').reverse().join('.'):d;
    const facts=[p.birthDate?'Rođ. '+shown(p.birthDate):'',p.birthPlace,p.deathDate?'Preminuo/la '+shown(p.deathDate):''];
    if(spouse&&name(spouse))facts.push('Partner: '+name(spouse));
    if(spouse?.relationship)facts.push('Veza: '+spouse.relationship);
    const count=view.partnerFields?(view.el._pendingDescendants?.length??descendantList(view.el).children.length):0;
    if(view.partnerFields)facts.push('Djeca: '+count);
-   view.facts.textContent=facts.filter(Boolean).join(' · ');view.facts.hidden=!view.facts.textContent;
+   const shownFacts=facts.filter(Boolean),factText=shownFacts.join(' · ');
+   // Facts render as small tags; the separators stay in the text for copying and for the plain-text summary.
+   if(view.facts.textContent!==factText){view.facts.replaceChildren();shownFacts.forEach((fact,i)=>{if(i){const sep=make('span','review-sep',' · ');view.facts.append(sep);}view.facts.append(make('span','review-fact',fact));});}
+   view.facts.hidden=!factText;
    const absent=[!p.birthDate?'datum rođenja':'',!p.birthPlace?'mjesto rođenja':''].filter(Boolean);
    view.missing.textContent=label&&absent.length?'Nedostaje: '+absent.join(', '):'';view.missing.hidden=!view.missing.textContent;
    view.edit.textContent=label?'Dopuni osobu':view===roots[1]?'＋ Dodaj partnera':'Unesi podatke';
@@ -220,7 +227,7 @@
    }
 
    if(view.remove){view.remove.hidden=boot.originalPeople.includes(view.el.dataset.branchId);view.remove.textContent=view.el.dataset.branchId?'Obriši dodano dijete':'Odustani od dodavanja';}
-   if(view.family){view.family.textContent=!name(spouse)&&!count?'+ Dodaj partnera':'Porodica';view.family.setAttribute('aria-label','Otvori porodicu: '+(label||'nova osoba')+' · djece: '+count);view.family.hidden=view.el===activeFamily||(view.el.classList.contains('review-editing')&&!name(spouse)&&!count);view.family.disabled=!label;}
+   if(view.family){view.family.textContent=!name(spouse)&&!count?'+ Dodaj partnera':'Porodica';view.family.classList.toggle('review-add',!name(spouse)&&!count);view.family.setAttribute('aria-label','Otvori porodicu: '+(label||'nova osoba')+' · djece: '+count);view.family.hidden=view.el===activeFamily||(view.el.classList.contains('review-editing')&&!name(spouse)&&!count);view.family.disabled=!label;}
   }
   missingList.replaceChildren();let missingCount=0;
   for(const view of currentPeople()){
