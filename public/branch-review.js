@@ -50,13 +50,27 @@
  function closeEditor(){
   if(!editing)return;const view=editing;view.el.classList.remove('review-editing');view.edit.setAttribute('aria-expanded','false');editing=null;refresh();
  }
+ // Enter on a phone keyboard moves through the open person's fields instead of submitting the whole form and jumping to the contributor name.
+ const nextHint=map=>{for(const input of Object.values(map||{}))if(input.tagName==='INPUT')input.enterKeyHint='next';};
+ function shownIn(input,root){for(let node=input;node&&node!==root;node=node.parentElement){if(node.hidden||getComputedStyle(node).display==='none')return false;const up=node.parentElement;if(up&&up.tagName==='DETAILS'&&!up.open&&node.tagName!=='SUMMARY')return false;}return !input.disabled;}
+ function editorOrder(view){return [...Object.values(view.fields),...Object.values(view.partnerFields||{})].filter(input=>shownIn(input,view.el)).sort((a,b)=>a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);}
+ form.addEventListener('keydown',event=>{
+  if(event.key!=='Enter'||event.isComposing||event.shiftKey||event.altKey||event.ctrlKey||event.metaKey||!editing)return;
+  const target=event.target;if(target.tagName!=='INPUT'||!editing.el.contains(target))return;
+  const order=editorOrder(editing),index=order.indexOf(target);if(index<0)return;
+  event.preventDefault();const next=order[index+1]||editing.done;
+  if(next){next.focus({preventScroll:true});next.scrollIntoView({behavior:'smooth',block:'nearest'});}
+ });
+ // Start where the person still needs data, in the order of the visible primary fields; filled fields keep their imported text safe from accidental typing.
+ function firstGap(view){const p=values(view.fields);return name(p)?['firstName','lastName','birthDate','birthPlace'].find(k=>view.fields[k]&&!p[k])||'firstName':'firstName';}
  function openEditor(view,key){
   closeEditor();editing=view;view.el.classList.remove('user-collapsed');view.el.classList.add('review-editing');view.edit.setAttribute('aria-expanded','true');
-  const input=view.fields[key||'firstName'];
+  const input=view.fields[key||firstGap(view)];
   if(input){for(let parent=input.parentElement;parent&&parent!==view.el;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;input.focus({preventScroll:true});}
   view.el.scrollIntoView({behavior:'smooth',block:'start'});
  }
  function viewFor(el,map,isNew=false){
+  nextHint(map);
   const view={el,fields:map,initial:JSON.stringify(values(map)),isNew};
   const summary=make('div','review-summary'),person=make('strong','review-name'),facts=make('p','review-facts'),missing=make('p','review-hint'),state=make('span','review-state');
   const actions=make('div','actions review-actions');view.edit=button('Dopuni',()=>openEditor(view));view.edit.setAttribute('aria-expanded','false');actions.append(view.edit);
@@ -75,7 +89,7 @@
  const parents=make('div','review-parents');roots[0].el.before(parents);parents.append(...roots.map(view=>view.el));
  function attachCard(card,isNew=false){
   if(views.has(card))return views.get(card);
-  const view=viewFor(card,fields(card,'[data-c]'),isNew);view.partnerFields=fields(card,'[data-s]');
+  const view=viewFor(card,fields(card,'[data-c]'),isNew);view.partnerFields=fields(card,'[data-s]');nextHint(view.partnerFields);
   view.initial=JSON.stringify({...values(view.fields),spouse:values(view.partnerFields)});
   const partner=card.querySelector(':scope > .descendant-partner');
   if(partner){
