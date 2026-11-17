@@ -27,10 +27,10 @@
  function syncAuthor(){completionForm.elements.editor.value=author.value.trim();}
  function showError(text){message.textContent=text;message.hidden=false;}
  function render(){
-  progressLabel.textContent='Status dopune: '+progress;
+  progressLabel.textContent='Status dopune: '+progress;progressLabel.dataset.state=/^(Završeno|Pregledano)/.test(progress)?'done':/^Otvoren/.test(progress)?'open':'progress';
   const done=/^(Završeno|Pregledano)/.test(progress);
   status.textContent=dirty?'Ima nesačuvanih izmjena':done?'Dopuna je završena. Hvala!':saved?'Sve izmjene su sačuvane. Kad završiš, dodirni „Završi dopunu“.':'Još nema izmjena. Kad nešto dopuniš, sačuvaj ovdje.';
-  review.disabled=!dirty||busy;review.textContent='Pregledaj i sačuvaj';
+  bar.dataset.stage=dirty?'dirty':done?'done':saved?'saved':'idle';review.disabled=!dirty||busy;review.textContent='Pregledaj i sačuvaj';
   finish.disabled=dirty||busy||done;finish.textContent=busy?'Završavam…':done?'Dopuna završena':'Završi dopunu';
   hint.textContent=done?'Dopuna je završena. Ako se sjetiš još nečega, možeš nastaviti uređivanje.':'Upiši ga jednom. Dodaje se uz sve tvoje izmjene.';
  }

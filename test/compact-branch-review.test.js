@@ -215,3 +215,13 @@ test('opening a known person starts at the first missing field and Enter walks t
  assert.deepEqual(order,['firstName','lastName','birthDate','birthPlace']);assert.match(d.activeElement.textContent,/Gotovo — dodaj/);
  const note=first.querySelector('textarea');assert.equal(key(note).defaultPrevented,false);assert.deepEqual(errors,[]);
 });
+test('person cards show initials, fact tags and a save bar stage without changing the plain-text summary',async t=>{
+ const {d,put,save,errors}=await fixture(t,family());
+ const first=d.querySelector('.review-parents .review-person'),bar=d.querySelector('.review-savebar');
+ assert.equal(first.querySelector('.review-avatar').textContent,'AT');assert.equal(first.querySelector('.review-avatar').getAttribute('aria-hidden'),'true');
+ const child=d.querySelector('#children > .child-card');
+ assert.ok(child.querySelectorAll('.review-facts .review-fact').length>=2);assert.match(child.querySelector('.review-facts').textContent,/Partner: Partner Drugi · Djeca: 1/);
+ assert.equal(bar.dataset.stage,'idle');put(d.querySelector('[name=father_birthPlace]'),'Mostar');assert.equal(bar.dataset.stage,'dirty');
+ put(d.querySelector('[name=submittedBy]'),'Rođak');await save();assert.equal(bar.dataset.stage,'saved');
+ assert.ok(d.querySelector('.branch-steps').children.length===3);assert.deepEqual(errors,[]);
+});
