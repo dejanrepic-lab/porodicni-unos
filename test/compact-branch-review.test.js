@@ -202,3 +202,16 @@ test('a new child editor has one partner entry and no premature relationship con
  put(child.querySelector('[data-s=firstName]'),'Novi partner');partner.open=false;partner.dispatchEvent(new w.Event('toggle'));assert.equal(meta.hidden,false);
  child.querySelector(':scope > .actions > .child-collapse').click();assert.equal(actions.querySelector('button:nth-child(2)').hidden,false);assert.equal(actions.querySelector('button:nth-child(2)').textContent,'Porodica');assert.deepEqual(errors,[]);
 });
+test('opening a known person starts at the first missing field and Enter walks the open editor without submitting',async t=>{
+ const {w,d,errors}=await fixture(t,family());
+ const first=d.querySelector('.review-parents .review-person'),edit=first.querySelector('.review-actions button');
+ edit.click();assert.equal(d.activeElement.name,'father_birthPlace');assert.equal(d.activeElement.enterKeyHint,'next');
+ const key=target=>{const event=new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true});target.dispatchEvent(event);return event;};
+ const preview=d.querySelector('#previewBox').style.display;
+ assert.equal(key(d.activeElement).defaultPrevented,true);assert.match(d.activeElement.textContent,/Gotovo/);assert.equal(d.querySelector('#previewBox').style.display,preview);
+ d.querySelector('#addChild').click();const added=d.querySelector('#children').lastElementChild;
+ assert.equal(d.activeElement,added.querySelector('[data-c=firstName]'));
+ const order=[];for(let i=0;i<4;i++){order.push(d.activeElement.dataset.c);key(d.activeElement);}
+ assert.deepEqual(order,['firstName','lastName','birthDate','birthPlace']);assert.match(d.activeElement.textContent,/Gotovo — dodaj/);
+ const note=first.querySelector('textarea');assert.equal(key(note).defaultPrevented,false);assert.deepEqual(errors,[]);
+});

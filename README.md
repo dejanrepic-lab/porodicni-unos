@@ -178,6 +178,11 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 
 Najnovije izmjene su prikazane prve.
 
+### Brži unos u editoru porodičnog linka
+- „Dopuni osobu“ otvara prvo polje koje nedostaje (npr. mjesto rođenja), a ne već popunjeno ime, pa se uvezeni podaci ne mogu slučajno dopisati.
+- Enter / „Dalje“ na tastaturi telefona prelazi na sljedeće polje iste osobe, a nakon zadnjeg na „Gotovo“. Ranije je Enter slao cijeli obrazac i skakao na dno stranice.
+- Novo dijete se može upisati samo kucanjem i Enterom. U napomenama (višeredna polja) Enter i dalje pravi novi red.
+
 ### UI osvježenje (mobilni + desktop)
 - Novi `public/app.css` zamjenjuje pet slojeva inline CSS-a (v1.6–v2.6) koji su se poništavali kroz `!important`. Nazivi klasa su isti, JS nije mijenjan.
 - Polja imaju 16px font i najmanje 48px visine (ranije 14px / 42px), čime se na iPhone-u izbjegava automatski zoom pri unosu.
