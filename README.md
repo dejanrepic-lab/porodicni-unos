@@ -2,7 +2,7 @@
 
 Jednostavna, self-hosted web aplikacija za prikupljanje porodičnih i genealoških podataka od članova porodice, sa ciljem da se provjereni podaci kasnije ručno unesu u **Gramps**.
 
-**Trenutna verzija: v2.16.0** (izvor verzije je `version` u `package.json`)
+**Trenutna verzija: v2.16.1** (izvor verzije je `version` u `package.json`)
 
 ## Šta aplikacija radi
 
@@ -178,6 +178,13 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 # Istorija verzija
 
 Najnovije izmjene su prikazane prve.
+
+## v2.16.1 — 18. 11. 2026
+
+### Popravka pretrage porodica
+- Izbor se više ne „lijepi“: porodica se sama izabere samo dok je jedini rezultat; kad pretraga ponovo da više rezultata, ništa nije izabrano dok ne izabereš sam (ranije je ostajala prethodno izabrana porodica i link se lako mogao napraviti za pogrešnu).
+- Lista se zaista sužava i na telefonu: porodice koje ne odgovaraju uklanjaju se iz liste, umjesto da budu samo sakrivene (iPhone i Android ih u svom izborniku ipak prikazuju).
+- Polje pretrage ne nudi automatsko popunjavanje preglednika; prvi red liste kaže koliko porodica odgovara pretrazi.
 
 ## v2.16.0 — 18. 11. 2026
 
