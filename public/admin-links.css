@@ -39,3 +39,7 @@
 .link-dashboard~.section button{font-size:14px;min-height:44px;padding:10px 14px;margin:0 8px 0 0}
 .link-dashboard~.family-tree h2{font-size:20px;margin:0 0 10px}
 .link-dashboard~.family-tree>p{font-size:14px;margin:8px 0}
+/* Confirmation checkboxes sit on the same line as their sentence; the page's full-width input rule is for text fields. */
+input[type=checkbox],input[type=radio]{display:inline-block;width:22px;height:22px;min-width:22px;padding:0;margin:0 10px 0 0;vertical-align:-5px;accent-color:#245ec7}
+label:has(> input[type=checkbox]){display:flex;align-items:flex-start;gap:0;padding:12px 14px;border:1px solid #f0c9a0;border-radius:10px;background:#fff8ef;line-height:1.45;cursor:pointer}
+label:has(> input[type=checkbox]) > input{margin-top:1px}
