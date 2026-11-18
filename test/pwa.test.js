@@ -24,3 +24,7 @@ test('the public form and the admin are separate installable apps with launcher-
  // The admin worker caches nothing: it only answers navigations that fail without a network.
  const worker=read('public/admin-sw.js');assert.doesNotMatch(worker,/caches\./);assert.match(worker,/mode !== 'navigate'/);
 });
+test('the package version is the version shown in the README',()=>{
+ const version=JSON.parse(read('package.json')).version;assert.match(version,/^\d+\.\d+\.\d+$/);
+ assert.match(read('README.md'),new RegExp('Trenutna verzija: v'+version.replace(/\./g,'\\.')));assert.match(read('README.md'),new RegExp('## v'+version.replace(/\./g,'\\.')));
+});

@@ -65,3 +65,18 @@ When auditing this repository, prioritize in this order:
 
 ## Repository-specific note
 This app currently uses a Node/server-oriented architecture. Keep that architecture unless there is a concrete reason to migrate it; product consistency does not require all Repko apps to use the same framework.
+
+## Project-specific rules (porodicni-unos)
+Shared Repko rules live in `dejanrepic-lab/homelab` (`APP_STANDARD.md`, `DESIGN_SYSTEM.md`, `ICONS_AND_PWA.md`). These are the additions for this app.
+
+- **Version:** the single version source is `version` in `package.json`; README „Trenutna verzija“ and the version history must match it. Bump it for every deployable change.
+- **Family link (`/branch/:token`) is for relatives on phones.** Keep it self-explanatory: three steps in the header, contributor name first, reassurance instead of technical wording, record cards, bottom save bar. Verify changes in a real browser at phone width (Playwright, iPhone 13) before merging.
+- **Partner order:** a family always shows and saves its partners in the family's own order, with the imported Gramps baseline (father, then mother) winning. Never put the person whose link was opened first; that rewrote families on save.
+- **Gramps import:** take a person's birth and death from `birth_ref_index` / `death_ref_index`, otherwise only from events where the person's role is Primary. Accept event types and roles both as strings and as `{string: …}`.
+- **„Šta nedostaje“** items name the role of the person (prva osoba, partner, roditelj, dijete).
+- **Public form (`/`) and family link share `public/index.html`.** Public-only assets (`public-form.css`, `public-form.js`, `<body class="public-form">`, the Turnstile script and widget) are stripped from the family link in `lib/branch-form.js`; family-link behaviour lives in `branch-*.js`. Keep that separation when adding features.
+- **Turnstile** is verified only by `/api/submissions` routes; family links are protected by their private address and CSRF.
+- **Admin:** shared navigation and sign-in page come from `lib/admin-chrome.js`, sessions from `lib/admin-session.js` (`ADMIN_REMEMBER_DAYS`). Admin pages of family links use `adminPage()`; relatives' pages use `page()` without admin navigation.
+- **Archives** of a Gramps replacement are read through `lib/family-link-archives.js`; deleting one never touches the live link.
+- **Icons/PWA:** `public/icons/porodicni-unos-full.svg` must stay identical to `porodicni-unos.svg` in `dejanrepic-lab/app-icons`; Android uses `porodicni-unos-maskable.svg`. The public app (`/manifest.webmanifest`) and the admin app (`/admin.webmanifest`) are separate.
+
