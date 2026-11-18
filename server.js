@@ -1,7 +1,7 @@
 const { versionPublicAssets } = require('./lib/public-assets');
 const { accessPage } = require('./lib/access-page');
 const { createAdminSession } = require('./lib/admin-session');
-const { adminNav, loginPage } = require('./lib/admin-chrome');
+const { adminHead, adminNav, loginPage } = require('./lib/admin-chrome');
 const DescendantData = require('./public/descendant-data');
 const express = require('express');
 const path = require('path');
@@ -1031,7 +1031,7 @@ function renderHistoryDiff(changes) {
 }
 
 function adminShell(title, body, active = 'answers') {
-  return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
+  return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>${adminHead}<style>
   body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#1f2937;margin:0}.wrap{max-width:1100px;margin:auto;padding:20px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}a{color:#245ec7}.btn{display:inline-block;border:0;background:#245ec7;color:#fff;text-decoration:none;padding:10px 13px;border-radius:9px;font-weight:700;cursor:pointer}.btn.secondary{background:#eef2f6;color:#1f2937}.btn.danger{background:#b42318}.admin-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-actions form{margin:0}.admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}.tab{display:inline-block;padding:8px 11px;border-radius:999px;background:#eef2f6;text-decoration:none;color:#344054;font-weight:700}.tab.active{background:#245ec7;color:#fff}.muted{color:#667085}.tablewrap{overflow:auto;background:#fff;border:1px solid #dfe5ee;border-radius:14px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #eef1f5}th{background:#f8fafc}.status{padding:4px 8px;border-radius:999px;background:#eef2f6}.status.obradjeno{background:#dcfae6;color:#067647}.status.arhivirano{background:#f2f4f7;color:#475467}.report section{background:#fff;border:1px solid #dfe5ee;border-radius:13px;padding:14px;margin:12px 0}.report h2{margin-top:24px}.report h3{margin-top:0}.r{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #eef1f5}.r:last-child{border-bottom:0}.r i{color:#98a2b3}@media(max-width:700px){.r{grid-template-columns:1fr;gap:2px}.wrap{padding:12px}}
     .edited-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;background:#fff3cd;color:#7a5a00;border:1px solid #f0d98a;vertical-align:middle}
     .admin-change-panel{margin:18px 0;padding:16px;border:1px solid #dbe4ef;border-radius:14px;background:#f8fbff}

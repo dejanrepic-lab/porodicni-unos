@@ -179,6 +179,12 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 
 Najnovije izmjene su prikazane prve.
 
+### Admin kao aplikacija (PWA) i ispravne ikone na telefonu
+- Admin se može instalirati kao posebna aplikacija „Porodični unos · Admin“ (Chrome/Android: „Instaliraj aplikaciju“; iPhone: Podijeli → „Dodaj na početni ekran“). Otvara se direktno na `/admin`, u svom prozoru; zapamćena prijava važi i tamo. Javni obrazac ostaje svoja aplikacija koja počinje na `/`.
+- Admin ima mali service worker koji ništa ne kešira (podaci su uvijek svježi); bez mreže prikazuje jasnu poruku umjesto prazne stranice.
+- Ikone na početnom ekranu su preko cijele površine, bez prozirnih uglova i vlastitog okvira (iPhone je prozirne dijelove bojio u crno): obične ikone i iPhone ikona su ista slika kao `porodicni-unos.svg` u `dejanrepic-lab/app-icons` (ZimaOS, Homarr), a Android dobija posebnu „maskable“ ikonu s logom u sigurnoj zoni da ga krug ili kapljica ne odsijeku. Adrese ikona imaju `?v=2` da telefon povuče nove slike. Ako je stara ikona već na početnom ekranu, ukloni je i dodaj ponovo.
+- PWA oznake su sada direktno u stranicama. Uklonjena je skripta `scripts/prepare-pwa.js`, koja ih je pri izgradnji Docker image-a ubacivala na pogrešno mjesto (admin nikad nije dobio manifest) i mijenjala tekst podnožja obrasca.
+
 ### Jasniji natpis u podnožju obrasca
 - Podnožje javnog obrasca više ne prikazuje staru razvojnu bilješku („v2.12.1 – usklađeni dinamički nazivi…“), nego: „Porodični unos – podaci se čuvaju privatno i koriste se samo za porodično stablo.“
 

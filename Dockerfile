@@ -5,10 +5,14 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /icons
-COPY public/icons/porodicni-unos.svg ./porodicni-unos.svg
-RUN rsvg-convert -w 192 -h 192 porodicni-unos.svg -o icon-192.png \
-    && rsvg-convert -w 512 -h 512 porodicni-unos.svg -o icon-512.png \
-    && rsvg-convert -w 180 -h 180 porodicni-unos.svg -o apple-touch-icon.png
+# App icons are full-bleed, without transparency (iOS paints it black) or a tile of their own; the phone gives the shape.
+# porodicni-unos-full.svg is the same file as in dejanrepic-lab/app-icons (ZimaOS, Homarr). The Android maskable
+# icon scales the logo into the safe zone, because Android shows only the middle of a maskable icon.
+COPY public/icons/porodicni-unos-full.svg public/icons/porodicni-unos-maskable.svg ./
+RUN rsvg-convert -w 192 -h 192 porodicni-unos-full.svg -o icon-192.png \
+    && rsvg-convert -w 512 -h 512 porodicni-unos-full.svg -o icon-512.png \
+    && rsvg-convert -w 512 -h 512 porodicni-unos-maskable.svg -o icon-maskable-512.png \
+    && rsvg-convert -w 180 -h 180 porodicni-unos-full.svg -o apple-touch-icon.png
 
 FROM node:22-bookworm-slim
 
@@ -23,8 +27,8 @@ COPY public ./public
 COPY scripts ./scripts
 COPY --from=icon-builder /icons/icon-192.png ./public/icons/icon-192.png
 COPY --from=icon-builder /icons/icon-512.png ./public/icons/icon-512.png
+COPY --from=icon-builder /icons/icon-maskable-512.png ./public/icons/icon-maskable-512.png
 COPY --from=icon-builder /icons/apple-touch-icon.png ./public/icons/apple-touch-icon.png
-RUN node scripts/prepare-pwa.js
 
 RUN mkdir -p /app/data/uploads
 
