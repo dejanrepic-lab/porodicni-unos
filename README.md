@@ -2,7 +2,7 @@
 
 Jednostavna, self-hosted web aplikacija za prikupljanje porodičnih i genealoških podataka od članova porodice, sa ciljem da se provjereni podaci kasnije ručno unesu u **Gramps**.
 
-**Trenutna verzija: v2.11**
+**Trenutna verzija: v2.14.0** (izvor verzije je `version` u `package.json`)
 
 ## Šta aplikacija radi
 
@@ -178,6 +178,10 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 # Istorija verzija
 
 Najnovije izmjene su prikazane prve.
+
+## v2.14.0 — 18. 11. 2026
+
+Sve stavke ispod, do „UI osvježenje (mobilni + desktop)“, dio su ove verzije: brži i jasniji porodični link za rođake, novi izgled linka, admina i običnog obrasca, stabilan redoslijed partnera i ispravan uvoz iz Grampsa, bez captche na porodičnom linku, zapamćena admin prijava, čitljive arhive, admin kao aplikacija (PWA) i ispravne ikone.
 
 ### Admin kao aplikacija (PWA) i ispravne ikone na telefonu
 - Admin se može instalirati kao posebna aplikacija „Porodični unos · Admin“ (Chrome/Android: „Instaliraj aplikaciju“; iPhone: Podijeli → „Dodaj na početni ekran“). Otvara se direktno na `/admin`, u svom prozoru; zapamćena prijava važi i tamo. Javni obrazac ostaje svoja aplikacija koja počinje na `/`.
