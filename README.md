@@ -2,7 +2,7 @@
 
 Jednostavna, self-hosted web aplikacija za prikupljanje porodičnih i genealoških podataka od članova porodice, sa ciljem da se provjereni podaci kasnije ručno unesu u **Gramps**.
 
-**Trenutna verzija: v2.15.0** (izvor verzije je `version` u `package.json`)
+**Trenutna verzija: v2.16.0** (izvor verzije je `version` u `package.json`)
 
 ## Šta aplikacija radi
 
@@ -178,6 +178,12 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 # Istorija verzija
 
 Najnovije izmjene su prikazane prve.
+
+## v2.16.0 — 18. 11. 2026
+
+### Pretraga porodica pri pravljenju i osvježavanju linka
+- „Pripremi porodični link“ i „Novi uvoz za postojeći link“ imaju polje **„Pronađi porodicu“**: lista se sužava dok kucaš, po imenu ili prezimenu oba partnera ili po Gramps ID-u (npr. I0143). Pretraga ne gleda kvačice ni velika slova („dajic“ nalazi „Đajić“), više riječi mora se sve poklopiti, a kad ostane jedna porodica, ona se sama izabere.
+- Porodice su poredane abecedno. Bez JavaScripta ostaje obična lista.
 
 ## v2.15.0 — 18. 11. 2026
 
