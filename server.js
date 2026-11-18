@@ -1,3 +1,5 @@
+const { versionPublicAssets } = require('./lib/public-assets');
+const { accessPage } = require('./lib/access-page');
 const { createAdminSession } = require('./lib/admin-session');
 const { adminNav, loginPage } = require('./lib/admin-chrome');
 const DescendantData = require('./public/descendant-data');
@@ -145,8 +147,10 @@ const upload = multer({
 app.disable('x-powered-by');
 app.use(express.json({ limit: '3mb' }));
 
+// The page gets content-versioned asset URLs, so a new release never runs with a stale cached script or stylesheet.
+const publicFormHtml = versionPublicAssets(fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8'));
 app.get('/', formAccessRequired, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.type('html').send(publicFormHtml);
 });
 
 function grantFormAccess(req, res) {
@@ -193,34 +197,7 @@ app.get('/access', (req, res) => {
   if (!FORM_ACCESS_PASSWORD) return res.redirect('/');
   if (verifyFormAccess(parseCookies(req)[FORM_COOKIE])) return res.redirect('/');
   const nextUrl = typeof req.query.next === 'string' && req.query.next.startsWith('/') ? req.query.next : '/';
-  res.send(`<!doctype html>
-<html lang="sr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow,noarchive">
-<title>Pristup porodičnom unosu</title>
-<style>
-:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f4f7fb}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px}
-.card{width:min(440px,100%);background:#fff;border:1px solid #dfe6ef;border-radius:18px;padding:24px;box-shadow:0 12px 36px rgba(15,23,42,.08)}
-h1{margin:0 0 10px;font-size:28px}.muted{color:#667085;line-height:1.45}
-label{display:block;font-weight:700;margin:18px 0 7px}
-input{width:100%;min-height:52px;padding:12px 13px;border:1px solid #cfd8e3;border-radius:11px;font-size:16px}
-button{width:100%;min-height:50px;margin-top:16px;border:0;border-radius:11px;background:#2563eb;color:#fff;font-size:16px;font-weight:800;cursor:pointer}
-.error{background:#fff1f0;color:#b42318;border:1px solid #f5c2bd;border-radius:10px;padding:10px 12px;margin-top:12px}
-</style>
-</head>
-<body><div class="card">
-<h1>Porodično stablo</h1>
-<p class="muted">Ovaj obrazac je namijenjen porodici i rodbini. Unesite zajedničku pristupnu šifru.</p>
-<form method="post" action="/access">
-<input type="hidden" name="next" value="${esc(nextUrl)}">
-<label>Pristupna šifra</label>
-<input name="password" type="password" autocomplete="current-password" required autofocus>
-<button type="submit">Otvori obrazac</button>
-</form>
-</div></body></html>`);
+  res.send(accessPage({ next: nextUrl }));
 });
 
 app.post('/access', express.urlencoded({extended:false}), (req, res) => {
@@ -228,15 +205,12 @@ app.post('/access', express.urlencoded({extended:false}), (req, res) => {
   const password = String(req.body.password || '');
   const nextUrl = typeof req.body.next === 'string' && req.body.next.startsWith('/') ? req.body.next : '/';
 
-  const ok = password.length === FORM_ACCESS_PASSWORD.length &&
-    crypto.timingSafeEqual(Buffer.from(password), Buffer.from(FORM_ACCESS_PASSWORD));
+  // Compare bytes, not characters, so a password with č or š cannot crash the comparison.
+  const given = Buffer.from(password), expected = Buffer.from(FORM_ACCESS_PASSWORD);
+  const ok = given.length === expected.length && crypto.timingSafeEqual(given, expected);
 
   if (!ok) {
-    return res.status(401).send(`<!doctype html>
-<html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow,noarchive"><title>Pogrešna šifra</title>
-<style>:root{font-family:system-ui;color:#172033;background:#f4f7fb}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px}.card{width:min(440px,100%);background:#fff;border:1px solid #dfe6ef;border-radius:18px;padding:24px}a{display:inline-block;margin-top:14px;color:#2563eb;font-weight:700}</style>
-</head><body><div class="card"><h1>Pogrešna šifra</h1><p>Pristupna šifra nije ispravna.</p><a href="/access?next=${encodeURIComponent(nextUrl)}">Pokušaj ponovo</a></div></body></html>`);
+    return res.status(401).send(accessPage({ next: nextUrl, error: 'Pristupna šifra nije ispravna. Pokušajte ponovo.' }));
   }
 
   const token = signFormAccess();

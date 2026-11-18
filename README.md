@@ -179,6 +179,14 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 
 Najnovije izmjene su prikazane prve.
 
+### Obični obrazac u novom izgledu i kraći na telefonu
+- Javni obrazac (`/`) ima isti izgled kao porodični link: plavo zaglavlje sa tri kratka koraka, izbor „Unos porodice / Unos pojedinca“ u zaglavlju, uredne kartice i dugme „Pregled unosa“ kao donja traka preko cijele širine na telefonu.
+- Kod svake osobe se odmah vide samo ime, prezime, datum i mjesto rođenja (kod majke i djevojačko prezime, jer ulazi u naslov porodice). Nadimak, djevojačko prezime i podaci o smrti su u „Više podataka“; supružnik djeteta i napomena porodice otvaraju se na dodir. Sve što već ima podatke (nacrt, uređivanje poslanog unosa) otvara se samo. Obrazac je na telefonu oko četvrtinu kraći.
+- Podaci koji se šalju su isti kao ranije; polja su samo premještena.
+- Stranica sa zajedničkom šifrom ima isti izgled kao admin prijava, a pogrešna šifra prikazuje poruku na istoj stranici. Ispravljena je greška kod šifri sa slovima poput č/š.
+- Obrazac se sada servira sa verzijama fajlova po sadržaju, pa nakon nadogradnje nema starih keširanih stilova i skripti.
+- Porodični link ne učitava ove dodatke; on ima svoj pregled.
+
 ### Čitljive arhive porodičnih linkova i njihovo brisanje
 - „Opcije i arhive“ na stranici linka sada nude **„Pogledaj arhivu“** umjesto sirovog JSON fajla. Prikaz pokazuje šta je link imao prije zamjene iz Grampsa: ko je dopunjavao (broj čuvanja i zadnje vrijeme), ko je završio dopunu, nove i izmijenjene osobe (staro → novo), nove porodice, dodanu djecu, izmjene porodica i uklonjene veze.
 - JSON i dalje može da se preuzme (dugme „Preuzmi JSON“).

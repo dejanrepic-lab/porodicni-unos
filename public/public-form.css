@@ -1,0 +1,75 @@
+/* Public form: the family link's header, cards and bottom bar, on top of the shared app.css form styles. */
+.public-form{--page:#f3f6fb;--card-line:#e2e8f2;--soft:#f5f7fb;--pill:999px;--lift:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.06);--hero-from:#1f4fae;--hero-to:#2f6fe0;background:var(--page)}
+.public-form .wrap{max-width:900px}
+
+/* Header */
+.public-form .hero{border:0;border-radius:22px;color:#fff;padding:22px 24px 20px;
+  background:radial-gradient(120% 140% at 100% 0%,rgba(255,255,255,.16) 0%,rgba(255,255,255,0) 55%),linear-gradient(135deg,var(--hero-from),var(--hero-to));box-shadow:0 10px 30px rgba(31,79,174,.25)}
+.public-form .hero h1{font-family:var(--sans);font-size:clamp(24px,5.4vw,32px);font-weight:800;letter-spacing:-.02em;margin:0 0 6px;color:#fff}
+.public-form .hero .lead{color:rgba(255,255,255,.9);font-size:15px}
+.public-steps{list-style:none;counter-reset:step;margin:14px 0 0;padding:0;display:grid;gap:6px}
+.public-steps li{counter-increment:step;display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;align-items:center;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,.12);font-size:14.5px;line-height:1.35}
+.public-steps li::before{content:counter(step);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#fff;color:var(--hero-from);font-weight:800;font-size:13px}
+.public-form .choice{margin-top:14px;background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.22)}
+.public-form .choice button{color:#fff}
+.public-form .choice button.active{background:#fff;border-color:#fff;color:var(--hero-from)}
+.public-form .choice button:disabled{opacity:.6}
+
+/* Banners */
+.public-form .draft-status,.public-form .edit-banner{border-radius:16px}
+
+/* Cards and headings */
+.public-form .section{padding:16px 18px;margin:12px 0;border:1px solid var(--card-line);border-radius:18px;box-shadow:var(--lift)}
+.public-form .section > h2{font-family:var(--sans);font-size:19px;font-weight:800;letter-spacing:-.01em;padding-left:0;margin-bottom:12px}
+.public-form .section:not(.review-person) > h2::before{content:none}
+.public-form .sender-section{border-color:#cddcf7;background:linear-gradient(180deg,#f8fbff,#fff)}
+.public-form .family-title{border-radius:16px;font-size:16px}
+.public-form .field input,.public-form .field select,.public-form .field textarea,.public-form .section input:not([type=checkbox]):not([type=radio]):not([type=file]),.public-form .section select,.public-form .section textarea{border-radius:12px}
+.public-form .btn.soft{background:#eef3fd;border:1px solid #dbe6fb;color:var(--accent-ink);border-radius:12px}
+.public-form .section-toggle{border-radius:12px}
+
+/* More fields and a child's partner */
+.more-fields{grid-column:1/-1;border-top:1px solid var(--card-line);padding-top:6px}
+.more-fields > summary{cursor:pointer;list-style:none;display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;min-height:44px;font-weight:700;color:#344054}
+.more-fields > summary::-webkit-details-marker{display:none}
+.more-fields > summary::before{content:"";width:8px;height:8px;margin:0 2px 2px 2px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);opacity:.6;transition:transform .15s ease}
+.more-fields[open] > summary::before{transform:rotate(45deg);margin-bottom:5px}
+.more-fields-hint{font-weight:500;font-size:13px;color:var(--muted)}
+.more-fields > .grid{margin-top:8px}
+.public-form .child-card{border-color:var(--card-line);border-radius:16px}
+.public-form .child-head strong{font-family:var(--sans);font-weight:800;font-size:18px}
+.public-form .nested{border-radius:14px}
+.spouse-open{display:none;width:100%;min-height:48px;border-style:dashed !important}
+.descendant-partner.is-collapsed{padding:0;border:0;background:transparent}
+.descendant-partner.is-collapsed > .spouse-open{display:inline-flex}
+.descendant-partner.is-collapsed > :not(.spouse-open){display:none}
+.public-form #addChild,.public-form #addPersonChild,.public-form .add-grandchild{width:100%;min-height:52px;border:1.5px dashed #b2c6ec;background:transparent;border-radius:14px;font-weight:700;white-space:normal}
+
+/* Bottom bar with the preview button */
+.public-form form > .actions:last-child{position:sticky;bottom:max(10px,env(safe-area-inset-bottom));z-index:20;margin-top:16px;padding:10px 12px;border:1px solid rgba(226,232,242,.9);border-radius:18px;background:rgba(255,255,255,.92);-webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);box-shadow:0 10px 30px rgba(16,24,40,.14)}
+.public-form form > .actions:last-child .btn{width:100%;min-height:50px;border-radius:14px;background:var(--accent);border-color:var(--accent);color:#fff;font-size:16px;box-shadow:0 4px 14px rgba(36,94,199,.35)}
+
+/* Preview and receipt */
+.public-form #previewBox > .actions .btn,.public-form #receiptBox .actions .btn{border-radius:14px;min-height:50px}
+.public-form #sendBtn{box-shadow:0 4px 14px rgba(36,94,199,.35)}
+.public-form .report-card{border-radius:14px}
+
+@media(max-width:700px){
+ .public-form .wrap{padding:12px 12px max(24px,env(safe-area-inset-bottom))}
+ .public-form .hero{padding:16px 16px 14px;border-radius:20px}
+ .public-form .hero .lead{font-size:14px}
+ .public-steps li{font-size:13.5px;padding:7px 10px}
+ .public-form .section{padding:14px;border-radius:16px}
+ .public-form .child-card{padding:12px}
+ .public-form form > .actions:last-child{bottom:0;margin:16px -12px 0;padding:10px 12px max(10px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;border-bottom:0;box-shadow:0 -6px 24px rgba(16,24,40,.12)}
+}
+@media(prefers-reduced-motion:reduce){.more-fields > summary::before{transition:none}}
+@media print{.public-steps,.public-form form > .actions:last-child{display:none}.public-form .hero{background:none;color:inherit;box-shadow:none}.public-form .hero h1{color:inherit}}
+.child-note{margin-top:10px}
+.child-note > .field{margin-top:6px}
+.child-note > .field > label{font-size:0}
+.child-note > .field > label > textarea{font-size:16px}
+.public-form .branch-child-notes > summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;min-height:44px;font-weight:700;color:#344054}
+.public-form .branch-child-notes > summary::-webkit-details-marker{display:none}
+.public-form .branch-child-notes > summary::before{content:"";width:8px;height:8px;margin:0 2px 2px 2px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);opacity:.6}
+.public-form .branch-child-notes[open] > summary::before{transform:rotate(45deg);margin-bottom:5px}

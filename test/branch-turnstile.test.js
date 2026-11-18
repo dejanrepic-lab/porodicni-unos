@@ -11,7 +11,7 @@ test('family links leave out the public form\'s Turnstile widget while the publi
  db.prepare('INSERT INTO family_links(token,label,baseline,working,created,active) VALUES(?,?,?,?,?,1)').run('captcha','Test',json,json,'2026-01-01');
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{server.close();db.close();});
  const page=await (await fetch(`http://127.0.0.1:${server.address().port}/branch/captcha/form?person=a`)).text();
- assert.doesNotMatch(page,/<script[^>]*challenges\.cloudflare\.com/);assert.doesNotMatch(page,/<div id="cf-turnstile-widget"/);assert.match(page,/id="previewBox"/);assert.match(page,/id="sendBtn"/);
+ assert.doesNotMatch(page,/<script[^>]*challenges\.cloudflare\.com/);assert.doesNotMatch(page,/<div id="cf-turnstile-widget"/);assert.match(page,/id="previewBox"/);assert.doesNotMatch(page,/public-form\.(css|js)|class="public-form"/);assert.match(page,/id="sendBtn"/);
  const publicForm=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
- assert.match(publicForm,/challenges\.cloudflare\.com\/turnstile/);assert.match(publicForm,/id="cf-turnstile-widget"/);
+ assert.match(publicForm,/challenges\.cloudflare\.com\/turnstile/);assert.match(publicForm,/id="cf-turnstile-widget"/);assert.match(publicForm,/href="\/public-form\.css"/);assert.match(publicForm,/src="\/public-form\.js"/);
 });
