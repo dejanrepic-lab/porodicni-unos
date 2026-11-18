@@ -108,3 +108,12 @@ main > h1{font-size:clamp(24px,4vw,30px);letter-spacing:-.02em;margin:18px 0 6px
 .ar-delete summary{color:#b42318}
 .fl-notice{border-color:#bfe6cc;background:#eef8f1;color:#16683e}
 @media(max-width:600px){.ar-change{grid-template-columns:1fr auto 1fr}.ar-change strong{grid-column:1/-1}}
+
+/* Searchable family choice when preparing or refreshing a link from Gramps. */
+.family-picker{margin:12px 0}
+.family-picker label{margin:12px 0 4px}
+.family-picker input[type=search]{border-radius:12px}
+.family-picker select{border-radius:12px}
+.family-picker select[size]{padding:4px}
+.family-picker select[size] option{padding:8px 10px;border-radius:8px}
+.family-picker-count{margin:6px 2px 0;color:#667085;font-size:13px}
