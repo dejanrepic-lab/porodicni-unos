@@ -169,7 +169,7 @@
  childrenSection.querySelector(':scope > .section-toggle').hidden=true;
  childrenSection.querySelector(':scope > .subtle').textContent='Odaberi dijete za dopunu ili otvori njegovu porodicu.';
  const noChildren=make('p','review-empty','Nema upisane djece. Ako ih ima, dodaj ih ispod.');children.before(noChildren);
- const missingBox=make('details','review-missing section'),missingTitle=make('summary'),missingHint=make('p','subtle','Ovo su moguća mjesta za dopunu. Popuni samo ono što znaš.'),missingList=make('div','review-missing-list');missingBox.append(missingTitle,missingHint,missingList);childrenSection.before(missingBox);
+ const missingBox=make('details','review-missing section'),missingTitle=make('summary'),missingHint=make('p','subtle','Odnosi se na sve osobe u ovoj porodici, i na djecu. Popuni samo ono što znaš.'),missingList=make('div','review-missing-list');missingBox.append(missingTitle,missingHint,missingList);childrenSection.before(missingBox);
  const savebar=form.querySelector(':scope > .actions');savebar.classList.add('review-savebar');
  savebar.querySelector('button').textContent='Pregledaj i sačuvaj';
  const status=make('span','review-save-status');status.setAttribute('role','status');savebar.prepend(status);
@@ -233,11 +233,13 @@
   for(const view of currentPeople()){
    const p=values(view.fields);if(!name(p))continue;
    for(const [key,label] of [['birthDate','datum rođenja'],['birthPlace','mjesto rođenja']])if(!p[key]){
-    const action=button(name(p)+' — dodaj '+label,()=>{
+    // Name who the gap belongs to, so a child's gap is not read as one of the parents shown above the list.
+    const role=view===roots[0]?'prva osoba':view===roots[1]?'partner':view.owner?'partner':activeFamily&&view.el===activeFamily?'roditelj':'dijete';
+    const action=button('',()=>{
      const owner=view.owner||view;openEditor(owner);
      const input=view.fields[key];for(let parent=input.parentElement;parent&&parent!==owner.el;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;
      input.focus({preventScroll:true});input.scrollIntoView({behavior:'smooth',block:'center'});
-    });missingList.append(action);missingCount++;
+    });action.append(make('strong','',name(p)),make('span','review-sep',' · '),make('span','review-missing-role',role),make('span','',' — dodaj '+label));missingList.append(action);missingCount++;
    }
   }
   missingTitle.textContent=missingCount?'Šta nedostaje u ovoj porodici · '+missingCount:'Osnovni podaci ove porodice su popunjeni';
