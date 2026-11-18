@@ -26,8 +26,10 @@
  const partnerSummary=document.createElement('summary');partnerSummary.textContent='Drugi partner / druga veza';partnerAction.appendChild(partnerSummary);
  const partnerHint=document.createElement('p');partnerHint.textContent='Koristi samo ako ova osoba ima još jednog partnera. Otvara se zaseban unos za tu vezu i njihovu djecu.';partnerAction.appendChild(partnerHint);
  const partnerActions=document.createElement('div');partnerActions.className='actions';const newPartner=document.createElement('a');newPartner.className='btn soft';newPartner.href=boot.base+'/form?person='+encodeURIComponent(boot.personId)+'&family=new&returnFamily='+encodeURIComponent(familyId||'');newPartner.textContent='＋ Dodaj drugog partnera';partnerActions.appendChild(newPartner);partnerAction.appendChild(partnerActions);
- const firstPersonSection=form.querySelector('[data-prefix=father]').closest('.section');firstPersonSection.insertBefore(partnerAction,firstPersonSection.querySelector(':scope > .section-toggle'));
- function updatePartnerAction(payload){partnerAction.hidden=!familyId||familyId==='new'||!payload.mother?._id;}
+ // Partners keep the family's order, so the other-partner action follows the person whose link was opened.
+ const ownSlot=initial.mother?._id&&initial.mother._id===boot.personId?'mother':'father',otherSlot=ownSlot==='father'?'mother':'father';
+ const ownSection=form.querySelector('[data-prefix='+ownSlot+']').closest('.section');ownSection.insertBefore(partnerAction,ownSection.querySelector(':scope > .section-toggle'));
+ function updatePartnerAction(payload){partnerAction.hidden=!familyId||familyId==='new'||!payload[otherSlot]?._id;}
  updatePartnerAction(initial);
  filesReport=()=>'';
  const originalReport=familyReport;familyReport=payload=>{const notes=[['Prva osoba',payload.father],['Partner / supružnik',payload.mother]].filter(([,p])=>p?.notes);return originalReport(payload)+(notes.length?'<h3>Napomene o osobama</h3>'+notes.map(([label,p])=>row(label,p.notes)).join(''):'')+(payload.father?.maidenName?row('Djevojačko prezime prve osobe',payload.father.maidenName):'');};
