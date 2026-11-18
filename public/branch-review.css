@@ -160,7 +160,7 @@
 .compact-review .review-missing > summary{color:var(--gap-ink)}
 .compact-review .review-missing[open]{padding-bottom:16px}
 .review-missing-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.review-missing-list .btn{font-weight:650;font-size:14px;white-space:normal;text-align:left;justify-content:flex-start;min-width:0;max-width:100%;overflow-wrap:anywhere;min-height:44px;border-radius:12px;background:#fff !important;border:1px solid var(--gap-line) !important;color:var(--gap-ink) !important}
+.review-missing-list .btn{display:inline-block;line-height:1.4;padding-top:10px;padding-bottom:10px;font-weight:650;font-size:14px;white-space:normal;text-align:left;justify-content:flex-start;min-width:0;max-width:100%;overflow-wrap:anywhere;min-height:44px;border-radius:12px;background:#fff !important;border:1px solid var(--gap-line) !important;color:var(--gap-ink) !important}
 
 /* ───────── Children ───────── */
 .review-empty{color:var(--muted);font-size:14px}
@@ -264,3 +264,4 @@
 /* Confirmation toasts float above the save bar instead of covering its buttons. */
 .branch-review .toast{bottom:calc(150px + env(safe-area-inset-bottom));border-radius:16px}
 @media(min-width:701px){.branch-review .toast{bottom:110px}}
+.review-missing-role{display:inline-block;margin:0 2px 0 6px;padding:0 8px;border-radius:var(--pill);background:var(--gap-soft);font-size:12.5px;font-weight:700;letter-spacing:.02em}

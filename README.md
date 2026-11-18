@@ -178,6 +178,10 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 
 Najnovije izmjene su prikazane prve.
 
+### „Šta nedostaje“ kaže na koga se odnosi
+- Svaka stavka u listi „Šta nedostaje“ ima oznaku uloge (prva osoba, partner, roditelj, dijete), npr. „Milivoje Spasojević · dijete — dodaj mjesto rođenja“, da se praznina djeteta ne pomiješa s roditeljima prikazanim iznad liste.
+- Uvodni tekst liste navodi da se odnosi na sve osobe u porodici, i na djecu.
+
 ### Stabilan redoslijed partnera i tačna mjesta iz Grampsa
 - Porodica uvijek prikazuje partnere istim redom kao u Grampsu (otac, pa majka), bez obzira preko koga je link otvoren. Ranije je osoba na koju se kliknulo postajala „Prva osoba“, a čuvanje je taj obrnuti redoslijed trajno upisivalo u kopiju (i kod porodica djece).
 - Kopije sačuvane sa obrnutim redoslijedom vraćaju se na redoslijed iz Grampsa pri sljedećem otvaranju i čuvanju. Podaci se ne brišu i ne prepisuju unaprijed.

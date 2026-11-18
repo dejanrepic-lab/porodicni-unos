@@ -129,7 +129,7 @@ test('compact review opens one editor and one family while preserving and saving
  assert.ok(form.querySelector('.sender-section').compareDocumentPosition(form.querySelector('.review-savebar')) & w.Node.DOCUMENT_POSITION_FOLLOWING);
  parent.querySelector('.review-actions button').click();assert.ok(parent.classList.contains('review-editing'));
  const more=parent.querySelector('.review-more');assert.equal(more.open,false);assert.equal(d.querySelector('[name=father_notes]').value,'Originalna napomena');
- const missing=d.querySelector('.review-missing');assert.equal(missing.open,false);const addPlace=Array.from(missing.querySelectorAll('button')).find(b=>b.textContent==='Ana Test — dodaj mjesto rođenja');addPlace.click();assert.equal(d.activeElement.name,'father_birthPlace');put(d.activeElement,'Salzburg');
+ const missing=d.querySelector('.review-missing');assert.equal(missing.open,false);const addPlace=Array.from(missing.querySelectorAll('button')).find(b=>b.textContent==='Ana Test · prva osoba — dodaj mjesto rođenja');addPlace.click();assert.equal(d.activeElement.name,'father_birthPlace');put(d.activeElement,'Salzburg');
  child.querySelector('.review-actions button').click();assert.equal(d.querySelectorAll('.review-editing').length,1);assert.equal(parent.classList.contains('review-editing'),false);put(child.querySelector('[data-c=birthDate]'),'1995');
  child.querySelector(':scope > .actions > .child-collapse').click();assert.equal(d.querySelectorAll('.review-editing').length,0);assert.match(child.querySelector('.review-state').textContent,/nije sačuvano/);
  child.querySelector('.review-actions button:nth-child(2)').click();assert.ok(form.classList.contains('descendant-focus-mode'));assert.ok(child.classList.contains('review-family-open'));assert.equal(w.getComputedStyle(child.querySelector(':scope > .descendant-family')).display,'block');assert.equal(w.getComputedStyle(missing).display,'block');assert.notEqual(w.getComputedStyle(d.querySelector('.descendant-focus-toolbar')).display,'none');
@@ -223,5 +223,6 @@ test('person cards show initials, fact tags and a save bar stage without changin
  assert.ok(child.querySelectorAll('.review-facts .review-fact').length>=2);assert.match(child.querySelector('.review-facts').textContent,/Partner: Partner Drugi · Djeca: 1/);
  assert.equal(bar.dataset.stage,'idle');put(d.querySelector('[name=father_birthPlace]'),'Mostar');assert.equal(bar.dataset.stage,'dirty');
  put(d.querySelector('[name=submittedBy]'),'Rođak');await save();assert.equal(bar.dataset.stage,'saved');
- assert.ok(d.querySelector('.branch-steps').children.length===3);assert.deepEqual(errors,[]);
+ assert.ok(d.querySelector('.branch-steps').children.length===3);
+ assert.ok(Array.from(d.querySelectorAll('.review-missing-list button')).some(b=>/^Dijete Test · dijete — dodaj /.test(b.textContent)));assert.deepEqual(errors,[]);
 });
