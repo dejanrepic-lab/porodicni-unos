@@ -2,12 +2,12 @@
    Family links reuse index.html with their own review adapter, so this script stays out of them. */
 (()=>{
  if(document.getElementById('branch-boot'))return;
- const secondary=new Set(['maidenName','nickname','deathDate','deathPlace']);
+ const secondary=new Set(['marriedName','maidenName','nickname','deathDate','deathPlace']);
  const keyOf=input=>(input.dataset.c||input.dataset.s||input.name||'').replace(/^(father|mother|partner)_/,'');
  const filled=root=>Array.from(root.querySelectorAll('input,select,textarea')).some(input=>input.type!=='file'&&input.value.trim());
  const make=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text)el.textContent=text;return el;};
 
- const hintNames={nickname:'nadimak',maidenName:'djevojačko prezime',deathDate:'smrt',deathPlace:'smrt'};
+ const hintNames={marriedName:'prezime po udaji',maidenName:'djevojačko prezime',nickname:'nadimak',deathDate:'smrt',deathPlace:'smrt'};
  const hintFor=fields=>[...new Set(fields.flatMap(field=>Array.from(field.querySelectorAll('input,select')).map(input=>hintNames[keyOf(input)]).filter(Boolean)))].join(', ');
  // Name, surname, birth date and place stay visible; the rest of a person waits behind "Više podataka".
  function compact(grid){

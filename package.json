@@ -1,6 +1,6 @@
 {
   "name": "porodicni-unos",
-  "version": "2.14.0",
+  "version": "2.15.0",
   "private": true,
   "description": "Jednostavan javni unos porodicnih podataka za naknadni unos u Gramps.",
   "main": "server.js",
