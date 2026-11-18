@@ -13,7 +13,7 @@ function page(){
 }
 test('the public form shows the main fields of each person and keeps the rest one tap away',async t=>{
  const {w,d,errors}=page();t.after(()=>w.close());await new Promise(r=>setTimeout(r,0));
- assert.ok(d.body.classList.contains('public-form'));assert.equal(d.querySelectorAll('.public-steps li').length,3);
+ assert.ok(d.body.classList.contains('public-form'));assert.doesNotMatch(d.querySelector('.footer-note').textContent,/v\d|usklađeni/);assert.equal(d.querySelectorAll('.public-steps li').length,3);
  const father=d.querySelector('[data-prefix=father]');assert.ok(father.querySelector('.more-fields [name=father_nickname]'));assert.ok(father.querySelector('.more-fields [name=father_deathPlace]'));assert.equal(father.querySelector('[name=father_birthPlace]').closest('.more-fields'),null);
  const mother=d.querySelector('[data-prefix=mother]');assert.equal(mother.querySelector('[name=mother_maidenName]').closest('.more-fields'),null);assert.equal(mother.querySelector('.more-fields-hint').textContent,'nadimak, smrt');
  const child=d.querySelector('#children > .child-card');assert.ok(child.querySelector(':scope > .grid > .more-fields [data-c=nickname]'));
