@@ -45,8 +45,15 @@ test('locked refresh archives the entire previous cycle, replaces both copies an
  for(const table of ['family_link_history','family_link_progress','family_link_review_snapshots','family_link_refresh_drafts'])assert.equal(f.db.prepare('SELECT COUNT(*) n FROM '+table).get().n,0);
  assert.equal(progressStatus(fresh,undefined),'Spreman za nove dopune');
  const archive=JSON.parse(f.db.prepare('SELECT content FROM family_link_archives').get().content);assert.equal(archive.link.working,old.working);assert.equal(archive.link.baseline,old.baseline);assert.equal(archive.history[0].changed_by,'Tetka Mira');assert.ok(archive.progress);assert.ok(archive.review);
- assert.equal((await f.get(f.admin+'/archives/1',false)).status,401);const download=await f.get(f.admin+'/archives/1');assert.match(download.headers.get('content-disposition'),/attachment/);assert.deepEqual(await download.json(),archive);
+ assert.equal((await f.get(f.admin+'/archives/1',false)).status,401);assert.equal((await f.get(f.admin+'/archives/1/download',false)).status,401);
+ const view=await (await f.get(f.admin+'/archives/1')).text();assert.match(view,/Ko je dopunjavao/);assert.match(view,/Tetka Mira/);assert.match(view,/archives\/1\/download/);assert.match(view,/Obriši ovu arhivu/);
+ const download=await f.get(f.admin+'/archives/1/download');assert.match(download.headers.get('content-disposition'),/attachment/);assert.deepEqual(await download.json(),archive);
  assert.equal((await f.post(f.admin+'/refresh/commit',{revision:1,nonce,confirm:'yes'})).status,409);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM family_link_archives').get().n,1);
+ // Deleting an archive needs the confirmation and leaves the live link untouched.
+ const live=f.row();assert.equal((await f.post(f.admin+'/archives/1/delete',{})).status,400);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM family_link_archives').get().n,1);
+ assert.equal((await f.post(f.admin+'/archives/1/delete',{confirm:'yes'},false)).status,401);
+ const removed=await f.post(f.admin+'/archives/1/delete',{confirm:'yes'});assert.equal(removed.status,302);assert.match(removed.headers.get('location'),/archiveDeleted=1/);
+ assert.equal(f.db.prepare('SELECT COUNT(*) n FROM family_link_archives').get().n,0);assert.deepEqual(f.row(),live);assert.equal((await f.get(f.admin+'/archives/1')).status,404);
  assert.equal((await f.post(f.admin+'/lock',{revision:2,locked:'0'})).status,302);const opened=await f.get(f.publicUrl+'/form?person=a',false);assert.equal(opened.status,200);assert.match(await opened.text(),/Ažurirano/);
  assert.equal((await fetch(new URL(f.publicUrl+'/form-save',opened.url),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csrf:oldBoot.csrf,revision:0,personId:'a',familyId:'f',payload:oldBoot.payload})})).status,409);
  assert.equal(f.row().baseline,f.row().working);

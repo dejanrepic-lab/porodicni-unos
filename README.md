@@ -179,6 +179,11 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 
 Najnovije izmjene su prikazane prve.
 
+### Čitljive arhive porodičnih linkova i njihovo brisanje
+- „Opcije i arhive“ na stranici linka sada nude **„Pogledaj arhivu“** umjesto sirovog JSON fajla. Prikaz pokazuje šta je link imao prije zamjene iz Grampsa: ko je dopunjavao (broj čuvanja i zadnje vrijeme), ko je završio dopunu, nove i izmijenjene osobe (staro → novo), nove porodice, dodanu djecu, izmjene porodica i uklonjene veze.
+- JSON i dalje može da se preuzme (dugme „Preuzmi JSON“).
+- Arhiva se može **obrisati** uz obaveznu potvrdu. Briše se samo ta arhiva; link, njegovi sadašnji podaci i ostale arhive ostaju.
+
 ### Admin: zapamćena prijava, zajednički meni i preglednija lista linkova
 - Prijava ima opciju **„Zapamti me na ovom uređaju“** (uključena po defaultu): admin ostaje prijavljen `ADMIN_REMEMBER_DAYS` dana (podrazumijevano 30) od zadnjeg korištenja; sesija se sama produžava dok se admin koristi. Bez te opcije prijava traje `ADMIN_SESSION_HOURS` sati kao ranije.
 - Promjena `ADMIN_PASSWORD` automatski poništava sve zapamćene prijave. Nakon ove nadogradnje potrebno je jednom se ponovo prijaviti.
