@@ -33,9 +33,11 @@ test('adds children with their partners and grandchildren, then repeats a save w
 test('removing a child card removes only that relation and preserves descendants and other unions',()=>{
  const data=fixture(),before=structuredClone(data),payload=scopeFor(data,'a').payload;payload.children=[];applyForm(data,'a','f',payload);assert.deepEqual(data.families.find(f=>f.id==='f').children,[]);assert.equal(data.people.length,before.people.length);assert.deepEqual(data.families.find(f=>f.id==='cf'),before.families.find(f=>f.id==='cf'));assert.equal(compareBranch(before,data).removedLinks[0].children[0],'c');
 });
-test('supports a person without a family and binds either partner as the selected root',()=>{
+test('supports a person without a family and keeps partner order whichever partner opens the family',()=>{
  const data=fixture();data.people.push({id:'alone',name:'Osoba',events:[]});let payload=scopeFor(data,'alone').payload;payload.mother={firstName:'Novi partner'};payload.children=[{firstName:'Novo dijete',spouse:{},children:[]}];let result=applyForm(data,'alone','',payload);assert.ok(result.familyId);assert.equal(data.families.find(f=>f.id===result.familyId).parents[0],'alone');
- payload=scopeFor(data,'b','f').payload;assert.equal(payload.father._id,'b');applyForm(data,'b','f',payload);assert.equal(data.families.find(f=>f.id==='f').parents[0],'b');
+ payload=scopeFor(data,'b','f').payload;assert.equal(payload.father._id,'a');assert.equal(payload.mother._id,'b');applyForm(data,'b','f',payload);assert.deepEqual(data.families.find(f=>f.id==='f').parents,['a','b']);
+ // A copy saved with the old rotation returns to the imported order on the next open and save.
+ const baseline=structuredClone(data);data.families.find(f=>f.id==='f').parents=['b','a'];payload=scopeFor(data,'a','f',baseline).payload;assert.equal(payload.father._id,'a');applyForm(data,'a','f',payload,baseline);assert.deepEqual(data.families.find(f=>f.id==='f').parents,['a','b']);
 });
 test('rejects tampered identity, cross-scope identity and nameless filled rows',()=>{
  let data=fixture(),payload=scopeFor(data,'a').payload;payload.father._id='b';assert.throws(()=>applyForm(data,'a','f',payload),/Identitet/);
@@ -56,4 +58,8 @@ test('serves the original interface and saves branch JSON with CSRF and revision
 
 test('creates an additional union explicitly without overwriting existing families',()=>{
  const data=fixture(),before=structuredClone(data.families),payload=scopeFor(data,'c','new').payload;assert.equal(payload.father._id,'c');assert.deepEqual(payload.children,[]);payload.mother={firstName:'Novi partner'};const saved=applyForm(data,'c','new',payload);assert.ok(saved.familyId);assert.notEqual(saved.familyId,'new');for(const old of before)assert.deepEqual(data.families.find(f=>f.id===old.id),old);assert.equal(data.families.length,before.length+1);
+});
+test('saving a child card keeps the imported partner order of that child family',()=>{
+ const data=fixture(),fc=data.families.find(f=>f.parents.includes('c')&&f.id!=='f');assert.ok(fc);fc.parents=[...fc.parents].reverse();const order=[...fc.parents],baseline=structuredClone(data);
+ const payload=scopeFor(data,'a','f',baseline).payload;payload.children[0].birthPlace='Mostar';applyForm(data,'a','f',payload,baseline);assert.deepEqual(data.families.find(f=>f.id===fc.id).parents,order);
 });

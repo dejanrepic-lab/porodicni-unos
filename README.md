@@ -178,6 +178,13 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 
 Najnovije izmjene su prikazane prve.
 
+### Stabilan redoslijed partnera i tačna mjesta iz Grampsa
+- Porodica uvijek prikazuje partnere istim redom kao u Grampsu (otac, pa majka), bez obzira preko koga je link otvoren. Ranije je osoba na koju se kliknulo postajala „Prva osoba“, a čuvanje je taj obrnuti redoslijed trajno upisivalo u kopiju (i kod porodica djece).
+- Kopije sačuvane sa obrnutim redoslijedom vraćaju se na redoslijed iz Grampsa pri sljedećem otvaranju i čuvanju. Podaci se ne brišu i ne prepisuju unaprijed.
+- „Drugi partner / druga veza“ stoji uz osobu čiji je link otvoren.
+- Uvoz iz Grampsa uzima rođenje i smrt koje su u Grampsu označene kao glavne (`birth_ref_index` / `death_ref_index`) i samo događaje u kojima je osoba glavni učesnik. Ranije je mogao uzeti prvi događaj „Birth“ s liste, uključujući tuđe rođenje u kojem osoba samo učestvuje, pa su datum ili mjesto mogli nedostajati ili biti pogrešni.
+- Postojeći linkovi zadržavaju ranije uvezene podatke dok ih admin ne osvježi iz Grampsa.
+
 ### Novi izgled porodičnog linka (mobilni prvo)
 - Plavo zaglavlje sa imenom porodice, statusom dopune kao oznakom u boji i tri kratka numerisana koraka; na telefonu je polje za ime vidljivo već na prvom ekranu.
 - Kartice osoba imaju krug s inicijalima, podatke kao male oznake (rođenje, mjesto, partner, djeca) i narandžastu oznaku „Nedostaje: …“; izmijenjene a nesačuvane osobe imaju narandžasti rub.
