@@ -127,6 +127,10 @@ test('submission flow and admin authentication work through the real HTTP server
     redirect: 'manual',
   });
   assert.equal(wrongLogin.status, 401);
+  const wrongPage = await wrongLogin.text();
+  assert.match(wrongPage, /Korisničko ime ili lozinka nisu ispravni/);
+  assert.match(wrongPage, /name="username"[^>]*value="admin"/);
+  assert.match(wrongPage, /name="remember"[^>]*checked/);
 
   const login = await fetch(`${baseUrl}/admin/login`, {
     method: 'POST',
@@ -147,6 +151,23 @@ test('submission flow and admin authentication work through the real HTTP server
   assert.match(setCookie, /SameSite=Lax/i);
   assert.match(setCookie, /Path=\/admin/i);
   const sessionCookie = setCookie.split(';')[0];
+  assert.match(setCookie, /Max-Age=43200/);
+
+  const remembered = await fetch(`${baseUrl}/admin/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ username: 'admin', password: 'test-admin-password', next: '/admin', remember: '1' }),
+    redirect: 'manual',
+  });
+  assert.equal(remembered.status, 302);
+  assert.match(remembered.headers.get('set-cookie') || '', /Max-Age=2592000/);
+  const multibyte = await fetch(`${baseUrl}/admin/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ username: 'admin', password: 'čćšđžčćšđžčćšđžčćšđ', next: '/admin' }),
+    redirect: 'manual',
+  });
+  assert.equal(multibyte.status, 401);
 
   const authenticatedAdmin = await fetch(`${baseUrl}/admin`, {
     headers: { cookie: sessionCookie },

@@ -60,6 +60,7 @@ ADMIN_USER=admin
 ADMIN_PASSWORD=promijeni-me
 ADMIN_SESSION_SECRET=dugacak-nasumican-secret
 ADMIN_SESSION_HOURS=12
+ADMIN_REMEMBER_DAYS=30
 
 FORM_ACCESS_PASSWORD=porodicna-sifra
 FORM_ACCESS_DAYS=7
@@ -177,6 +178,14 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 # Istorija verzija
 
 Najnovije izmjene su prikazane prve.
+
+### Admin: zapamćena prijava, zajednički meni i preglednija lista linkova
+- Prijava ima opciju **„Zapamti me na ovom uređaju“** (uključena po defaultu): admin ostaje prijavljen `ADMIN_REMEMBER_DAYS` dana (podrazumijevano 30) od zadnjeg korištenja; sesija se sama produžava dok se admin koristi. Bez te opcije prijava traje `ADMIN_SESSION_HOURS` sati kao ranije.
+- Promjena `ADMIN_PASSWORD` automatski poništava sve zapamćene prijave. Nakon ove nadogradnje potrebno je jednom se ponovo prijaviti.
+- Stranica za prijavu ima uredan izgled; pogrešna lozinka prikazuje poruku na istoj stranici i zadržava korisničko ime. Ispravljena je i greška kod lozinki sa slovima poput č/š (ranije je mogla srušiti zahtjev).
+- Sve admin stranice imaju zajednički meni: Odgovori · Porodični linkovi · Korisnički prikaz · Odjavi se.
+- Lista porodičnih linkova: brojači (čeka pregled / u toku / ukupno), linkovi koji čekaju pregled su prvi i istaknuti, status i stanje linka kao oznake u boji, izmjene kao kratke oznake (samo one koje postoje), pretraga kad ima više od tri linka, a „Obriši link“ je odvojen od glavne akcije.
+- Kod: prijava je izdvojena u `lib/admin-session.js`, a meni i stranica za prijavu u `lib/admin-chrome.js`.
 
 ### Bez Cloudflare provjere na porodičnom linku i jasne admin potvrde
 - Porodični link više ne učitava Cloudflare Turnstile („potvrdi da si čovjek“). Link je zaštićen privatnom adresom i CSRF-om, a njegovo čuvanje Turnstile nikad nije provjeravalo, pa je checkbox u pregledu samo zbunjivao. Javni obrazac i dalje koristi Turnstile kao i ranije.

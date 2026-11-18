@@ -1,3 +1,5 @@
+const { createAdminSession } = require('./lib/admin-session');
+const { adminNav, loginPage } = require('./lib/admin-chrome');
 const DescendantData = require('./public/descendant-data');
 const express = require('express');
 const path = require('path');
@@ -20,8 +22,9 @@ const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'promijeni-me';
 const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || crypto.randomBytes(32).toString('hex');
-const ADMIN_COOKIE = 'porodicni_admin';
 const ADMIN_SESSION_HOURS = Math.max(1, Number(process.env.ADMIN_SESSION_HOURS || 12));
+const ADMIN_REMEMBER_DAYS = Math.max(1, Number(process.env.ADMIN_REMEMBER_DAYS || 30));
+const adminSession = createAdminSession({ secret: ADMIN_SESSION_SECRET, user: ADMIN_USER, password: ADMIN_PASSWORD, sessionHours: ADMIN_SESSION_HOURS, rememberDays: ADMIN_REMEMBER_DAYS });
 const FORM_ACCESS_PASSWORD = process.env.FORM_ACCESS_PASSWORD || '';
 const FORM_ACCESS_DAYS = Math.max(1, Number(process.env.FORM_ACCESS_DAYS || 7));
 const SUBMIT_RATE_LIMIT = Math.max(1, Number(process.env.SUBMIT_RATE_LIMIT || 5));
@@ -52,24 +55,6 @@ function parseCookies(req) {
   });
   return out;
 }
-function signSession(payload) {
-  const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const sig = crypto.createHmac('sha256', ADMIN_SESSION_SECRET).update(data).digest('base64url');
-  return `${data}.${sig}`;
-}
-function verifySession(token='') {
-  try {
-    const [data, sig] = token.split('.');
-    if (!data || !sig) return false;
-    const expected = crypto.createHmac('sha256', ADMIN_SESSION_SECRET).update(data).digest('base64url');
-    if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
-    const payload = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'));
-    return payload.user === ADMIN_USER && Number(payload.exp || 0) > Date.now();
-  } catch {
-    return false;
-  }
-}
-
 function signFormAccess() {
   const data = Buffer.from(JSON.stringify({
     ok: true,
@@ -134,8 +119,8 @@ async function verifyTurnstile(req) {
 }
 
 function adminAuth(req, res, next) {
-  const token = parseCookies(req)[ADMIN_COOKIE];
-  if (verifySession(token)) return next();
+  const session = adminSession.read(req, parseCookies(req));
+  if (session) { adminSession.renew(req, res, session); return next(); }
   const nextUrl = encodeURIComponent(req.originalUrl || '/admin');
   return res.redirect(`/admin/login?next=${nextUrl}`);
 }
@@ -490,24 +475,9 @@ app.get('/admin/user-mode', adminAuth, (req, res) => {
 });
 
 app.get('/admin/login', (req, res) => {
-  if (verifySession(parseCookies(req)[ADMIN_COOKIE])) return res.redirect('/admin');
+  if (adminSession.read(req, parseCookies(req))) return res.redirect('/admin');
   const nextUrl = typeof req.query.next === 'string' && req.query.next.startsWith('/admin') ? req.query.next : '/admin';
-  res.send(adminShell('Admin prijava', `
-    <div class="login-wrap">
-      <div class="login-card">
-        <h1>Admin prijava</h1>
-        <p class="muted">Prijavi se za pregled i obradu primljenih podataka.</p>
-        <form method="post" action="/admin/login">
-          <input type="hidden" name="next" value="${esc(nextUrl)}">
-          <label>Korisničko ime</label>
-          <input name="username" autocomplete="username" required>
-          <label>Lozinka</label>
-          <input name="password" type="password" autocomplete="current-password" required>
-          <button class="btn primary" type="submit">Prijavi se</button>
-        </form>
-      </div>
-    </div>
-  `));
+  res.send(loginPage({ next: nextUrl, rememberDays: ADMIN_REMEMBER_DAYS }));
 });
 
 app.post('/admin/login', express.urlencoded({extended:false}), (req, res) => {
@@ -515,51 +485,20 @@ app.post('/admin/login', express.urlencoded({extended:false}), (req, res) => {
   const password = String(req.body.password || '');
   const nextUrl = typeof req.body.next === 'string' && req.body.next.startsWith('/admin') ? req.body.next : '/admin';
 
-  const userOk = username.length === ADMIN_USER.length &&
-    crypto.timingSafeEqual(Buffer.from(username), Buffer.from(ADMIN_USER));
-  const passOk = password.length === ADMIN_PASSWORD.length &&
-    crypto.timingSafeEqual(Buffer.from(password), Buffer.from(ADMIN_PASSWORD));
+  // Compare bytes, not characters: a password with č or š has more bytes than letters.
+  const same = (given, expected) => { const a = Buffer.from(given), b = Buffer.from(expected); return a.length === b.length && crypto.timingSafeEqual(a, b); };
+  const userOk = same(username, ADMIN_USER);
+  const passOk = same(password, ADMIN_PASSWORD);
 
   if (!userOk || !passOk) {
-    return res.status(401).send(adminShell('Neuspješna prijava', `
-      <div class="login-wrap">
-        <div class="login-card">
-          <h1>Prijava nije uspjela</h1>
-          <p class="muted">Korisničko ime ili lozinka nisu ispravni.</p>
-          <a class="btn primary" href="/admin/login">Pokušaj ponovo</a>
-        </div>
-      </div>
-    `));
+    return res.status(401).send(loginPage({ error: 'Korisničko ime ili lozinka nisu ispravni.', username, next: nextUrl, rememberDays: ADMIN_REMEMBER_DAYS }));
   }
-
-  const token = signSession({
-    user: ADMIN_USER,
-    exp: Date.now() + ADMIN_SESSION_HOURS * 60 * 60 * 1000
-  });
-  const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
-  const parts = [
-    `${ADMIN_COOKIE}=${encodeURIComponent(token)}`,
-    'Path=/admin',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Max-Age=${ADMIN_SESSION_HOURS * 60 * 60}`
-  ];
-  if (secure) parts.push('Secure');
-  res.setHeader('Set-Cookie', parts.join('; '));
+  adminSession.issue(req, res, req.body.remember === '1');
   res.redirect(nextUrl);
 });
 
 app.post('/admin/logout', adminAuth, express.urlencoded({extended:false}), (req, res) => {
-  const secure = String(req.headers['x-forwarded-proto'] || req.protocol).split(',')[0].trim() === 'https';
-  const parts = [
-    `${ADMIN_COOKIE}=`,
-    'Path=/admin',
-    'HttpOnly',
-    'SameSite=Lax',
-    'Max-Age=0'
-  ];
-  if (secure) parts.push('Secure');
-  res.setHeader('Set-Cookie', parts.join('; '));
+  adminSession.clear(req, res);
   res.redirect('/admin/login');
 });
 
@@ -649,12 +588,7 @@ app.get('/admin', adminAuth, (req, res) => {
     <div class="toolbar">
       <h1>Primljeni odgovori</h1>
       <div class="admin-actions">
-        <a class="btn" href="/admin/family-links">Porodični linkovi</a>
-        <a class="btn secondary" href="/admin/user-mode">Korisnički prikaz</a>
-        <a class="btn" href="/admin/export.csv">Izvezi CSV pregled</a>
-        <form method="post" action="/admin/logout" style="margin:0">
-          <button class="btn soft" type="submit">Odjavi se</button>
-        </form>
+        <a class="btn secondary" href="/admin/export.csv">Izvezi CSV pregled</a>
       </div>
     </div>
     <div class="admin-tabs">
@@ -1122,7 +1056,7 @@ function renderHistoryDiff(changes) {
   }).join('')}</div>`;
 }
 
-function adminShell(title, body) {
+function adminShell(title, body, active = 'answers') {
   return `<!doctype html><html lang="sr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
   body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#1f2937;margin:0}.wrap{max-width:1100px;margin:auto;padding:20px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}a{color:#245ec7}.btn{display:inline-block;border:0;background:#245ec7;color:#fff;text-decoration:none;padding:10px 13px;border-radius:9px;font-weight:700;cursor:pointer}.btn.secondary{background:#eef2f6;color:#1f2937}.btn.danger{background:#b42318}.admin-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-actions form{margin:0}.admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}.tab{display:inline-block;padding:8px 11px;border-radius:999px;background:#eef2f6;text-decoration:none;color:#344054;font-weight:700}.tab.active{background:#245ec7;color:#fff}.muted{color:#667085}.tablewrap{overflow:auto;background:#fff;border:1px solid #dfe5ee;border-radius:14px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #eef1f5}th{background:#f8fafc}.status{padding:4px 8px;border-radius:999px;background:#eef2f6}.status.obradjeno{background:#dcfae6;color:#067647}.status.arhivirano{background:#f2f4f7;color:#475467}.report section{background:#fff;border:1px solid #dfe5ee;border-radius:13px;padding:14px;margin:12px 0}.report h2{margin-top:24px}.report h3{margin-top:0}.r{display:grid;grid-template-columns:220px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #eef1f5}.r:last-child{border-bottom:0}.r i{color:#98a2b3}@media(max-width:700px){.r{grid-template-columns:1fr;gap:2px}.wrap{padding:12px}}
     .edited-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;background:#fff3cd;color:#7a5a00;border:1px solid #f0d98a;vertical-align:middle}
@@ -1147,7 +1081,7 @@ function adminShell(title, body) {
       .admin-search{align-items:stretch;flex-wrap:wrap}
       .admin-search input[type="search"]{min-width:100%;max-width:none}
     }
-</style></head><body><div class="wrap">${body}</div>
+</style></head><body>${adminNav(active)}<div class="wrap">${body}</div>
 <script>
 async function copyPrivateLink(btn){
   const path = btn?.dataset?.privateUrl || '';
