@@ -179,6 +179,9 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 
 Najnovije izmjene su prikazane prve.
 
+### Jasniji natpis u podnožju obrasca
+- Podnožje javnog obrasca više ne prikazuje staru razvojnu bilješku („v2.12.1 – usklađeni dinamički nazivi…“), nego: „Porodični unos – podaci se čuvaju privatno i koriste se samo za porodično stablo.“
+
 ### Obični obrazac u novom izgledu i kraći na telefonu
 - Javni obrazac (`/`) ima isti izgled kao porodični link: plavo zaglavlje sa tri kratka koraka, izbor „Unos porodice / Unos pojedinca“ u zaglavlju, uredne kartice i dugme „Pregled unosa“ kao donja traka preko cijele širine na telefonu.
 - Kod svake osobe se odmah vide samo ime, prezime, datum i mjesto rođenja (kod majke i djevojačko prezime, jer ulazi u naslov porodice). Nadimak, djevojačko prezime i podaci o smrti su u „Više podataka“; supružnik djeteta i napomena porodice otvaraju se na dodir. Sve što već ima podatke (nacrt, uređivanje poslanog unosa) otvara se samo. Obrazac je na telefonu oko četvrtinu kraći.
