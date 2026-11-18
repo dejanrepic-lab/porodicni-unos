@@ -57,7 +57,7 @@ test('admin can select and preview a branch from a mock Gramps server', async t 
   const branchPath=detail.match(/href="(\/branch\/[a-f0-9]+)"/)[1];
   assert.match(detail,/Link za slanje rođaku/);assert.match(detail,/Kopiraj link/);assert.match(detail,/class="share-url" readonly/);
   const shareList=await (await fetch(base+'/admin/family-links',{headers:{cookie}})).text();assert.match(shareList,/Link za slanje rođaku/);assert.ok(shareList.includes(branchPath));
-  const vm=require('node:vm'),script=detail.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const vm=require('node:vm'),script=[...detail.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).find(code=>code.includes('data-share-path'));
   const events={},field={value:'',select(){this.selected=true;},focus(){this.focused=true;},addEventListener(name,fn){events[name]=fn;}},button={hidden:true,addEventListener(name,fn){events['button_'+name]=fn;}},feedback={textContent:''};
   const box={dataset:{sharePath:branchPath},querySelector(sel){return {'.share-url':field,'.copy-share':button,'.share-feedback':feedback}[sel];}};
   let copied;const context={URL,window:{location:{origin:'https://porodica.example'}},document:{querySelectorAll(){return [box];}},navigator:{clipboard:{async writeText(text){copied=text;}}}};

@@ -1,0 +1,32 @@
+{
+  "id": "/admin",
+  "name": "Porodični unos · Admin",
+  "short_name": "Porodica Admin",
+  "description": "Pregled odgovora i porodičnih linkova.",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "background_color": "#f3f6fb",
+  "theme_color": "#1f4fae",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png?v=2",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png?v=2",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png?v=2",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "lang": "bs"
+}
