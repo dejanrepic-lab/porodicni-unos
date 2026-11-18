@@ -178,6 +178,10 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 
 Najnovije izmjene su prikazane prve.
 
+### Bez Cloudflare provjere na porodičnom linku i jasne admin potvrde
+- Porodični link više ne učitava Cloudflare Turnstile („potvrdi da si čovjek“). Link je zaštićen privatnom adresom i CSRF-om, a njegovo čuvanje Turnstile nikad nije provjeravalo, pa je checkbox u pregledu samo zbunjivao. Javni obrazac i dalje koristi Turnstile kao i ranije.
+- Potvrdni checkboxovi u administraciji porodičnih linkova (npr. „Prenio/la sam potrebne dopune u Gramps…“ pri zamjeni iz Grampsa) stoje u istom redu sa svojim tekstom, u istaknutom okviru. Ranije ih je opšte pravilo za polja razvlačilo na punu širinu, pa su izgledali kao prazna kućica bez teksta.
+
 ### „Šta nedostaje“ kaže na koga se odnosi
 - Svaka stavka u listi „Šta nedostaje“ ima oznaku uloge (prva osoba, partner, roditelj, dijete), npr. „Milivoje Spasojević · dijete — dodaj mjesto rođenja“, da se praznina djeteta ne pomiješa s roditeljima prikazanim iznad liste.
 - Uvodni tekst liste navodi da se odnosi na sve osobe u porodici, i na djecu.
