@@ -1,4 +1,5 @@
 const { versionPublicAssets } = require('./lib/public-assets');
+const Surnames = require('./public/surnames');
 const { accessPage } = require('./lib/access-page');
 const { createAdminSession } = require('./lib/admin-session');
 const { adminHead, adminNav, loginPage } = require('./lib/admin-chrome');
@@ -787,12 +788,15 @@ app.listen(PORT, '0.0.0.0', () => console.log(`Porodicni unos radi na portu ${PO
 function cleanupFiles(files=[]) {
   for (const f of files || []) { try { if (f.path && fs.existsSync(f.path)) fs.unlinkSync(f.path); } catch {} }
 }
+// Surnames follow the shared rule: birth surname, later surname, and older entries' maiden name in their own wording.
+function surnameRows(p) {
+  return Surnames.rows(p).map(([label, value]) => row(label, value)).join('');
+}
 function row(label, value) {
   return `<div class="r"><b>${esc(label)}</b><span>${value ? esc(value) : '<i>nije navedeno</i>'}</span></div>`;
 }
 function person(title,p={}, maiden=false) {
-  let h=`<section><h3>${esc(title)}</h3>${row('Ime',p.firstName)}${row('Prezime',p.lastName)}`;
-  if (maiden) h += row('Djevojačko prezime',p.maidenName);
+  let h=`<section><h3>${esc(title)}</h3>${row('Ime',p.firstName)}${surnameRows(p)}`;
   h += row('Nadimak',p.nickname)+row('Datum rođenja',p.birthDate)+row('Mjesto rođenja',p.birthPlace)+row('Datum smrti',p.deathDate)+row('Mjesto smrti',p.deathPlace)+'</section>';
   return h;
 }
@@ -809,8 +813,7 @@ function txtPerson(lines, title, p={}, maiden=false) {
   lines.push(title);
   lines.push('-'.repeat(title.length));
   txtLine(lines, 'Ime', p.firstName);
-  txtLine(lines, 'Prezime', p.lastName);
-  if (maiden || p.maidenName) txtLine(lines, 'Djevojačko prezime', p.maidenName);
+  for (const [label, value] of Surnames.rows(p)) txtLine(lines, label, value);
   txtLine(lines, 'Nadimak', p.nickname);
   txtLine(lines, 'Datum rođenja', p.birthDate);
   txtLine(lines, 'Mjesto rođenja', p.birthPlace);
@@ -827,8 +830,7 @@ function renderPayloadTxt(d={}, files=[]) {
     txtLine(lines, 'Podatke šalje', d.submittedBy);
     lines.push('');
     txtLine(lines, 'Ime', d.firstName);
-    txtLine(lines, 'Prezime', d.lastName);
-    txtLine(lines, 'Djevojačko prezime', d.maidenName);
+    for (const [label, value] of Surnames.rows(d)) txtLine(lines, label, value);
     txtLine(lines, 'Nadimak', d.nickname);
     txtLine(lines, 'Datum rođenja', d.birthDate);
     txtLine(lines, 'Mjesto rođenja', d.birthPlace);
@@ -842,8 +844,7 @@ function renderPayloadTxt(d={}, files=[]) {
     lines.push('PARTNER / SUPRUŽNIK');
     lines.push('-------------------');
     txtLine(lines, 'Ime', partner.firstName);
-    txtLine(lines, 'Prezime', partner.lastName);
-    txtLine(lines, 'Djevojačko prezime', partner.maidenName);
+    for (const [label, value] of Surnames.rows(partner)) txtLine(lines, label, value);
     txtLine(lines, 'Nadimak', partner.nickname);
     txtLine(lines, 'Datum rođenja', partner.birthDate);
     txtLine(lines, 'Mjesto rođenja', partner.birthPlace);
@@ -920,9 +921,9 @@ function renderPayload(d={}) {
     const kids=Array.isArray(d.children)?d.children:[];
     return `<div class="report">
       <h2>Unos / dopuna pojedinca</h2>
-      ${row('Ime',d.firstName)}${row('Prezime',d.lastName)}${row('Djevojačko prezime',d.maidenName)}${row('Nadimak',d.nickname)}${row('Datum rođenja',d.birthDate)}${row('Mjesto rođenja',d.birthPlace)}${row('Datum smrti',d.deathDate)}${row('Mjesto smrti',d.deathPlace)}${row('Otac',d.father)}${row('Majka',d.mother)}
+      ${row('Ime',d.firstName)}${surnameRows(d)}${row('Nadimak',d.nickname)}${row('Datum rođenja',d.birthDate)}${row('Mjesto rođenja',d.birthPlace)}${row('Datum smrti',d.deathDate)}${row('Mjesto smrti',d.deathPlace)}${row('Otac',d.father)}${row('Majka',d.mother)}
       <h2>Partner / supružnik</h2>
-      ${row('Ime',p.firstName)}${row('Prezime',p.lastName)}${row('Djevojačko prezime',p.maidenName)}${row('Nadimak',p.nickname)}${row('Datum rođenja',p.birthDate)}${row('Mjesto rođenja',p.birthPlace)}${row('Datum smrti',p.deathDate)}${row('Mjesto smrti',p.deathPlace)}${row('Vrsta veze',p.relationship)}
+      ${row('Ime',p.firstName)}${surnameRows(p)}${row('Nadimak',p.nickname)}${row('Datum rođenja',p.birthDate)}${row('Mjesto rođenja',p.birthPlace)}${row('Datum smrti',p.deathDate)}${row('Mjesto smrti',p.deathPlace)}${row('Vrsta veze',p.relationship)}
       <h2>Djeca ovog para (${kids.length})</h2>
       ${kids.length ? DescendantData.html(kids,{esc,row}) : '<p class="muted">Nisu navedena djeca ovog para.</p>'}
       <h2>Dopuna i izvor</h2>
@@ -977,7 +978,7 @@ function flattenHistoryValue(value, prefix = '', out = {}) {
 
 function historyLabel(path) {
   const lastLabels = {
-    firstName:'Ime', lastName:'Prezime', maidenName:'Djevojačko prezime',
+    firstName:'Ime', lastName:'Prezime', marriedName:'Prezime po udaji / kasnije', maidenName:'Djevojačko prezime',
     nickname:'Nadimak', birthDate:'Datum rođenja', birthPlace:'Mjesto rođenja',
     deathDate:'Datum smrti', deathPlace:'Mjesto smrti', relationshipType:'Vrsta veze',
     notes:'Napomene', source:'Izvor', correction:'Dopuna / ispravka'

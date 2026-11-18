@@ -59,7 +59,8 @@
       <h2>Otac</h2>
       <div class="grid person-fields" data-prefix="father">
         <div class="field"><label>Ime</label><input name="father_firstName" class="title-watch" placeholder="Pero"></div>
-        <div class="field"><label>Prezime</label><input name="father_lastName" class="title-watch" placeholder="Perić"></div>
+        <div class="field"><label>Prezime (rođeno)</label><input name="father_lastName" class="title-watch" placeholder="Perić"></div>
+        <div class="field"><label>Prezime po udaji / kasnije</label><input name="father_marriedName"></div>
         <div class="field"><label>Nadimak</label><input name="father_nickname"></div>
         <div class="field"><label>Datum rođenja</label><input name="father_birthDate" placeholder="15.02.1956 ili oko 1956"></div>
         <div class="field"><label>Mjesto rođenja</label><input name="father_birthPlace"></div>
@@ -72,8 +73,8 @@
       <h2>Majka</h2>
       <div class="grid person-fields" data-prefix="mother">
         <div class="field"><label>Ime</label><input name="mother_firstName" class="title-watch" placeholder="Mara"></div>
-        <div class="field"><label>Prezime</label><input name="mother_lastName" class="title-watch" placeholder="Marić"></div>
-        <div class="field"><label>Djevojačko prezime</label><input name="mother_maidenName" class="title-watch" placeholder="Jovanović"></div>
+        <div class="field"><label>Prezime (rođeno)</label><input name="mother_lastName" class="title-watch" placeholder="Jovanović"></div>
+        <div class="field"><label>Prezime po udaji / kasnije</label><input name="mother_marriedName" placeholder="Perić"></div>
         <div class="field"><label>Nadimak</label><input name="mother_nickname"></div>
         <div class="field"><label>Datum rođenja</label><input name="mother_birthDate"></div>
         <div class="field"><label>Mjesto rođenja</label><input name="mother_birthPlace"></div>
@@ -126,8 +127,8 @@
     <div class="section">
       <h2>Unos / dopuna pojedinca</h2>
       <div class="grid">
-        <div class="field"><label>Ime</label><input name="firstName"></div><div class="field"><label>Prezime</label><input name="lastName"></div>
-        <div class="field"><label>Djevojačko prezime</label><input name="maidenName"></div><div class="field"><label>Nadimak</label><input name="nickname"></div>
+        <div class="field"><label>Ime</label><input name="firstName"></div><div class="field"><label>Prezime (rođeno)</label><input name="lastName"></div>
+        <div class="field"><label>Prezime po udaji / kasnije</label><input name="marriedName"></div><div class="field"><label>Nadimak</label><input name="nickname"></div>
         <div class="field"><label>Datum rođenja</label><input name="birthDate"></div><div class="field"><label>Mjesto rođenja</label><input name="birthPlace"></div>
         <div class="field"><label>Datum smrti</label><input name="deathDate"></div><div class="field"><label>Mjesto smrti</label><input name="deathPlace"></div>
         <div class="field"><label>Otac</label><input name="father"></div><div class="field"><label>Majka</label><input name="mother"></div>
@@ -140,8 +141,8 @@
       <h2>Partner / supružnik</h2>
       <div class="grid">
         <div class="field"><label>Ime</label><input name="partner_firstName"></div>
-        <div class="field"><label>Prezime</label><input name="partner_lastName"></div>
-        <div class="field"><label>Djevojačko prezime</label><input name="partner_maidenName"></div>
+        <div class="field"><label>Prezime (rođeno)</label><input name="partner_lastName"></div>
+        <div class="field"><label>Prezime po udaji / kasnije</label><input name="partner_marriedName"></div>
         <div class="field"><label>Nadimak</label><input name="partner_nickname"></div>
         <div class="field"><label>Datum rođenja</label><input name="partner_birthDate"></div>
         <div class="field"><label>Mjesto rođenja</label><input name="partner_birthPlace"></div>
@@ -224,6 +225,7 @@
   <p class="footer-note">Porodični unos – podaci se čuvaju privatno i koriste se samo za porodično stablo.</p>
 </div>
 <div id="toast" class="toast"></div>
+<script src="/surnames.js"></script>
 <script src="/descendant-data.js"></script>
 <!-- BRANCH_FORM_BOOT -->
 <script>
@@ -457,9 +459,9 @@ document.getElementById('personFiles').addEventListener('change',e=>{
 
 function val(name){ const e=document.querySelector(`[name="${name}"]`); return e?e.value.trim():''; }
 function updateTitle(){
-  const ff=val('father_firstName'), fl=val('father_lastName'), mf=val('mother_firstName'), mm=val('mother_maidenName'), ml=val('mother_lastName');
+  const ff=val('father_firstName'), fl=val('father_lastName'), mf=val('mother_firstName'), ml=val('mother_lastName');
   const father=[fl,ff].filter(Boolean).join(' ');
-  const mother=[mm||ml,mf].filter(Boolean).join(' ');
+  const mother=[ml,mf].filter(Boolean).join(' ');
   const generated=(father||mother) ? [father,mother].filter(Boolean).join(' & ') : '— naslov će se napraviti automatski —';
 
   document.getElementById('generatedTitle').textContent = generated;
@@ -500,8 +502,8 @@ function addChild(data={},container=children,depth=1){
  if(data._id)card.dataset.branchId=data._id;if(data.spouse?._id)card.dataset.branchPartner=data.spouse._id;if(data._family)card.dataset.branchFamily=data._family;if(data._reference)card.dataset.reference='true';
  const person={...data};if(!person.firstName&&!person.lastName&&person.name)person.firstName=person.name;
  const field=(label,key,prefix='c')=>`<div class="field"><label>${label}<input data-${prefix}="${key}"></label></div>`;
- const personFields=field('Ime','firstName')+field('Prezime','lastName')+field('Djevojačko prezime','maidenName')+field('Nadimak','nickname')+field('Datum rođenja','birthDate')+field('Mjesto rođenja','birthPlace')+field('Datum smrti','deathDate')+field('Mjesto smrti','deathPlace');
- const spouseFields=['firstName','lastName','maidenName','nickname','birthDate','birthPlace','deathDate','deathPlace'].map((k,i)=>field(['Ime','Prezime','Djevojačko prezime','Nadimak','Datum rođenja','Mjesto rođenja','Datum smrti','Mjesto smrti'][i],k,'s')).join('');
+ const personFields=field('Ime','firstName')+field('Prezime (rođeno)','lastName')+field('Prezime po udaji / kasnije','marriedName')+field('Nadimak','nickname')+field('Datum rođenja','birthDate')+field('Mjesto rođenja','birthPlace')+field('Datum smrti','deathDate')+field('Mjesto smrti','deathPlace');
+ const spouseFields=['firstName','lastName','marriedName','nickname','birthDate','birthPlace','deathDate','deathPlace'].map((k,i)=>field(['Ime','Prezime (rođeno)','Prezime po udaji / kasnije','Nadimak','Datum rođenja','Mjesto rođenja','Datum smrti','Mjesto smrti'][i],k,'s')).join('');
  card.innerHTML=`<div class="child-head"><strong>Dijete</strong><button type="button" class="remove child-remove">Ukloni dijete</button></div><div class="grid">${personFields}</div><div class="nested descendant-partner"><h3>Supružnik / partner</h3><div class="grid">${spouseFields}<div class="field"><label>Vrsta veze<select data-s="relationship"><option></option><option>Brak</option><option>Vanbračna zajednica</option><option>Registrovano partnerstvo</option><option>Partnerstvo</option><option>Nepoznato</option></select></label></div></div></div><div class="nested descendant-family"><h3 class="pair-children-title">Djeca ovog para</h3><div class="nested-list"></div><div class="actions"><button type="button" class="pair-add-child btn soft add-grandchild">＋ Dodaj dijete ovog para</button></div></div><div class="field full"><label>Napomena za ovu porodicu<textarea data-c="notes"></textarea></label></div><details class="branch-child-notes"><summary>Napomene o osobi</summary><div class="field"><label>Napomene osobe<textarea data-c="personNotes"></textarea></label></div></details><div class="actions branch-child-actions"><button type="button" class="child-collapse">Završi unos</button><button type="button" class="btn soft descendant-focus">Otvori ovu porodicu</button></div>`;
  card.querySelectorAll('[data-c]').forEach(e=>e.value=person[e.dataset.c]||'');card.querySelectorAll('[data-s]').forEach(e=>setFieldValue(e,data.spouse?.[e.dataset.s]));
  container.appendChild(card);if(depth>1&&(data.children||[]).length)card._pendingDescendants=structuredClone(data.children);else for(const child of data.children||[])addGrandchild(card,child);
@@ -547,13 +549,14 @@ function renderExistingFiles(mode){
   box.innerHTML=`<b>Već sačuvani prilozi (${existingFiles.length})</b><ul>${existingFiles.map(f=>`<li>${esc(f.original_name||f.name||'Fajl')} ${f.size?`<span class="subtle">(${formatFileSize(f.size)})</span>`:''}</li>`).join('')}</ul><div class="subtle">Novi fajlovi koje dodate biće pridruženi postojećima. Ukupno može biti najviše 10.</div>`;
 }
 function fillFamily(d){
+  d=SurnameData.normalizeTree(d||{});
   clearDescendantFocus(document.getElementById('familyForm'));
   switchMode('family');
   const form=document.getElementById('familyForm');
   setNamed(form,'submittedBy',d.submittedBy);
   setNamed(form,'primaryRelationship',d.primaryRelationship);
-  for(const k of ['firstName','lastName','nickname','birthDate','birthPlace','deathDate','deathPlace']) setNamed(form,'father_'+k,(d.father||{})[k]);
-  for(const k of ['firstName','lastName','maidenName','nickname','birthDate','birthPlace','deathDate','deathPlace']) setNamed(form,'mother_'+k,(d.mother||{})[k]);
+  for(const k of ['firstName','lastName','marriedName','nickname','birthDate','birthPlace','deathDate','deathPlace']) setNamed(form,'father_'+k,(d.father||{})[k]);
+  for(const k of ['firstName','lastName','marriedName','nickname','birthDate','birthPlace','deathDate','deathPlace']) setNamed(form,'mother_'+k,(d.mother||{})[k]);
   setNamed(form,'source',d.source);
   setNamed(form,'notes',d.notes);
   children.innerHTML=''; childCounter=0;
@@ -563,6 +566,7 @@ function fillFamily(d){
   updateTitle();
 }
 function fillPerson(d){
+  d=SurnameData.normalizeTree(d||{});
   clearDescendantFocus(document.getElementById('personForm'));
   switchMode('person');
   const form=document.getElementById('personForm');
@@ -573,7 +577,7 @@ function fillPerson(d){
   const p=d.partner||{};
   setNamed(form,'partner_firstName',p.firstName);
   setNamed(form,'partner_lastName',p.lastName);
-  setNamed(form,'partner_maidenName',p.maidenName);
+  setNamed(form,'partner_marriedName',p.marriedName);
   setNamed(form,'partner_nickname',p.nickname);
   setNamed(form,'partner_birthDate',p.birthDate);
   setNamed(form,'partner_birthPlace',p.birthPlace);
@@ -708,8 +712,8 @@ async function loadEditSubmission(){
 }
 function familyData(){
   const d={type:'porodica',title:document.getElementById('generatedTitle').textContent,submittedBy:val('submittedBy'),primaryRelationship:val('primaryRelationship'),father:{},mother:{},children:[],source:val('source'),notes:val('notes')};
-  ['firstName','lastName','nickname','birthDate','birthPlace','deathDate','deathPlace'].forEach(k=>d.father[k]=val('father_'+k));
-  ['firstName','lastName','maidenName','nickname','birthDate','birthPlace','deathDate','deathPlace'].forEach(k=>d.mother[k]=val('mother_'+k));
+  ['firstName','lastName','marriedName','nickname','birthDate','birthPlace','deathDate','deathPlace'].forEach(k=>d.father[k]=val('father_'+k));
+  ['firstName','lastName','marriedName','nickname','birthDate','birthPlace','deathDate','deathPlace'].forEach(k=>d.mother[k]=val('mother_'+k));
   d.children=readDescendants(children);return d;
 }
 function formToObject(form){
@@ -719,7 +723,7 @@ function formToObject(form){
   o.partner={
     firstName:o.partner_firstName||'',
     lastName:o.partner_lastName||'',
-    maidenName:o.partner_maidenName||'',
+    marriedName:o.partner_marriedName||'',
     nickname:o.partner_nickname||'',
     birthDate:o.partner_birthDate||'',
     birthPlace:o.partner_birthPlace||'',
@@ -727,7 +731,7 @@ function formToObject(form){
     deathPlace:o.partner_deathPlace||'',
     relationship:o.partner_relationship||''
   };
-  delete o.partner_firstName; delete o.partner_lastName; delete o.partner_maidenName; delete o.partner_nickname;
+  delete o.partner_firstName; delete o.partner_lastName; delete o.partner_marriedName; delete o.partner_nickname;
   delete o.partner_birthDate; delete o.partner_birthPlace; delete o.partner_deathDate; delete o.partner_deathPlace; delete o.partner_relationship;
 
   o.children=readDescendants(personChildren);
@@ -738,8 +742,7 @@ function shown(v){return v ? esc(v) : '<span class="empty">nije navedeno</span>'
 function row(label,value){return `<div class="row"><div class="label">${esc(label)}</div><div>${shown(value)}</div></div>`;}
 function personBlock(title,p,maiden=false){
   let h=`<div class="report-card"><h4>${esc(title)}</h4>`;
-  h+=row('Ime',p.firstName)+row('Prezime',p.lastName);
-  if(maiden) h+=row('Djevojačko prezime',p.maidenName);
+  h+=row('Ime',p.firstName)+SurnameData.rows(p).map(([label,v])=>row(label,v)).join('');
   h+=row('Nadimak',p.nickname)+row('Datum rođenja',p.birthDate)+row('Mjesto rođenja',p.birthPlace)+row('Datum smrti',p.deathDate)+row('Mjesto smrti',p.deathPlace);
   return h+'</div>';
 }
@@ -779,11 +782,11 @@ function filesReport(mode){
 }
 function personReport(d){
   let h='<h3>Unos / dopuna pojedinca</h3>';
-  h+=row('Podatke šalje',d.submittedBy)+row('Ime',d.firstName)+row('Prezime',d.lastName)+row('Djevojačko prezime',d.maidenName)+row('Nadimak',d.nickname)+row('Datum rođenja',d.birthDate)+row('Mjesto rođenja',d.birthPlace)+row('Datum smrti',d.deathDate)+row('Mjesto smrti',d.deathPlace)+row('Otac',d.father)+row('Majka',d.mother);
+  h+=row('Podatke šalje',d.submittedBy)+row('Ime',d.firstName)+SurnameData.rows(d).map(([label,v])=>row(label,v)).join('')+row('Nadimak',d.nickname)+row('Datum rođenja',d.birthDate)+row('Mjesto rođenja',d.birthPlace)+row('Datum smrti',d.deathDate)+row('Mjesto smrti',d.deathPlace)+row('Otac',d.father)+row('Majka',d.mother);
 
   const p=d.partner||{};
   h+='<h3>Partner / supružnik</h3>';
-  h+=row('Ime',p.firstName)+row('Prezime',p.lastName)+row('Djevojačko prezime',p.maidenName)+row('Nadimak',p.nickname)+row('Datum rođenja',p.birthDate)+row('Mjesto rođenja',p.birthPlace)+row('Datum smrti',p.deathDate)+row('Mjesto smrti',p.deathPlace)+row('Vrsta veze',p.relationship);
+  h+=row('Ime',p.firstName)+SurnameData.rows(p).map(([label,v])=>row(label,v)).join('')+row('Nadimak',p.nickname)+row('Datum rođenja',p.birthDate)+row('Mjesto rođenja',p.birthPlace)+row('Datum smrti',p.deathDate)+row('Mjesto smrti',p.deathPlace)+row('Vrsta veze',p.relationship);
 
   const kids=Array.isArray(d.children)?d.children:[];
   h+=`<h3>Djeca ovog para (${kids.length})</h3>`;

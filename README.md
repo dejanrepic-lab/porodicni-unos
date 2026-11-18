@@ -2,7 +2,7 @@
 
 Jednostavna, self-hosted web aplikacija za prikupljanje porodičnih i genealoških podataka od članova porodice, sa ciljem da se provjereni podaci kasnije ručno unesu u **Gramps**.
 
-**Trenutna verzija: v2.14.0** (izvor verzije je `version` u `package.json`)
+**Trenutna verzija: v2.15.0** (izvor verzije je `version` u `package.json`)
 
 ## Šta aplikacija radi
 
@@ -178,6 +178,15 @@ Privatni receipt linkovi i `/porodica` link funkcionišu kao bearer-linkovi: oso
 # Istorija verzija
 
 Najnovije izmjene su prikazane prve.
+
+## v2.15.0 — 18. 11. 2026
+
+### Rođeno prezime je glavno prezime
+- Svuda (obični obrazac, porodični link, djeca, supružnici) glavno polje je **„Prezime (rođeno)“**, isto kao u Grampsu. Umjesto „Djevojačko prezime“ postoji **„Prezime po udaji / kasnije“**, sklonjeno u „Više podataka“.
+- Stari unosi se ne gube: osoba sa upisanim djevojačkim prezimenom pri otvaranju dobija djevojačko kao rođeno prezime, a dotadašnje prezime kao prezime po udaji. Promjena se upisuje tek pri čuvanju i vidi se u pregledu i u admin pregledu izmjena. Admin, TXT i istorija stare unose prikazuju njihovim izvornim nazivima.
+- Naslov porodice koristi rođeno prezime majke.
+- Uvoz iz Grampsa preuzima prezime po udaji iz alternativnog imena tipa „Married Name“.
+- Zajednička pravila su u `public/surnames.js` (preglednik i server).
 
 ## v2.14.0 — 18. 11. 2026
 
